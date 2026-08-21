@@ -1,0 +1,77 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>promise — 오늘 얻어갈 세 가지</title>
+<!-- 약속: 훅이 연 궁금증을 3개 항목으로 받는다. 목차가 아니라 약속이다.
+     발화 시각(실측 15.02s / 101자 기준): 0.2 배경 / 6.5 초대 상태 / 8.6 계정 상태 / 11.9 경계 -->
+<link rel="stylesheet" href="../../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 0 11%; gap: 0; }
+
+  .lead {
+    font-size: 3.6vh;
+    font-weight: 700;
+    line-height: 1.4;
+    color: #d9c6b4;
+    animation-name: fadeUp;
+    animation-duration: 0.6s;
+    animation-delay: 0.2s;
+  }
+  .lead b { color: #fff; }
+
+  .rows { margin-top: 6vh; display: flex; flex-direction: column; gap: 2.6vh; width: 100%; }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 2.6vh;
+    padding: 2.6vh 3.4vh;
+    border-radius: 1.3vh;
+    background: #1d1108;
+    border: 0.18vh solid #4a2d16;
+    border-left: 0.55vh solid var(--brand);
+    text-align: left;
+    animation-name: fadeUp;
+    animation-duration: 0.55s;
+    animation-delay: var(--t, 0s);
+  }
+  .row .n {
+    flex: none;
+    width: 5.4vh;
+    height: 5.4vh;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--brand) 28%, transparent);
+    border: 0.22vh solid var(--brand);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.7vh;
+    font-weight: 800;
+    color: #fff;
+  }
+  .row .k { font-size: 3.7vh; font-weight: 800; letter-spacing: -0.02em; }
+  .row .d { margin-top: 0.4vh; font-size: 2.4vh; font-weight: 600; color: #a08b78; }
+</style>
+
+<div class="stage">
+  <div class="glow animated"></div>
+
+  <div class="lead animated">사람 한 명은 <b>한 번에 만들어지지 않습니다</b></div>
+
+  <div class="rows">
+    <div class="row animated" style="--t: 6.5s">
+      <span class="n">1</span>
+      <span><span class="k">초대 상태</span><span class="d">정보가 채워지는 과정</span></span>
+    </div>
+    <div class="row animated" style="--t: 8.6s">
+      <span class="n">2</span>
+      <span><span class="k">계정 상태</span><span class="d">지금 서비스를 쓸 수 있는가</span></span>
+    </div>
+    <div class="row animated" style="--t: 11.9s">
+      <span class="n">3</span>
+      <span><span class="k">되돌릴 수 있는 경계</span><span class="d">어디까지 취소되는가</span></span>
+    </div>
+  </div>
+</div>
+
+<div class="wipe animated"></div>
+<script src="../../../../engine/motion/_params.js"></script>

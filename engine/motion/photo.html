@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>사진 카드</title>
+    <link rel="stylesheet" href="_base.css" />
+    <style>
+      /* 스톡·개인 사진 위에 문구를 얹는 카드. 사진에는 아주 느린 줌(켄번즈)이 걸려
+         정지 화면이 "멈춘 영상"으로 보이지 않는다.
+
+         params:
+           src      사진 경로 (이 파일 기준 상대 또는 절대) — 필수
+           title    큰 문구 (없으면 사진만)
+           subtitle 작은 문구
+           kicker   제목 위 작은 라벨 (연도 등)
+           zoomFrom / zoomTo  줌 배율 (기본 1.06 → 1.14)
+           panX     줌하며 옆으로 흐르는 정도 (-3 ~ 3, vh 단위. 기본 0)
+           shade    하단 그림자 진하기 0~1 (기본 0.55) — 글자 대비용 */
+
+      .photo {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      .photo > img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform-origin: center;
+        animation-name: kenburns;
+        animation-duration: var(--kb-duration, 6s);
+        animation-timing-function: linear;
+      }
+      @keyframes kenburns {
+        from { transform: scale(var(--zoom-from, 1.06)) translateX(0); }
+        to   { transform: scale(var(--zoom-to, 1.14)) translateX(var(--pan-x, 0vh)); }
+      }
+
+      /* 글자가 앉을 하단 그림자. 사진이 밝든 어둡든 글자 대비를 확보한다. */
+      .shade {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          to top,
+          rgb(0 0 0 / var(--shade, 0.55)) 0%,
+          rgb(0 0 0 / calc(var(--shade, 0.55) * 0.4)) 34%,
+          transparent 62%
+        );
+      }
+
+      /* 문구는 하단 안쪽 — 세로(9:16) 크롭에서도 살아남도록 가운데 절반 안에 둔다.
+         바닥 여백 20vh: 자막(CC)이 두 줄로 꺾이면 하단 ~16vh까지 올라온다. 12vh로 두면
+         내레이션이 긴 카드에서 자막이 제목을 덮는다 — 실제로 걸렸던 값이다. */
+      .stage {
+        justify-content: flex-end;
+        padding-bottom: 20vh;
+        gap: 1.2vh;
+      }
+      .kicker {
+        font-size: 2.6vh;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        color: var(--brand-soft);
+      }
+      .kicker > span {
+        animation-name: fadeUp;
+        animation-duration: 0.6s;
+        animation-delay: 0.25s;
+        animation-timing-function: ease-out;
+      }
+      .title { font-size: 7.4vh; text-shadow: 0 0.4vh 2.4vh rgb(0 0 0 / 0.45); }
+      .title > span {
+        animation-name: riseUp;
+        animation-duration: 0.7s;
+        animation-delay: 0.45s;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .subtitle { text-shadow: 0 0.3vh 1.8vh rgb(0 0 0 / 0.5); }
+      .subtitle > span {
+        animation-name: fadeUp;
+        animation-duration: 0.6s;
+        animation-delay: 0.8s;
+        animation-timing-function: ease-out;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="photo"><img class="animated" alt="" /></div>
+    <div class="shade"></div>
+    <div class="stage">
+      <div class="kicker"><span class="animated" data-p="kicker"></span></div>
+      <div class="reveal title"><span class="animated" data-p="title"></span></div>
+      <div class="subtitle"><span class="animated" data-p="subtitle"></span></div>
+    </div>
+    <script src="_params.js"></script>
+    <script>
+      const q = new URLSearchParams(location.search);
+      const root = document.documentElement;
+      const img = document.querySelector('.photo > img');
+
+      const src = q.get('src');
+      if (src) img.src = src;
+      else document.body.innerHTML = '<p style="color:#fff;padding:4vh">photo.html: src 파라미터가 필요합니다</p>';
+
+      // 줌은 구간 전체에 걸쳐 끝까지 진행 중이어야 한다 — 렌더러가 wipeAt(≈클립 길이)을
+      // 넘겨주므로 그걸 지속시간으로 쓴다. 짧게 두면 남은 시간이 정지 화면이 된다.
+      const wipeAt = parseFloat(q.get('wipeAt'));
+      if (Number.isFinite(wipeAt)) root.style.setProperty('--kb-duration', `${wipeAt + 0.45}s`);
+      const setVar = (name, value) => value && root.style.setProperty(name, value);
+      setVar('--zoom-from', q.get('zoomFrom'));
+      setVar('--zoom-to', q.get('zoomTo'));
+      setVar('--pan-x', q.get('panX') && `${q.get('panX')}vh`);
+      setVar('--shade', q.get('shade'));
+    </script>
+  </body>
+</html>

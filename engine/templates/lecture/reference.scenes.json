@@ -1,0 +1,107 @@
+{
+  "_읽어보기": "확정 인트로 구성의 **돌아가는 표본** — B롤 2s → 같은 소재 프레임 위 제목 4s → 시그니처 스팅어 → 본론 도식 → 마무리. 새 강좌를 열 때 이 파일을 먼저 읽어 구간 길이·shade·params 이름을 확인한다. 그대로 돌려 보려면 tools/video/projects/<id>/ 로 복사하고 ../<강좌id>/ 참조를 실제 강좌 폴더로 바꾼 뒤 node tools/video/build.js --project <id> — 20초 안에 인트로 스타일을 눈으로 확인할 수 있다. 회차 본편은 이 파일이 아니라 episode.scenes.json 을 쓴다(이건 스타일 확인용 표본이다).",
+  "id": "[표본 id]",
+  "baseUrl": "http://localhost:9999",
+  "capture": {
+    "width": 1920,
+    "height": 1080
+  },
+  "voice": {
+    "provider": "edge",
+    "lang": "ko",
+    "gender": "female",
+    "rate": "+8%"
+  },
+  "render": {
+    "fps": 30,
+    "crf": 19,
+    "preset": "medium",
+    "background": "#070b14",
+    "brand": "#3E63DD",
+    "brandText": "#93A4F5",
+    "subtitleScale": 0.046,
+    "subtitleMargin": 0.065,
+    "watermark": {
+      "text": "직장인 5분 개념강좌"
+    },
+    "watermarkAlign": 9,
+    "bgm": "../../.claude/skills/develop-video/assets/bgm/mixkit-623.mp3",
+    "bgmGain": 0.08,
+    "bgmDucking": true,
+    "motion": {
+      "dir": "motion",
+      "clips": [
+        {
+          "id": "broll",
+          "video": "../../.claude/skills/develop-video/assets/broll/ai-create.mp4",
+          "videoStart": 3,
+          "shade": 0.35,
+          "duration": 2,
+          "before": "end"
+        },
+        {
+          "id": "title",
+          "file": "../[강좌id]/course-intro.html",
+          "duration": 4,
+          "before": "end",
+          "narration": "1강, 챗지피티의 심장, 엘엘엠입니다.",
+          "params": {
+            "src": "../[표본 id]/bg/ai-create.jpg",
+            "kicker": "직장인 5분 개념강좌",
+            "num": "1강",
+            "title": "LLM이란 무엇인가",
+            "subtitle": "챗GPT의 심장",
+            "shade": "0.55",
+            "wipe": "off"
+          },
+          "_": "앞 B롤과 같은 시각의 프레임을 src 로 받는다 — videoStart 와 어긋나면 배경이 튄다. src 는 course-intro.html(projects/<강좌id>/) 기준 상대 경로라 이 대본이 놓인 폴더의 bg/ 를 가리키려면 ../<이 폴더>/bg/ 로 올라가야 한다."
+        },
+        {
+          "id": "stinger",
+          "file": "../[강좌id]/course-stinger.html",
+          "duration": 2.5,
+          "before": "end",
+          "params": {
+            "brandline": "직장인 5분 개념강좌",
+            "tagline": "개념 하나를, 5분에",
+            "wipe": "off"
+          }
+        },
+        {
+          "id": "body",
+          "file": "chapter.html",
+          "duration": 4,
+          "before": "end",
+          "narration": "엘엘엠은 저장된 답을 찾아오지 않습니다. 지금 이 자리에서, 한 단어씩 만듭니다.",
+          "params": {
+            "num": "1",
+            "title": "[챕터 제목]",
+            "progress": "50",
+            "wipe": "off"
+          },
+          "_": "본론 자리 — 실제 회차에서는 챕터 카드 + 회차 전용 도식이 들어간다. 표본은 공용 chapter.html 로 자리만 잡는다(전용 도식은 강좌마다 다르다)"
+        },
+        {
+          "id": "outro",
+          "file": "outro.html",
+          "duration": 3.5,
+          "before": "end",
+          "narration": "찾지 않고 만든다. 오늘은 이 한 문장입니다.",
+          "params": {
+            "title": "답은, 만들어진다",
+            "subtitle": "직장인 5분 개념강좌 · 1강",
+            "wipe": "off"
+          }
+        }
+      ]
+    }
+  },
+  "scenes": [],
+  "variants": [
+    {
+      "id": "[표본 id]-16x9",
+      "width": 1920,
+      "height": 1080
+    }
+  ]
+}

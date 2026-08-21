@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>목소리 견본 카드</title>
+    <link rel="stylesheet" href="_base.css" />
+    <style>
+      /* TTS 목소리 견본 카탈로그용 카드.
+         화면의 주인공은 "이름"이 아니라 scenes.json 에 그대로 옮겨 적을 목소리 id 다.
+         그래서 id 를 고정폭 글꼴 알약에 담아 이름 아래 크게 놓는다.
+
+         주의: 이 파일에서도 `animation:` 단축 속성은 쓰지 않는다 — 공통 규칙의
+         animation-fill-mode: both 가 초기값으로 되돌아가 지연 구간에서 요소가 다 보인다.
+         (_base.css 머리말 참조) */
+
+      /* id 가 길다(ko-KR-HyunsuMultilingualNeural = 30자). 공통 여백 26% 로는 넘치므로 넓힌다.
+         가로(16:9) 전용 카드다 — 세로 변형을 추가하려면 이 값을 되돌리고 글자를 줄여야 한다. */
+      .stage { padding: 0 8%; gap: 0; }
+
+      /* 위쪽 꼬리표 줄 — 몇 번째인지 · 성별 */
+      .tags {
+        display: flex;
+        align-items: center;
+        gap: 1.6vh;
+        margin-bottom: 3.2vh;
+        animation-name: fadeUp;
+        animation-duration: 0.5s;
+        animation-timing-function: ease-out;
+      }
+      .tags > * {
+        padding: 0.9vh 2.4vh;
+        border-radius: 999px;
+        font-size: 2.6vh;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        line-height: 1;
+      }
+      .idx {
+        background: color-mix(in srgb, var(--fg) 12%, transparent);
+        color: color-mix(in srgb, var(--fg) 72%, transparent);
+        font-variant-numeric: tabular-nums;
+      }
+      .badge {
+        background: color-mix(in srgb, var(--brand) 90%, transparent);
+        color: #fff;
+      }
+
+      /* 이름 — 사람이 기억하는 이름표 */
+      .name {
+        font-size: 11vh;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        line-height: 1.05;
+      }
+      .name > span {
+        animation-name: riseUp;
+        animation-duration: 0.65s;
+        animation-delay: 0.18s;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      /* 목소리 id — 이 영상의 존재 이유. 대본에 그대로 옮겨 적는 값이라 고정폭으로 둔다. */
+      .vid {
+        margin-top: 3.4vh;
+        padding: 1.5vh 3.4vh;
+        border: 0.28vh solid color-mix(in srgb, var(--brand) 55%, transparent);
+        border-radius: 1.6vh;
+        background: color-mix(in srgb, var(--brand) 16%, transparent);
+        font-family: Consolas, 'D2Coding', 'Courier New', monospace;
+        font-size: 4.4vh;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1;
+        white-space: nowrap;
+        animation-name: fadeUp;
+        animation-duration: 0.55s;
+        animation-delay: 0.5s;
+        animation-timing-function: ease-out;
+      }
+
+      .note {
+        margin-top: 2.6vh;
+        font-size: 2.9vh;
+        font-weight: 500;
+        color: color-mix(in srgb, var(--fg) 62%, transparent);
+        animation-name: fadeUp;
+        animation-duration: 0.55s;
+        animation-delay: 0.78s;
+        animation-timing-function: ease-out;
+      }
+
+      /* 소리가 나고 있음을 보여주는 파형. 실제 음량이 아니라 "지금 이 목소리가 말한다"는 표시다.
+         구간이 길어도 계속 도는 반복 애니메이션이라 정지 화면처럼 보이지 않는다. */
+      .wave {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.9vh;
+        height: 5vh;
+        margin-top: 4.6vh;
+        animation-name: fadeUp;
+        animation-duration: 0.5s;
+        animation-delay: 0.95s;
+        animation-timing-function: ease-out;
+      }
+      .wave > i {
+        display: block;
+        width: 0.7vh;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        transform-origin: bottom center;
+        animation-name: bounce;
+        animation-duration: 1.1s;
+        animation-iteration-count: infinite;
+        animation-timing-function: ease-in-out;
+        animation-fill-mode: both;
+        animation-play-state: paused;
+      }
+      @keyframes bounce {
+        0%, 100% { transform: scaleY(0.22); opacity: 0.55; }
+        50%      { transform: scaleY(1); opacity: 1; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="glow animated"></div>
+      <div class="tags animated">
+        <div class="idx" data-p="index">1 / 10</div>
+        <div class="badge" data-p="gender">여성</div>
+      </div>
+      <div class="reveal name"><span class="animated" data-p="name">이름</span></div>
+      <div class="vid animated" data-p="voiceid">ko-KR-SunHiNeural</div>
+      <div class="note animated" data-p="note"></div>
+      <div class="wave animated"></div>
+      <div class="wipe animated"></div>
+    </div>
+    <script src="_params.js"></script>
+    <script>
+      // 파형 막대는 개수를 코드로 만든다 — 막대마다 지연을 달리 줘야 물결이 된다.
+      // _params.js 가 끝난 뒤에 실행되므로 여기서 만든 요소는 data-p 치환 대상이 아니다.
+      const wave = document.querySelector('.wave');
+      const bars = Number(new URLSearchParams(location.search).get('bars') || 13);
+      for (let i = 0; i < bars; i += 1) {
+        const bar = document.createElement('i');
+        // 가운데가 높고 바깥이 낮은 물결 — 지연을 가운데 기준 거리로 준다.
+        const away = Math.abs(i - (bars - 1) / 2) / ((bars - 1) / 2);
+        bar.style.animationDelay = `${(-0.55 + away * 0.5).toFixed(3)}s`;
+        wave.appendChild(bar);
+      }
+    </script>
+  </body>
+</html>

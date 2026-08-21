@@ -1,0 +1,136 @@
+{
+  "_읽어보기": "홍보영상 골격. 대괄호 부분을 프로젝트에 맞게 바꾼다. 씬 6개 안팎·30초 내외가 기준.",
+
+  "id": "[영상 id — 출력 폴더 이름이 된다. 예: product-promo]",
+  "baseUrl": "http://localhost:3000",
+
+  "capture": { "width": 1920, "height": 1080, "storageState": "" },
+
+  "voice": { "provider": "edge", "lang": "ko", "gender": "female", "rate": "+8%" },
+
+  "render": {
+    "fps": 30,
+    "crf": 19,
+    "preset": "medium",
+    "background": "#0B1020",
+    "brand": "#3E63DD",
+    "brandText": "#93A4F5",
+
+    "subtitleScale": 0.05,
+    "subtitleMargin": 0.07,
+    "captionScale": 0.072,
+    "captionMargin": 0.05,
+    "badgeScale": 0.036,
+
+    "watermark": { "text": "[제품 이름]" },
+    "watermarkAlign": 9,
+
+    "motion": {
+      "dir": "motion",
+      "clips": [
+        {
+          "id": "intro",
+          "file": "intro.html",
+          "duration": 2.4,
+          "before": "s1",
+          "params": { "title": "[제품 이름]", "subtitle": "[한 줄 약속]" }
+        },
+        {
+          "id": "proof",
+          "file": "stat.html",
+          "duration": 2.0,
+          "before": "s5",
+          "params": { "value": "[숫자]", "unit": "[단위]", "title": "[숫자가 뜻하는 것]" }
+        },
+        {
+          "id": "outro",
+          "file": "outro.html",
+          "duration": 3.2,
+          "before": "end",
+          "params": {
+            "title": "[제품 이름]",
+            "subtitle": "[한 줄 약속]",
+            "cta": "[행동 유도]",
+            "url": "[도메인]",
+            "wipe": "off"
+          }
+        }
+      ]
+    },
+
+    "bgm": "",
+    "bgmGain": 0.1,
+    "syncOffset": 0
+  },
+
+  "variants": [
+    {
+      "id": "promo-30s-16x9",
+      "label": "인스트림 (16:9)",
+      "width": 1920,
+      "height": 1080,
+      "captions": false
+    },
+    {
+      "id": "promo-shorts-9x16",
+      "label": "숏츠 세로",
+      "width": 1080,
+      "height": 1920,
+      "crop": "960:1080:480:0",
+      "padY": 260,
+      "subtitleMargin": 0.185,
+      "captionScale": 0.064,
+      "captionMargin": 0.025,
+      "watermarkMargin": 0.075,
+      "presenterX": 642,
+      "presenterY": 1060
+    }
+  ],
+
+  "scenes": [
+    {
+      "id": "s1",
+      "narration": "[문제 제기 — 시청자가 겪는 불편을 한 문장으로]",
+      "caption": "[화면 상단 큰 문구]",
+      "hold": 0.5,
+      "actions": [{ "goto": "/" }, { "wait": 0.6 }]
+    },
+    {
+      "id": "s2",
+      "narration": "[해결 방식 — 무엇을 하면 되는지]",
+      "caption": "[짧은 약속]",
+      "hold": 0.6,
+      "actions": [{ "goto": "[입력 화면 경로]" }, { "type": "[입력 셀렉터]", "text": "[예시 입력]" }]
+    },
+    {
+      "id": "s3",
+      "narration": "[조작이 얼마나 간단한지]",
+      "caption": "[동작 요약]",
+      "hold": 0.5,
+      "actions": [{ "click": "[실행 버튼 셀렉터]", "optional": true }]
+    },
+    {
+      "id": "s4",
+      "narration": "[결과가 나오는 순간 — 이 영상의 핵심]",
+      "caption": "[결과 요약]",
+      "badge": { "text": "[수치 배지]", "at": 1.2 },
+      "hold": 0.6,
+      "actions": [{ "waitFor": "[결과 화면 셀렉터]", "timeout": 25, "optional": true }, { "wait": 1.0 }]
+    },
+    {
+      "id": "s5",
+      "narration": "[차별점 — 경쟁 제품과 다른 점]",
+      "caption": "[차별점 요약]",
+      "hold": 0.6,
+      "actions": [{ "goto": "[근거를 보여주는 경로]" }, { "scroll": 520, "duration": 1.6 }]
+    },
+    {
+      "id": "s6",
+      "narration": "[행동 유도 — 지금 무엇을 하면 되는지]",
+      "caption": "[행동 유도]",
+      "badge": { "text": "[가입 혜택]", "at": 0.8 },
+      "hold": 1.0,
+      "actions": [{ "goto": "[가격·가입 경로]" }, { "wait": 0.8 }]
+    }
+  ]
+}

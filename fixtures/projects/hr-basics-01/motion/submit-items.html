@@ -1,0 +1,143 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>제출 항목과 두 개의 스위치</title>
+<!-- 항목 목록에 스위치 두 열이 차례로 붙는 도식.
+     발화 시각(실측 41.74s / 263자 기준 — 문자 위치 비례):
+       4.4~9.5 기본 항목 / 11.4 "열네 개" / 19.5 스위치1 열 / 21.0~23.0 체크1
+       24.8 스위치2 열 / 26.0~28.5 체크2 / 32.5 아래 주석 -->
+<link rel="stylesheet" href="../../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 0 7%; gap: 0; }
+
+  .board {
+    width: 100%;
+    border-radius: 1.4vh;
+    background: #1d1108;
+    border: 0.2vh solid #4a2d16;
+    overflow: hidden;
+  }
+
+  .head, .line {
+    display: grid;
+    grid-template-columns: 1fr 20vh 20vh;
+    align-items: center;
+    padding: 1.7vh 3vh;
+    text-align: left;
+  }
+  .head { border-bottom: 0.18vh solid #4a2d16; }
+  .head .h {
+    font-size: 2.2vh;
+    font-weight: 800;
+    color: var(--brand-soft);
+    text-align: center;
+  }
+  .head .h1 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 19.5s; }
+  .head .h2 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 24.8s; }
+  .head .label { font-size: 2.2vh; font-weight: 800; color: #a08b78; }
+
+  .line { border-top: 0.14vh solid #34200f; }
+  .line .item {
+    font-size: 2.7vh;
+    font-weight: 700;
+    animation-name: fadeUp;
+    animation-duration: 0.45s;
+    animation-delay: var(--t, 0s);
+  }
+  .mark {
+    justify-self: center;
+    width: 3.6vh;
+    height: 3.6vh;
+    border-radius: 0.7vh;
+    border: 0.22vh solid #5a3a1e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.3vh;
+    font-weight: 900;
+    color: #0f0904;
+  }
+  .mark.on {
+    background: var(--brand);
+    border-color: var(--brand);
+    animation-name: check;
+    animation-duration: 0.4s;
+    animation-delay: var(--t, 0s);
+    animation-timing-function: cubic-bezier(0.2, 1.5, 0.4, 1);
+  }
+  .mark.off { opacity: 0.35; animation-name: fadeUp; animation-duration: 0.4s; animation-delay: var(--t, 0s); }
+  @keyframes check {
+    from { opacity: 0; transform: scale(0.3); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .more {
+    margin-top: 2.4vh;
+    display: inline-flex;
+    padding: 1.1vh 2.6vh;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--brand) 20%, transparent);
+    border: 0.2vh solid var(--brand);
+    font-size: 2.3vh;
+    font-weight: 800;
+    color: var(--brand-soft);
+    animation-name: fadeUp;
+    animation-duration: 0.5s;
+    animation-delay: 11.4s;
+  }
+
+  .note {
+    margin-top: 4.4vh;
+    font-size: 2.9vh;
+    font-weight: 700;
+    color: #d9c6b4;
+    animation-name: fadeUp;
+    animation-duration: 0.6s;
+    animation-delay: 32.5s;
+  }
+  .note b { color: var(--brand-soft); }
+</style>
+
+<div class="stage">
+  <div class="glow animated"></div>
+
+  <div class="board">
+    <div class="head">
+      <span class="label">기본 제출 항목 · 삭제 불가</span>
+      <span class="h h1 animated">제출 항목 설정</span>
+      <span class="h h2 animated">가입 필수 응답</span>
+    </div>
+
+    <div class="line">
+      <span class="item animated" style="--t: 4.4s">개인 연락처</span>
+      <span class="mark on animated" style="--t: 21.0s">✓</span>
+      <span class="mark on animated" style="--t: 26.0s">✓</span>
+    </div>
+    <div class="line">
+      <span class="item animated" style="--t: 5.5s">생년월일</span>
+      <span class="mark on animated" style="--t: 21.5s">✓</span>
+      <span class="mark on animated" style="--t: 26.5s">✓</span>
+    </div>
+    <div class="line">
+      <span class="item animated" style="--t: 7.1s">주민등록상 주소</span>
+      <span class="mark on animated" style="--t: 22.0s">✓</span>
+      <span class="mark off animated" style="--t: 27.5s"></span>
+    </div>
+    <div class="line">
+      <span class="item animated" style="--t: 8.2s">급여계좌</span>
+      <span class="mark on animated" style="--t: 22.5s">✓</span>
+      <span class="mark off animated" style="--t: 28.0s"></span>
+    </div>
+    <div class="line">
+      <span class="item animated" style="--t: 9.5s">신분증 사본</span>
+      <span class="mark off animated" style="--t: 23.0s"></span>
+      <span class="mark off animated" style="--t: 28.5s"></span>
+    </div>
+  </div>
+
+  <div class="more animated">＋ 기본 항목 14개 · 회사가 항목을 더 만들 수 있다</div>
+
+  <div class="note animated">필수로 걸지 않은 항목은 <b>보이되 나중에</b> 쓴다</div>
+</div>
+
+<div class="wipe animated"></div>
+<script src="../../../../engine/motion/_params.js"></script>

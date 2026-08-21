@@ -1,0 +1,178 @@
+@import 'tailwindcss';
+@import './styles/tokens.css';
+
+/* ── Element Plus → 토큰 매핑 (element css 이후 로드라 여기서 이긴다) ────────── */
+:root {
+  --el-font-family: var(--vs-font);
+  --el-color-primary: var(--vs-accent);
+  --el-color-primary-dark-2: color-mix(in srgb, var(--vs-accent) 85%, black);
+  --el-color-primary-light-3: color-mix(in srgb, var(--vs-accent) 70%, white);
+  --el-color-primary-light-5: color-mix(in srgb, var(--vs-accent) 50%, white);
+  --el-color-primary-light-7: color-mix(in srgb, var(--vs-accent) 30%, white);
+  --el-color-primary-light-8: color-mix(in srgb, var(--vs-accent) 20%, white);
+  --el-color-primary-light-9: color-mix(in srgb, var(--vs-accent) 10%, white);
+  --el-color-success: var(--vs-success);
+  --el-color-success-dark-2: color-mix(in srgb, var(--vs-success) 85%, black);
+  --el-color-success-light-3: color-mix(in srgb, var(--vs-success) 70%, white);
+  --el-color-success-light-5: color-mix(in srgb, var(--vs-success) 50%, white);
+  --el-color-success-light-7: color-mix(in srgb, var(--vs-success) 30%, white);
+  --el-color-success-light-8: color-mix(in srgb, var(--vs-success) 20%, white);
+  --el-color-success-light-9: color-mix(in srgb, var(--vs-success) 10%, white);
+  --el-color-warning: var(--vs-warning);
+  --el-color-warning-dark-2: color-mix(in srgb, var(--vs-warning) 85%, black);
+  --el-color-warning-light-3: color-mix(in srgb, var(--vs-warning) 70%, white);
+  --el-color-warning-light-5: color-mix(in srgb, var(--vs-warning) 50%, white);
+  --el-color-warning-light-7: color-mix(in srgb, var(--vs-warning) 30%, white);
+  --el-color-warning-light-8: color-mix(in srgb, var(--vs-warning) 20%, white);
+  --el-color-warning-light-9: color-mix(in srgb, var(--vs-warning) 10%, white);
+  --el-color-danger: var(--vs-danger);
+  --el-color-danger-dark-2: color-mix(in srgb, var(--vs-danger) 85%, black);
+  --el-color-danger-light-3: color-mix(in srgb, var(--vs-danger) 70%, white);
+  --el-color-danger-light-5: color-mix(in srgb, var(--vs-danger) 50%, white);
+  --el-color-danger-light-7: color-mix(in srgb, var(--vs-danger) 30%, white);
+  --el-color-danger-light-8: color-mix(in srgb, var(--vs-danger) 20%, white);
+  --el-color-danger-light-9: color-mix(in srgb, var(--vs-danger) 10%, white);
+  --el-color-error: var(--vs-danger);
+  --el-color-error-dark-2: color-mix(in srgb, var(--vs-danger) 85%, black);
+  --el-color-error-light-3: color-mix(in srgb, var(--vs-danger) 70%, white);
+  --el-color-error-light-5: color-mix(in srgb, var(--vs-danger) 50%, white);
+  --el-color-error-light-7: color-mix(in srgb, var(--vs-danger) 30%, white);
+  --el-color-error-light-8: color-mix(in srgb, var(--vs-danger) 20%, white);
+  --el-color-error-light-9: color-mix(in srgb, var(--vs-danger) 10%, white);
+  --el-color-info: var(--vs-ink-2);
+  --el-color-info-dark-2: color-mix(in srgb, var(--vs-ink-2) 85%, black);
+  --el-color-info-light-3: color-mix(in srgb, var(--vs-ink-2) 70%, white);
+  --el-color-info-light-5: color-mix(in srgb, var(--vs-ink-2) 50%, white);
+  --el-color-info-light-7: color-mix(in srgb, var(--vs-ink-2) 30%, white);
+  --el-color-info-light-8: color-mix(in srgb, var(--vs-ink-2) 20%, white);
+  --el-color-info-light-9: color-mix(in srgb, var(--vs-ink-2) 10%, white);
+  --el-text-color-primary: var(--vs-ink);
+  --el-text-color-regular: var(--vs-ink);
+  --el-text-color-secondary: var(--vs-ink-2);
+  --el-text-color-placeholder: var(--vs-ink-3);
+  --el-border-color: var(--vs-separator);
+  --el-border-color-light: var(--vs-separator);
+  --el-border-color-lighter: color-mix(in srgb, var(--vs-separator) 55%, white);
+  --el-border-radius-base: var(--vs-radius-control);
+  --el-fill-color-light: var(--vs-bg-page);
+  --el-fill-color-lighter: color-mix(in srgb, var(--vs-bg-page) 50%, white);
+}
+
+body {
+  font-family: var(--vs-font);
+  font-size: var(--vs-text-body);
+  background: var(--vs-bg-page);
+  color: var(--vs-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 공통 레이아웃 골격 — 모든 화면이 같은 클래스를 쓴다 ──────────────────────
+   구조: .vs-header(고정) → .vs-container(제목 → 설명 → 필터/액션 → 본문) */
+@layer components {
+  .vs-container {
+    margin-inline: auto;
+    max-width: var(--vs-page-max);
+    padding-inline: var(--vs-page-pad);
+  }
+
+  /* 상단 바 — apple 프로스트 내비 */
+  .vs-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--vs-bg-frost);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--vs-separator);
+  }
+  .vs-header-inner {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 52px;
+  }
+  .vs-brand {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: var(--vs-tracking-tight);
+    color: var(--vs-ink);
+  }
+  .vs-nav {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+  }
+  .vs-nav a {
+    color: var(--vs-ink-2);
+    transition: color 0.15s;
+  }
+  .vs-nav a:hover { color: var(--vs-ink); }
+  .vs-nav a.router-link-active { color: var(--vs-ink); font-weight: 500; }
+
+  .vs-main { padding-block: var(--vs-page-top) 64px; }
+
+  /* 화면 머리 — 제목 → 설명 (좌) · 주 액션 (우) */
+  .vs-page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--vs-gap-stack);
+    margin-bottom: 28px;
+  }
+  .vs-page-title {
+    font-size: var(--vs-text-title);
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: var(--vs-tracking-tight);
+    color: var(--vs-ink);
+  }
+  .vs-page-desc {
+    margin-top: 6px;
+    font-size: var(--vs-text-body);
+    color: var(--vs-ink-2);
+  }
+
+  /* 섹션 제목 — 본문 안 소제목의 유일한 스타일 */
+  .vs-section-title {
+    margin: var(--vs-gap-section) 0 12px;
+    font-size: var(--vs-text-section);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--vs-ink);
+  }
+  .vs-section-title:first-child { margin-top: 0; }
+  .vs-section-note { font-size: var(--vs-text-caption); font-weight: 400; color: var(--vs-ink-3); }
+
+  /* 카드 그리드 — 카드 간격은 전 화면 동일 */
+  .vs-card-grid {
+    display: grid;
+    gap: var(--vs-gap-card);
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  /* 흰 패널 — 표·리스트를 감싸는 라운드 표면 */
+  .vs-panel {
+    background: var(--vs-bg-surface);
+    border: 1px solid var(--vs-separator);
+    border-radius: var(--vs-radius-card);
+    overflow: hidden;
+    box-shadow: var(--vs-shadow-card);
+  }
+
+  /* 보조 텍스트 유틸 — slate-* 대신 이것만 쓴다 */
+  .vs-ink-2 { color: var(--vs-ink-2); }
+  .vs-ink-3 { color: var(--vs-ink-3); }
+}
+
+/* ── Element Plus 컴포넌트 표면 다듬기 ──────────────────────────────────────── */
+.el-card {
+  --el-card-border-radius: var(--vs-radius-card);
+  border-color: var(--vs-separator);
+  box-shadow: var(--vs-shadow-card);
+  transition: box-shadow 0.2s;
+}
+.el-card.is-hover-shadow:hover { box-shadow: var(--vs-shadow-hover); }
+.el-button { border-radius: var(--vs-radius-pill); }
+.el-tag { border-radius: var(--vs-radius-pill); }
+.el-dialog { border-radius: var(--vs-radius-card); }
+.el-alert { border-radius: var(--vs-radius-control); }

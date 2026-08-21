@@ -1,0 +1,310 @@
+{
+  "_예제": "딸깍 슬라이드 홍보영상 — 실제로 촬영·합성해 mp4 5종이 나온 대본. 값은 전부 실측·조정을 거친 것이다.",
+  "_읽는법": "해설과 산출물 실측치는 같은 폴더의 ttalkak-slide-promo.md. 골격만 필요하면 ../templates/scenes.promo.json.",
+  "_주의": "bgm 경로는 영상 작업 폴더 기준 상대(저장소 루트까지 2단계), motion params.fontUrl은 이 프로젝트의 웹폰트 위치다. 옮겨 쓸 때 둘 다 고쳐야 한다.",
+  "baseUrl": "http://localhost:5173",
+  "capture": {
+    "width": 1920,
+    "height": 1080,
+    "storageState": ""
+  },
+  "voice": {
+    "provider": "edge",
+    "voice": "ko-KR-SunHiNeural",
+    "rate": "+8%",
+    "volume": "+0%",
+    "pitch": "+0Hz"
+  },
+  "render": {
+    "fps": 30,
+    "crf": 19,
+    "preset": "medium",
+    "background": "#0B1020",
+    "brand": "#3E63DD",
+    "brandText": "#93A4F5",
+    "subtitleFont": "Malgun Gothic",
+    "subtitleScale": 0.05,
+    "subtitleMargin": 0.07,
+    "captionScale": 0.072,
+    "captionMargin": 0.05,
+    "badgeScale": 0.036,
+    "watermark": {
+      "text": "딸깍 슬라이드"
+    },
+    "watermarkScale": 0.028,
+    "watermarkAlign": 9,
+    "presenter": {
+      "enabled": true,
+      "dir": "presenter",
+      "size": 0.22,
+      "align": "bottom-right",
+      "margin": 0.04,
+      "zoom": 0.6,
+      "focusX": 0.4,
+      "focusY": 0.05
+    },
+    "motion": {
+      "dir": "motion",
+      "clips": [
+        {
+          "id": "intro",
+          "file": "intro.html",
+          "duration": 2.4,
+          "before": "s1",
+          "narration": "",
+          "variants": [
+            "ad-30s-16x9",
+            "ad-15s-16x9",
+            "shorts-9x16"
+          ],
+          "params": {
+            "title": "딸깍 슬라이드",
+            "subtitle": "주제 한 줄로, 3분 안에",
+            "fontUrl": "../../../frontend/public/fonts/PretendardVariable.woff2"
+          }
+        },
+        {
+          "id": "h-intro",
+          "file": "intro.html",
+          "duration": 2.4,
+          "before": "s2",
+          "narration": "발표 자료 하나 만드는 데 반나절씩 쓰고 계신가요?",
+          "variants": [
+            "hybrid-30s-16x9",
+            "hybrid-clean-30s-16x9"
+          ],
+          "params": {
+            "title": "딸깍 슬라이드",
+            "subtitle": "주제 한 줄로, 3분 안에",
+            "fontUrl": "../../../frontend/public/fonts/PretendardVariable.woff2"
+          }
+        },
+        {
+          "id": "h-stat",
+          "file": "stat.html",
+          "duration": 2.2,
+          "before": "s5",
+          "variants": [
+            "hybrid-30s-16x9",
+            "hybrid-clean-30s-16x9"
+          ],
+          "params": {
+            "value": "3",
+            "unit": "분",
+            "title": "주제 입력부터 완성까지",
+            "fontUrl": "../../../frontend/public/fonts/PretendardVariable.woff2"
+          }
+        },
+        {
+          "id": "h-outro",
+          "file": "outro.html",
+          "duration": 3,
+          "before": "end",
+          "narration": "딸깍 슬라이드. 지금 무료로 시작하세요.",
+          "variants": [
+            "hybrid-30s-16x9",
+            "hybrid-clean-30s-16x9"
+          ],
+          "params": {
+            "title": "딸깍 슬라이드",
+            "subtitle": "가입 시 120크레딧",
+            "cta": "무료로 시작하기",
+            "wipe": "off",
+            "fontUrl": "../../../frontend/public/fonts/PretendardVariable.woff2"
+          }
+        }
+      ]
+    },
+    "endCard": {
+      "duration": 3.2,
+      "narration": "",
+      "title": "딸깍 슬라이드",
+      "subtitle": "주제 한 줄로, 3분 안에",
+      "url": "",
+      "background": "#0B1020"
+    },
+    "bgm": "../../.claude/skills/develop-video/assets/bgm/mixkit-132.mp3",
+    "bgmGain": 0.18,
+    "narrationGain": 1,
+    "syncOffset": 0,
+    "bgmDucking": true
+  },
+  "variants": [
+    {
+      "id": "hybrid-30s-16x9",
+      "label": "하이브리드 30초 — 모션 도입·수치·마무리 + 실화면 본편",
+      "width": 1920,
+      "height": 1080,
+      "scenes": [
+        "s2",
+        "s4",
+        "s5"
+      ],
+      "captions": false,
+      "endCard": false
+    },
+    {
+      "id": "hybrid-clean-30s-16x9",
+      "label": "하이브리드 30초 (클린) — 헤드라인·인물 없이 화면만",
+      "width": 1920,
+      "height": 1080,
+      "scenes": [
+        "s2",
+        "s4",
+        "s5"
+      ],
+      "captions": false,
+      "presenter": false,
+      "endCard": false
+    },
+    {
+      "id": "ad-30s-16x9",
+      "label": "인스트림 스킵형 (30초)",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "ad-15s-16x9",
+      "label": "논스킵·범퍼용 축약 (약 15초)",
+      "width": 1920,
+      "height": 1080,
+      "scenes": [
+        "s1",
+        "s2",
+        "s6"
+      ]
+    },
+    {
+      "id": "shorts-9x16",
+      "label": "숏츠 세로",
+      "width": 1080,
+      "height": 1920,
+      "background": "#0B1020",
+      "crop": "960:1080:480:0",
+      "padY": 260,
+      "subtitleScale": 0.05,
+      "subtitleMargin": 0.185,
+      "captionScale": 0.064,
+      "captionMargin": 0.025,
+      "watermarkMargin": 0.075,
+      "presenterX": 642,
+      "presenterY": 1060
+    }
+  ],
+  "scenes": [
+    {
+      "id": "s1",
+      "narration": "발표 자료 하나 만드는 데 반나절씩 쓰고 계신가요?",
+      "caption": "발표 자료에 반나절?",
+      "hold": 0.5,
+      "actions": [
+        {
+          "goto": "/"
+        },
+        {
+          "wait": 0.6
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "narration": "딸깍 슬라이드는 주제 한 줄이면 충분합니다.",
+      "caption": "주제 한 줄이면 끝",
+      "hold": 0.6,
+      "actions": [
+        {
+          "goto": "/new"
+        },
+        {
+          "wait": 0.4
+        },
+        {
+          "type": "#topic",
+          "text": "2027년 신제품 출시 전략 보고",
+          "delay": 55
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "narration": "분량과 톤만 고르고 다음을 누르세요.",
+      "caption": "분량과 톤만 선택",
+      "hold": 0.5,
+      "actions": [
+        {
+          "highlight": "#topic",
+          "duration": 1.2
+        },
+        {
+          "click": "button:has-text('아웃라인 만들기')",
+          "optional": true
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "narration": "AI가 아웃라인부터 보여줍니다. 마음에 들지 않으면 여기서 바로 고치세요.",
+      "caption": "AI가 아웃라인부터",
+      "badge": {
+        "text": "12장 자동 생성",
+        "at": 1.2
+      },
+      "hold": 0.6,
+      "actions": [
+        {
+          "waitFor": "text=아웃라인을 확인해 주세요",
+          "timeout": 25,
+          "optional": true
+        },
+        {
+          "wait": 1
+        }
+      ]
+    },
+    {
+      "id": "s5",
+      "narration": "템플릿을 고르면 디자인은 끝. 발표에 바로 쓰는 완성본이 나옵니다.",
+      "caption": "템플릿 고르면 디자인 완성",
+      "badge": {
+        "text": "발표용 완성본",
+        "at": 1
+      },
+      "hold": 0.6,
+      "actions": [
+        {
+          "goto": "/templates"
+        },
+        {
+          "wait": 0.5
+        },
+        {
+          "scroll": 520,
+          "duration": 1.6
+        }
+      ]
+    },
+    {
+      "id": "s6",
+      "narration": "딸깍 슬라이드. 지금 무료로 시작하세요.",
+      "caption": "지금 무료로 시작",
+      "badge": {
+        "text": "가입 시 120크레딧",
+        "at": 0.8
+      },
+      "hold": 1,
+      "actions": [
+        {
+          "goto": "/pricing"
+        },
+        {
+          "waitFor": "h2:has-text('Pro')",
+          "timeout": 8,
+          "optional": true
+        },
+        {
+          "wait": 0.6
+        }
+      ]
+    }
+  ]
+}

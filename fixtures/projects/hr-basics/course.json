@@ -1,0 +1,49 @@
+{
+  "_읽어보기": "강좌 정체성 — 한 번 채우면 시리즈 내내 고정된다. 회차 scenes.json 의 voice·render 는 여기 값을 그대로 복사한다. 이 파일은 참조용이라 빌드에 직접 쓰이지 않는다.",
+
+  "course": "hr-basics",
+  "title": "인사 기본개념 강좌",
+  "audience": "인사·총무·현업 실무자와 인사시스템을 만드는 개발자 — '구성원', '발령', '연차 산정' 같은 말을 들어는 봤지만 한 문장으로 설명하지는 못하는 직장인. 과녁은 회의에서 흐름을 놓치지 않고 한마디 보탤 수 있는 수준이고, 내부 테이블 구조·API 명세는 다루지 않는다.",
+  "_회차독립": "모든 회차는 그 편 하나로 완결된다 — 앞 회차 참조 금지. 필요한 배경은 promise 구간에서 한 문장으로 다시 세운다.",
+  "tagline": "개념 하나를, 5분에",
+  "episodeLength": "5분 (약 1,850자 — 초당 6.4자)",
+
+  "_근거": "커리큘럼·사실은 전부 h5-saas-docs/02-tobe/10.기획서/2.미래모델/5.화면 기획서/인사/ 의 설계서(WHAT) 6종에서 뽑는다. 인사기본 도메인이 6개 업무로 갈려 있고 그것이 그대로 6회차가 된다.",
+
+  "episodes": [
+    { "n": 1, "id": "hr-basics-01", "title": "구성원", "subtitle": "회사에 사람이 등록된다는 것", "근거": "구성원관리_설계서_v1.32.md" },
+    { "n": 2, "id": "hr-basics-02", "title": "인사정보", "subtitle": "사람 하나가 데이터로 서는 법", "근거": "인사정보_설계서_v1.41.md" },
+    { "n": 3, "id": "hr-basics-03", "title": "조직", "subtitle": "조직도는 그림이 아니다", "근거": "조직관리_설계서_v1.51.md" },
+    { "n": 4, "id": "hr-basics-04", "title": "발령", "subtitle": "모든 변화는 발령에서 시작한다", "근거": "발령관리_설계서_v0.09.md" },
+    { "n": 5, "id": "hr-basics-05", "title": "근무", "subtitle": "근태를 재는 세 개의 자", "근거": "근무관리_설계서_v0.05.md" },
+    { "n": 6, "id": "hr-basics-06", "title": "휴가", "subtitle": "연차는 어떻게 생기고 사라지나", "근거": "휴가관리_설계서_v0.07.md" }
+  ],
+
+  "_목소리메모": "인준(남성) +19% — 사용자 지정. 시리즈 도중에 바꾸지 않는다.",
+  "voice": {
+    "provider": "edge",
+    "lang": "ko",
+    "gender": "male",
+    "rate": "+19%"
+  },
+
+  "_색메모": "주황 톤 — 사용자 지정. 모션 클립은 render.brand 를 자동으로 물려받지 않으므로(lib/motion.js 는 params 를 그대로만 넘긴다) **모든 클립 params 에 brand·brandSoft·bg 를 직접 넣는다.**",
+  "palette": {
+    "brand": "#F97316",
+    "brandSoft": "#FDBA74",
+    "bg": "#140B05"
+  },
+
+  "render": {
+    "background": "#140B05",
+    "brand": "#F97316",
+    "brandText": "#FDBA74",
+    "subtitleScale": 0.046,
+    "subtitleMargin": 0.065,
+    "watermark": { "text": "인사 기본개념 강좌" },
+    "watermarkAlign": 9,
+    "bgm": "assets/bgm/mixkit-623.mp3",
+    "bgmGain": 0.08,
+    "bgmDucking": true
+  }
+}

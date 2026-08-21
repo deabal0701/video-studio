@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>수치 강조</title>
+    <link rel="stylesheet" href="_base.css" />
+    <style>
+      /* 숫자 하나를 크게 밀어붙이는 카드. "3분", "12장", "0원"처럼 광고에서 기억에 남는 건
+         문장이 아니라 숫자다. */
+      .figure {
+        display: flex;
+        align-items: baseline;
+        gap: 1.2vh;
+      }
+      .value {
+        font-size: 22vh;
+        font-weight: 800;
+        letter-spacing: -0.05em;
+        line-height: 0.95;
+        font-variant-numeric: tabular-nums;
+        color: var(--brand-soft);
+      }
+      .unit {
+        font-size: 7vh;
+        font-weight: 700;
+        color: var(--brand-soft);
+        opacity: 0.85;
+      }
+      .figure > * {
+        animation-name: popIn;
+        animation-duration: 0.6s;
+        animation-timing-function: cubic-bezier(0.2, 1.4, 0.4, 1);
+        animation-fill-mode: both;
+        animation-play-state: paused;
+      }
+      .unit { animation-delay: 0.18s; }
+      @keyframes popIn {
+        from { opacity: 0; transform: translateY(2.5vh) scale(0.86); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      .title { font-size: 5.4vh; }
+      .title > span {
+        animation-name: fadeUp;
+        animation-duration: 0.6s;
+        animation-delay: 0.45s;
+        animation-timing-function: ease-out;
+      }
+
+      /* 숫자 아래 밑줄이 좌에서 우로 그어진다 */
+      .rule {
+        width: 30vh;
+        height: 0.8vh;
+        border-radius: 999px;
+        background: var(--brand);
+        transform-origin: left center;
+        animation-name: grow;
+        animation-duration: 0.7s;
+        animation-delay: 0.35s;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+        animation-fill-mode: both;
+        animation-play-state: paused;
+      }
+      @keyframes grow {
+        from { transform: scaleX(0); }
+        to   { transform: scaleX(1); }
+      }
+      .wipe { animation-delay: 1.6s; }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="glow animated"></div>
+      <div class="figure">
+        <span class="value" data-p="value">3</span>
+        <span class="unit" data-p="unit">분</span>
+      </div>
+      <div class="rule"></div>
+      <div class="title"><span class="animated" data-p="title">설명 한 줄</span></div>
+      <div class="wipe animated"></div>
+    </div>
+    <script src="_params.js"></script>
+  </body>
+</html>

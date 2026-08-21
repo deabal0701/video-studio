@@ -1,0 +1,53 @@
+/* 용어 주석 — 회차 도식에 붙여 쓰는 공용 조각.
+   TTS 는 "LLM" 을 "엘엘엠"으로 읽고 자막에도 그렇게 나가므로, **화면이 원어와 뜻을 대신
+   알려 줘야** 시청자가 그 말을 검색하거나 회의에서 꺼낼 수 있다(스킬 '용어 주석' 절).
+
+   쓰는 법 — 회차 도식 html 의 <style> 에 이 파일 내용을 복사해 넣고(공용 _base.css 는
+   수정하지 않는다 — 기존 회차 렌더가 바뀐다), 마크업을 이렇게 둔다:
+
+     <div class="termnote animated">
+       <b>LLM</b><span class="en">Large Language Model</span>
+       <span class="ko">대규모 언어 모델 — 다음에 올 말을 확률로 골라 문장을 만드는 AI</span>
+     </div>
+
+   그리고 등장 시각을 내레이션이 그 용어를 처음 말하는 시각에 맞춘다:
+     .termnote { animation-delay: var(--tterm, 6s); }  →  params 로 tterm 을 넘긴다.
+
+   위치는 화면 하단이 아니라 **상단이나 도식 옆**이다 — 하단은 자막 자리다. */
+
+.termnote {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 1.2vh;
+  padding: 1vh 1.8vh;
+  border-radius: 0.9vh;
+  background: rgb(14 21 38 / 0.9);
+  border: 0.16vh solid #2c3a60;
+  border-left: 0.4vh solid var(--brand);
+  text-align: left;
+  opacity: 0;
+  animation-name: fadeUp;
+  animation-duration: 0.5s;
+  animation-delay: var(--tterm, 6s);
+}
+.termnote b {
+  font-family: var(--mono, ui-monospace, Menlo, monospace);
+  font-size: 2.3vh;
+  font-weight: 800;
+  color: var(--brand-soft);
+  letter-spacing: 0.01em;
+}
+.termnote .en {
+  font-size: 1.8vh;
+  font-weight: 600;
+  color: #8ea0c8;
+}
+.termnote .ko {
+  flex-basis: 100%;
+  margin-top: 0.4vh;
+  font-size: 1.9vh;
+  font-weight: 600;
+  color: #a9b8dd;
+  line-height: 1.35;
+}

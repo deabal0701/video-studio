@@ -1,0 +1,120 @@
+{
+  "_읽어보기": "사용 매뉴얼 골격. 홍보와 다른 점은 아래 세 가지다 — ① 단계마다 챕터 카드를 넣어 '지금 몇 번째'를 계속 알린다 ② hold를 길게 잡아 따라 할 시간을 준다 ③ 클릭 전에 highlight로 어디를 누르는지 먼저 보여준다.",
+
+  "id": "[영상 id — 출력 폴더 이름이 된다. 예: onboarding-manual]",
+  "baseUrl": "http://localhost:3000",
+
+  "capture": { "width": 1920, "height": 1080, "storageState": "" },
+
+  "voice": { "provider": "edge", "lang": "ko", "gender": "female", "rate": "+0%" },
+
+  "render": {
+    "fps": 30,
+    "crf": 19,
+    "preset": "medium",
+    "background": "#0B1020",
+    "brand": "#3E63DD",
+    "brandText": "#93A4F5",
+
+    "subtitleScale": 0.046,
+    "subtitleMargin": 0.06,
+    "captionScale": 0.06,
+    "captionMargin": 0.04,
+
+    "watermark": { "text": "[제품 이름] 사용 안내" },
+    "watermarkAlign": 9,
+
+    "motion": {
+      "dir": "motion",
+      "clips": [
+        {
+          "id": "intro",
+          "file": "intro.html",
+          "duration": 2.6,
+          "before": "s1",
+          "narration": "[제품 이름] 사용 방법을 안내합니다.",
+          "params": { "title": "[제품 이름]", "subtitle": "사용 안내" }
+        },
+        {
+          "id": "ch1",
+          "file": "chapter.html",
+          "duration": 2.0,
+          "before": "s1",
+          "params": { "num": "1", "title": "[1단계 제목]", "progress": "33" }
+        },
+        {
+          "id": "ch2",
+          "file": "chapter.html",
+          "duration": 2.0,
+          "before": "s2",
+          "params": { "num": "2", "title": "[2단계 제목]", "progress": "66" }
+        },
+        {
+          "id": "ch3",
+          "file": "chapter.html",
+          "duration": 2.0,
+          "before": "s3",
+          "params": { "num": "3", "title": "[3단계 제목]", "progress": "100" }
+        },
+        {
+          "id": "outro",
+          "file": "outro.html",
+          "duration": 3.0,
+          "before": "end",
+          "narration": "자세한 내용은 도움말 문서를 참고하세요.",
+          "params": { "title": "[제품 이름]", "subtitle": "도움이 되셨나요?", "url": "[도움말 주소]", "wipe": "off" }
+        }
+      ]
+    },
+
+    "bgm": "",
+    "syncOffset": 0
+  },
+
+  "variants": [
+    {
+      "id": "manual-16x9",
+      "label": "사용 매뉴얼 (16:9)",
+      "width": 1920,
+      "height": 1080,
+      "captions": false,
+      "presenter": false
+    }
+  ],
+
+  "scenes": [
+    {
+      "id": "s1",
+      "narration": "[1단계 설명 — 무엇을 왜 하는지. 화면에 보이는 것을 그대로 말한다]",
+      "hold": 1.2,
+      "actions": [
+        { "goto": "[시작 경로]" },
+        { "wait": 0.6 },
+        { "highlight": "[누를 대상 셀렉터]", "duration": 1.6 },
+        { "click": "[누를 대상 셀렉터]" },
+        { "wait": 0.8 }
+      ]
+    },
+    {
+      "id": "s2",
+      "narration": "[2단계 설명 — 입력할 값과 그 이유]",
+      "hold": 1.2,
+      "actions": [
+        { "highlight": "[입력 셀렉터]", "duration": 1.4 },
+        { "type": "[입력 셀렉터]", "text": "[예시 입력]", "delay": 70 },
+        { "wait": 0.6 },
+        { "click": "[다음 버튼 셀렉터]", "optional": true }
+      ]
+    },
+    {
+      "id": "s3",
+      "narration": "[3단계 설명 — 결과 확인 방법과 다음에 할 수 있는 것]",
+      "hold": 1.5,
+      "actions": [
+        { "waitFor": "[결과 셀렉터]", "timeout": 25, "optional": true },
+        { "wait": 1.0 },
+        { "scroll": 400, "duration": 1.4 }
+      ]
+    }
+  ]
+}

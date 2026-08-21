@@ -1,0 +1,147 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>초대 취소 — 두 조건이 동시에 맞아야 열린다</title>
+<!-- 자물쇠 하나에 조건 두 개가 달려 있고, 둘 다 초록이 되어야 열린다.
+     그리고 하나가 무너지면(정보 작성 중 / 발령 등록) 자물쇠가 다시 잠긴다.
+     발화 시각(실측 33.29s / 230자 기준): 2.0 자물쇠 / 4.2 조건틀 / 9.4 조건1 / 13.8 조건2
+                        16.1 열림 / 21.3 잠김(불가 사유) / 26.0 재발송 -->
+<link rel="stylesheet" href="../../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 0 8%; gap: 0; }
+
+  .lock {
+    font-size: 8vh;
+    line-height: 1;
+    animation-name: fadeUp;
+    animation-duration: 0.5s;
+    animation-delay: 2.0s;
+  }
+  .lock .shut { display: inline-block; animation-name: hideAt; animation-duration: 0.01s; animation-delay: 16.1s; }
+  @keyframes hideAt { to { opacity: 0; position: absolute; } }
+  .lock .open {
+    display: inline-block;
+    opacity: 0;
+    animation-name: showThenHide;
+    animation-duration: 4.8s;
+    animation-delay: 19.0s;
+  }
+  @keyframes showThenHide {
+    0%   { opacity: 0; transform: scale(0.7); }
+    12%  { opacity: 1; transform: scale(1); }
+    92%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.9); }
+  }
+  .lock .relock {
+    display: inline-block;
+    opacity: 0;
+    animation-name: fadeUp;
+    animation-duration: 0.4s;
+    animation-delay: 21.3s;
+  }
+
+  .conds {
+    margin-top: 4.4vh;
+    display: flex;
+    gap: 2.6vh;
+    width: 100%;
+    justify-content: center;
+  }
+  .cond {
+    position: relative;
+    flex: 1;
+    max-width: 44vh;
+    padding: 2.8vh 2.4vh;
+    border-radius: 1.3vh;
+    background: #1d1108;
+    border: 0.22vh solid #4a2d16;
+    text-align: left;
+    animation-name: fadeUp;
+    animation-duration: 0.5s;
+    animation-delay: var(--t, 0s);
+  }
+  .cond .tag { font-size: 2vh; font-weight: 800; letter-spacing: 0.06em; color: #a08b78; }
+  .cond .txt { margin-top: 1vh; font-size: 3vh; font-weight: 800; letter-spacing: -0.02em; line-height: 1.3; }
+  .cond .ok {
+    position: absolute;
+    right: 2.4vh;
+    top: 2.4vh;
+    width: 4vh;
+    height: 4vh;
+    border-radius: 999px;
+    background: var(--brand);
+    color: #1a0d03;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.4vh;
+    font-weight: 900;
+    animation-name: pop;
+    animation-duration: 0.4s;
+    animation-delay: var(--tok, 0s);
+    animation-timing-function: cubic-bezier(0.2, 1.5, 0.4, 1);
+  }
+  @keyframes pop { from { opacity: 0; transform: scale(0.3); } to { opacity: 1; transform: scale(1); } }
+
+  .blocked {
+    margin-top: 4.6vh;
+    display: flex;
+    gap: 2.2vh;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .bad {
+    padding: 1.5vh 2.8vh;
+    border-radius: 999px;
+    background: #221408;
+    border: 0.2vh dashed #7a5232;
+    font-size: 2.5vh;
+    font-weight: 700;
+    color: #c08d5c;
+    animation-name: fadeUp;
+    animation-duration: 0.45s;
+    animation-delay: var(--t, 0s);
+  }
+  .bad s { text-decoration-color: var(--brand); }
+
+  .resend {
+    margin-top: 4.4vh;
+    font-size: 2.8vh;
+    font-weight: 700;
+    color: #d9c6b4;
+    animation-name: fadeUp;
+    animation-duration: 0.6s;
+    animation-delay: 26.0s;
+  }
+  .resend b { color: var(--brand-soft); }
+</style>
+
+<div class="stage">
+  <div class="glow animated"></div>
+
+  <div class="lock animated">
+    <span class="shut animated">🔒</span><span class="open animated">🔓</span><span class="relock animated">🔒</span>
+  </div>
+
+  <div class="conds">
+    <div class="cond animated" style="--t: 4.2s">
+      <div class="tag">조건 1</div>
+      <div class="txt">아직 초대 대기 중</div>
+      <div class="ok animated" style="--tok: 9.4s">✓</div>
+    </div>
+    <div class="cond animated" style="--t: 4.2s">
+      <div class="tag">조건 2</div>
+      <div class="txt">입사발령 미등록</div>
+      <div class="ok animated" style="--tok: 13.8s">✓</div>
+    </div>
+  </div>
+
+  <div class="blocked">
+    <span class="bad animated" style="--t: 21.7s"><s>정보 작성 중으로 넘어감</s> → 취소 불가</span>
+    <span class="bad animated" style="--t: 23.9s"><s>입사발령 등록됨</s> → 취소 불가</span>
+  </div>
+
+  <div class="resend animated">재발송도 <b>초대 대기 중</b>에서만 · 보내는 순간 이전 임시 비밀번호는 만료</div>
+</div>
+
+<div class="wipe animated"></div>
+<script src="../../../../engine/motion/_params.js"></script>

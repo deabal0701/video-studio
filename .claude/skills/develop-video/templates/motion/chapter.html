@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>챕터 카드</title>
+    <link rel="stylesheet" href="_base.css" />
+    <style>
+      /* 매뉴얼의 단계 구분용. 큰 번호가 먼저 들어오고 제목이 따라 붙는다.
+         "지금 몇 번째 단계인가"를 시청자가 놓치지 않게 하는 것이 목적이다. */
+      .num {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 15vh;
+        height: 15vh;
+        border-radius: 999px;
+        background: var(--brand);
+        font-size: 7.4vh;
+        font-weight: 800;
+        line-height: 1;
+        box-shadow: 0 1.4vh 4vh color-mix(in srgb, var(--brand) 45%, transparent);
+        animation-name: numIn;
+        animation-duration: 0.7s;
+        animation-timing-function: cubic-bezier(0.2, 1.4, 0.4, 1);
+      }
+      @keyframes numIn {
+        from { opacity: 0; transform: scale(0.4) rotate(-12deg); }
+        to   { opacity: 1; transform: scale(1) rotate(0); }
+      }
+
+      .title { font-size: 7.6vh; }
+      .title > span {
+        animation-name: riseUp;
+        animation-duration: 0.65s;
+        animation-delay: 0.4s;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .subtitle > span {
+        animation-name: fadeUp;
+        animation-duration: 0.6s;
+        animation-delay: 0.75s;
+        animation-timing-function: ease-out;
+      }
+
+      /* 진행 막대 — 전체 몇 단계 중 어디인지 */
+      .bar {
+        width: 34vh;
+        height: 0.7vh;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--fg) 18%, transparent);
+        overflow: hidden;
+        margin-top: 1vh;
+      }
+      .bar > i {
+        display: block;
+        height: 100%;
+        width: var(--progress, 40%);
+        background: var(--brand-soft);
+        transform-origin: left center;
+        animation-name: grow;
+        animation-duration: 0.8s;
+        animation-delay: 0.6s;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+        animation-fill-mode: both;
+        animation-play-state: paused;
+      }
+      @keyframes grow {
+        from { transform: scaleX(0); }
+        to   { transform: scaleX(1); }
+      }
+      .wipe { animation-delay: 1.6s; }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="glow animated"></div>
+      <div class="num animated" data-p="num">1</div>
+      <div class="reveal title"><span class="animated" data-p="title">단계 제목</span></div>
+      <div class="subtitle"><span class="animated" data-p="subtitle"></span></div>
+      <div class="bar"><i></i></div>
+      <div class="wipe animated"></div>
+    </div>
+    <script src="_params.js"></script>
+    <script>
+      // progress=0~100 (전체 중 진행률). 없으면 막대를 지운다.
+      const p = new URLSearchParams(location.search).get('progress');
+      if (p) document.documentElement.style.setProperty('--progress', `${p}%`);
+      else document.querySelector('.bar')?.remove();
+    </script>
+  </body>
+</html>

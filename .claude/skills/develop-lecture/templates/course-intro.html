@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>title overlay</title>
+    <link rel="stylesheet" href="../../motion/_base.css" />
+    <style>
+      /* 강좌 오프닝 타이틀 카드 — **B롤과 같은 소재 위에** 제목이 얹힌다.
+
+         회차 골격에서 이 카드는 B롤 2초 **바로 뒤**에 온다. 앞 구간에서 흐르던 실사가
+         그대로 정지하며 그 위로 제목이 올라오는 것처럼 보이는 것이 이 카드의 목적이다 —
+         그래서 `src` 는 반드시 **앞 B롤에서 뽑은 프레임**이어야 한다. 다른 그림을 넣으면
+         화면이 갈아엎어져 이어지는 느낌이 깨진다.
+
+         왜 영상이 아니라 정지 프레임인가: `video` 클립과 html 카드는 같은 구간에 겹칠 수
+         없다(렌더러가 document.getAnimations()만 밀어 <video>가 첫 프레임에서 얼어붙는다).
+         그래서 프레임을 깔고 켄번즈 줌으로 움직임을 만든다 — 화면에서는 영상이 계속
+         흐르는 것으로 읽힌다.
+
+         params:
+           src       배경 이미지 경로 (이 파일 기준 상대) — 앞 B롤에서 뽑은 프레임
+           kicker    강좌명 (워터마크와 같은 문구)
+           num       회차 ("1강")
+           title     회차 제목 (큰 글자)
+           subtitle  보조 문구 (선택)
+           shade     배경 어둡게 (0~1, 기본 0.62 · 밝은 소재는 0.6~0.7까지 올린다)
+           wipe=off  모션끼리 이어질 때
+
+         주의: `animation:` 단축 속성 금지(_base.css 주석). 등장은 1.4초 안에 끝낸다 —
+         카드가 4초라 느긋한 스태거는 잘려 보인다. */
+
+      .photo { position: absolute; inset: 0; overflow: hidden; }
+      .photo > img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform-origin: center;
+        animation-name: kenburns;
+        animation-duration: var(--kb-duration, 6s);
+        animation-timing-function: linear;
+      }
+      @keyframes kenburns {
+        from { transform: scale(1.04) translateX(0); }
+        to   { transform: scale(1.13) translateX(-1.2vh); }
+      }
+
+      /* 전면 그림자 — 제목이 화면 가운데 서므로 하단만이 아니라 전체를 눌러야 읽힌다 */
+      .shade {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(to top, rgb(0 0 0 / calc(var(--shade, 0.62) + 0.2)) 0%, transparent 55%),
+          rgb(0 0 0 / var(--shade, 0.62));
+      }
+      /* 브랜드 광원 — 카드가 강좌 색을 입는다 */
+      .tint {
+        position: absolute;
+        inset: -20%;
+        background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--brand) 30%, transparent), transparent 60%);
+        animation-name: fadeIn;
+        animation-duration: 1s;
+      }
+      @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+      .stage { padding: 0 14%; gap: 2.2vh; }
+
+      .kicker {
+        display: flex;
+        align-items: center;
+        gap: 1.6vh;
+        font-size: 2.8vh;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--brand-soft);
+        animation-name: fadeUp;
+        animation-duration: 0.5s;
+        animation-delay: 0.15s;
+      }
+      .kicker::before, .kicker::after {
+        content: '';
+        width: 5vh;
+        height: 0.3vh;
+        background: color-mix(in srgb, var(--brand) 70%, transparent);
+      }
+
+      .num {
+        padding: 0.7vh 2.2vh;
+        border-radius: 3vh;
+        background: color-mix(in srgb, var(--brand) 34%, transparent);
+        border: 0.22vh solid var(--brand);
+        font-size: 2.6vh;
+        font-weight: 800;
+        color: #fff;
+        animation-name: fadeUp;
+        animation-duration: 0.5s;
+        animation-delay: 0.4s;
+      }
+
+      .title {
+        text-shadow: 0 0.5vh 3vh rgb(0 0 0 / 0.7);
+        animation-name: fadeUp;
+        animation-duration: 0.6s;
+        animation-delay: 0.6s;
+      }
+
+      .rule {
+        width: 34vh;
+        height: 0.55vh;
+        border-radius: 0.3vh;
+        background: var(--brand);
+        transform-origin: center;
+        animation-name: grow;
+        animation-duration: 0.5s;
+        animation-delay: 0.95s;
+        animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+      @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+      .subtitle {
+        text-shadow: 0 0.3vh 2vh rgb(0 0 0 / 0.7);
+        animation-name: fadeUp;
+        animation-duration: 0.6s;
+        animation-delay: 1.15s;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="photo"><img class="animated" alt="" /></div>
+    <div class="shade"></div>
+    <div class="tint animated"></div>
+
+    <div class="stage">
+      <div class="kicker animated" data-p="kicker"></div>
+      <div class="num animated" data-p="num"></div>
+      <div class="title animated" data-p="title"></div>
+      <div class="rule animated"></div>
+      <div class="subtitle animated" data-p="subtitle"></div>
+    </div>
+
+    <div class="wipe animated"></div>
+
+    <script src="../../motion/_params.js"></script>
+    <script>
+      const q = new URLSearchParams(location.search);
+      const root = document.documentElement;
+      const img = document.querySelector('.photo > img');
+      const src = q.get('src');
+      if (src) img.src = src;
+      const wipeAt = parseFloat(q.get('wipeAt'));
+      if (Number.isFinite(wipeAt)) root.style.setProperty('--kb-duration', `${wipeAt + 0.45}s`);
+      if (q.get('shade')) root.style.setProperty('--shade', q.get('shade'));
+    </script>
+  </body>
+</html>

@@ -1,0 +1,68 @@
+{
+  "_읽어보기": "파이프라인 점검용 최소 대본. 앱 없이(scenes: []) 모션 구간만으로 20초 안에 끝난다. 대본을 쓰기 전에 한 번 돌려 ffmpeg·Playwright·TTS·자막·워터마크가 다 도는지 확인한다.",
+
+  "id": "selftest",
+  "baseUrl": "http://localhost:3000",
+  "capture": { "width": 1920, "height": 1080 },
+
+  "voice": { "provider": "edge", "lang": "ko", "gender": "female", "rate": "+6%" },
+
+  "render": {
+    "fps": 30,
+    "crf": 23,
+    "preset": "veryfast",
+    "background": "#0B1020",
+    "brand": "#3E63DD",
+    "brandText": "#93A4F5",
+    "subtitleScale": 0.05,
+    "subtitleMargin": 0.07,
+    "watermark": { "text": "develop-video" },
+    "watermarkAlign": 9,
+
+    "motion": {
+      "dir": "motion",
+      "clips": [
+        {
+          "id": "intro",
+          "file": "intro.html",
+          "duration": 2.4,
+          "before": "end",
+          "narration": "출력 폴더 구조를 점검합니다.",
+          "params": { "title": "develop-video", "subtitle": "출력 폴더 점검", "wipe": "off" }
+        },
+        {
+          "id": "outro",
+          "file": "outro.html",
+          "duration": 3.0,
+          "before": "end",
+          "narration": "완성본은 파이널 폴더에 들어갑니다.",
+          "params": {
+            "title": "final/",
+            "subtitle": "납품물은 여기 하나만 보면 된다",
+            "cta": "raw · audio · work 는 작업용",
+            "url": "out/<id>/",
+            "wipe": "off"
+          }
+        }
+      ]
+    },
+
+    "bgm": "",
+    "syncOffset": 0
+  },
+
+  "variants": [
+    { "id": "selftest-16x9", "label": "가로", "width": 1280, "height": 720 },
+    {
+      "id": "selftest-9x16",
+      "label": "세로",
+      "width": 720,
+      "height": 1280,
+      "padY": 200,
+      "subtitleMargin": 0.185,
+      "watermarkMargin": 0.075
+    }
+  ],
+
+  "scenes": []
+}

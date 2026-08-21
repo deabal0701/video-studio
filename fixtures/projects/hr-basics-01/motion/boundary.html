@@ -1,0 +1,163 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>발령이 경계인 이유</title>
+<!-- 타임라인 위를 '되돌리기' 화살표가 왼쪽으로 달리다 발령 지점의 벽에 부딪혀 멈춘다.
+     발령 뒤에 붙는 것들(조직도 자리·근태·휴가 기준일)이 차례로 매달린다.
+     발화 시각(실측 33.98s / 231자 기준): 1.5 질문 / 5.4 발령 / 16.5~19.6 매달리는 것들
+                        21.0 벽 / 21.3 되돌리기 화살표 / 29.4 한 줄 -->
+<link rel="stylesheet" href="../../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 0 6%; gap: 0; }
+
+  .q {
+    font-size: 3.4vh;
+    font-weight: 800;
+    color: var(--brand-soft);
+    animation-name: fadeUp;
+    animation-duration: 0.5s;
+    animation-delay: 1.5s;
+  }
+
+  .track { position: relative; width: 100%; margin-top: 6.4vh; height: 22vh; }
+
+  .rail {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 6vh;
+    height: 0.4vh;
+    background: #4a2d16;
+    transform-origin: left center;
+    animation-name: grow;
+    animation-duration: 0.6s;
+    animation-delay: 2.0s;
+  }
+  @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  .stop {
+    position: absolute;
+    top: 6vh;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation-name: fadeUp;
+    animation-duration: 0.45s;
+    animation-delay: var(--t, 0s);
+  }
+  .stop .pin { width: 1.8vh; height: 1.8vh; border-radius: 999px; background: #6b4a2e; }
+  .stop.key .pin { width: 2.8vh; height: 2.8vh; background: var(--brand); box-shadow: 0 0 3vh var(--brand); }
+  .stop .lb { margin-top: 1.6vh; font-size: 2.4vh; font-weight: 800; white-space: nowrap; }
+  .stop.key .lb { font-size: 3.2vh; color: #fff; }
+  .stop .sub { margin-top: 0.4vh; font-size: 1.95vh; font-weight: 600; color: #a08b78; white-space: nowrap; }
+
+  /* 발령 뒤에 매달리는 것들 */
+  /* 발령 노드의 부제(언제부터·어느 조직·어떤 직급)를 덮지 않게 아래로 내린다 —
+     key 노드는 라벨이 커서 기본 13.4vh 에서는 칩이 부제 위에 얹힌다(실측). */
+  .hangs {
+    position: absolute;
+    left: 56%;
+    top: 17.4vh;
+    display: flex;
+    gap: 1.6vh;
+  }
+  .hang {
+    padding: 1.1vh 2.2vh;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--brand) 16%, #1d1108);
+    border: 0.2vh solid #7a5232;
+    font-size: 2.15vh;
+    font-weight: 700;
+    color: #e2cdb8;
+    white-space: nowrap;
+    animation-name: fadeUp;
+    animation-duration: 0.45s;
+    animation-delay: var(--t, 0s);
+  }
+
+  /* 되돌리기 화살표 — 오른쪽에서 달려와 벽에서 튕긴다 */
+  .undo {
+    position: absolute;
+    top: 1.2vh;
+    left: 88%;
+    font-size: 3vh;
+    font-weight: 800;
+    color: var(--brand-soft);
+    white-space: nowrap;
+    animation-name: runBack;
+    animation-duration: 1.5s;
+    animation-delay: 21.3s;
+    animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  }
+  @keyframes runBack {
+    0%   { opacity: 0; transform: translateX(6vh); }
+    25%  { opacity: 1; transform: translateX(0); }
+    82%  { opacity: 1; transform: translateX(-28vh); }
+    92%  { transform: translateX(-25vh); }
+    100% { opacity: 1; transform: translateX(-26vh); }
+  }
+
+  /* 벽 — 발령 지점에 세워진다 */
+  .wall {
+    position: absolute;
+    left: 56%;
+    top: -1vh;
+    width: 0.7vh;
+    height: 15vh;
+    background: var(--brand);
+    box-shadow: 0 0 3.4vh color-mix(in srgb, var(--brand) 60%, transparent);
+    transform-origin: bottom center;
+    animation-name: growY;
+    animation-duration: 0.4s;
+    animation-delay: 21.0s;
+  }
+  @keyframes growY { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: scaleY(1); } }
+
+  .line {
+    margin-top: 5.6vh;
+    font-size: 3.6vh;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    animation-name: fadeUp;
+    animation-duration: 0.6s;
+    animation-delay: 29.4s;
+  }
+  .line b { color: var(--brand-soft); }
+</style>
+
+<div class="stage">
+  <div class="glow animated"></div>
+
+  <div class="q animated">왜 하필 발령일까?</div>
+
+  <div class="track">
+    <div class="rail animated"></div>
+
+    <div class="stop animated" style="--t: 2.2s; left: 8%">
+      <span class="pin"></span><span class="lb">초대</span><span class="sub">메일 발송</span>
+    </div>
+    <div class="stop animated" style="--t: 2.9s; left: 32%">
+      <span class="pin"></span><span class="lb">수락</span><span class="sub">정보 작성</span>
+    </div>
+    <div class="stop key animated" style="--t: 5.4s; left: 56%">
+      <span class="pin"></span><span class="lb">입사발령</span><span class="sub">언제부터 · 어느 조직 · 어떤 직급</span>
+    </div>
+    <div class="stop animated" style="--t: 20.8s; left: 88%">
+      <span class="pin"></span><span class="lb">재직</span><span class="sub">이력이 쌓임</span>
+    </div>
+
+    <div class="hangs">
+      <span class="hang animated" style="--t: 16.5s">조직도 자리</span>
+      <span class="hang animated" style="--t: 18.4s">근태 기준일</span>
+      <span class="hang animated" style="--t: 19.6s">휴가 산정</span>
+    </div>
+
+    <div class="wall animated"></div>
+    <div class="undo animated">← 되돌리기</div>
+  </div>
+
+  <div class="line animated">발령 전까지는 <b>실수</b>를, 발령 후에는 <b>이력</b>을 다룬다</div>
+</div>
+
+<div class="wipe animated"></div>
+<script src="../../../../engine/motion/_params.js"></script>

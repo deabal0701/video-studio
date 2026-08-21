@@ -1,0 +1,43 @@
+{
+  "_읽어보기": "강좌 정체성 — 한 번 채우면 시리즈 내내 고정된다. 회차 scenes.json 의 voice·render 는 여기 값을 그대로 복사한다(SKILL.md 의 일관성 검사가 어긋남을 잡는다). 이 파일은 참조용이라 빌드에 직접 쓰이지 않는다 — 사람이 읽고 복사하는 원본이다.",
+  "course": "bread-basics",
+  "title": "빵 만들기 기본",
+  "audience": "빵을 사 먹기만 하다가 처음 구워 보려는 사람 — 용어(발효·글루텐)를 들어는 봤지만 설명은 못 하는 초보. 계량과 원리를 회의 언어처럼 쉽게.",
+  "_회차독립": "모든 회차는 그 편 하나로 완결된다 — 앞 회차 참조('1강에서 배웠듯이') 금지. 필요한 배경은 promise 구간에서 한 문장으로 다시 세운다(SKILL.md '회차는 독립이다' 절).",
+  "tagline": "오늘 반죽 하나, 1분에",
+  "episodeLength": "1분 (약 380자 — 초당 6.4자)",
+  "episodes": [
+    {
+      "n": 1,
+      "id": "bread-basics-01",
+      "title": "반죽",
+      "subtitle": ""
+    }
+  ],
+  "_목소리메모": "선희 +8% 또는 인준 +19% — 같은 문단 A/B 실측으로 페이스를 맞춘 값(≈6.4자/초). 시리즈 도중에 바꾸지 않는다.",
+  "voice": {
+    "provider": "edge",
+    "lang": "ko",
+    "gender": "female",
+    "rate": "+8%"
+  },
+  "render": {
+    "background": "#070b14",
+    "brand": "#3E63DD",
+    "brandText": "#93A4F5",
+    "subtitleScale": 0.046,
+    "subtitleMargin": 0.065,
+    "watermark": {
+      "text": "빵 만들기 기본"
+    },
+    "watermarkAlign": 9,
+    "bgm": "assets/bgm/mixkit-623-loop.mp3",
+    "bgmGain": 0.08,
+    "bgmDucking": true
+  },
+  "palette": {
+    "brand": "#3E63DD",
+    "brandSoft": "#93A4F5",
+    "bg": "#070b14"
+  }
+}

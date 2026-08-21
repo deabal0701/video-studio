@@ -1,0 +1,272 @@
+{
+  "_읽어보기": "인사 기본개념 강좌 1강 — 구성원. 구성표는 plan.md, 강좌 정체성은 ../hr-basics/course.json. 실행(engine/ 에서): node build.js --scenes ../fixtures/projects/hr-basics-01/scenes.json",
+  "_근거": "h5-saas-docs/02-tobe/10.기획서/2.미래모델/5.화면 기획서/인사/구성원관리_설계서_v1.32.md (§2-1 계정 상태·§2-2 초대 상태·§4 제출 항목/양식). 주장별 대응은 plan.md 의 facts 표.",
+  "_경로메모": "이 저장소(video-studio) 기준 실측. bgm·video 기준 = 엔진 루트(engine/) / 모션 file 기준 = 대본 폴더(이 폴더) → 없으면 공용 engine/motion/ 폴백 / params 의 src·fontUrl 기준 = 그 html 파일 위치(강좌 html 은 3단 상위, 회차 motion/ html 은 4단 상위, 공용 engine/motion/ html 은 1단 상위 — 같은 값이 클립마다 다르다). 기준이 달라 실측으로 확정했다 — docs/design/02_data-model.md 경로 표.",
+
+  "id": "hr-basics-01",
+  "baseUrl": "http://localhost:9999",
+  "capture": { "width": 1920, "height": 1080 },
+
+  "voice": {
+    "provider": "edge",
+    "lang": "ko",
+    "gender": "male",
+    "rate": "+19%"
+  },
+
+  "render": {
+    "fps": 30,
+    "crf": 19,
+    "preset": "medium",
+    "background": "#140B05",
+    "brand": "#F97316",
+    "brandText": "#FDBA74",
+    "subtitleScale": 0.046,
+    "subtitleMargin": 0.065,
+    "watermark": { "text": "인사 기본개념 강좌" },
+    "watermarkAlign": 9,
+    "bgm": "assets/bgm/mixkit-623-loop.mp3",
+    "bgmGain": 0.08,
+    "bgmDucking": true,
+
+    "motion": {
+      "dir": "motion",
+      "clips": [
+        {
+          "id": "broll",
+          "video": "assets/broll/office-talk.mp4",
+          "videoStart": 5,
+          "shade": 0.35,
+          "duration": 2.0,
+          "before": "end",
+          "_": "영상의 첫 화면 — 실사 2초, 무내레이션. 회차당 허용된 실사 1개를 여기 쓴다. 소스 18.92s, videoStart 5 → 남은 13.92s > 2.0s"
+        },
+        {
+          "id": "title",
+          "file": "../hr-basics/course-intro.html",
+          "before": "end",
+          "narration": "1강, 구성원. 회사에 사람이 등록된다는 것을 봅니다.",
+          "params": {
+            "src": "../hr-basics-01/bg/office-talk.jpg",
+            "kicker": "인사 기본개념 강좌",
+            "num": "1강",
+            "title": "구성원",
+            "subtitle": "회사에 사람이 등록된다는 것",
+            "shade": "0.6",
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          },
+          "_": "src 는 course-intro.html(projects/hr-basics/) 기준. videoStart 5 와 같은 시각의 프레임이라 앞 B롤이 정지하며 제목이 올라오는 것으로 이어진다"
+        },
+        {
+          "id": "hook",
+          "file": "motion/hook-bill.html",
+          "before": "end",
+          "narration": "이 사람은 아직 출근하지 않았습니다. 첫 출근은 다음 주고요. 그런데 이번 달 요금은 이미 청구됩니다.",
+          "params": {
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+        {
+          "id": "stinger",
+          "file": "../hr-basics/course-stinger.html",
+          "duration": 3.0,
+          "before": "end",
+          "params": {
+            "brandline": "인사 기본개념 강좌",
+            "tagline": "개념 하나를, 5분에",
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          },
+          "_": "강좌 시그니처 — 회차마다 한 프레임도 다르지 않다. 내레이션 없음(BGM만), 3초 고정"
+        },
+        {
+          "id": "promise",
+          "file": "motion/promise3.html",
+          "before": "end",
+          "narration": "인사시스템에서 사람 한 명은 한 번에 만들어지지 않습니다. 오늘은 세 가지를 가져갑니다. 정보가 채워지는 초대 상태, 서비스를 쓸 수 있는지를 정하는 계정 상태, 그리고 되돌릴 수 있는 마지막 경계입니다.",
+          "params": {
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+
+        {
+          "id": "ch1",
+          "file": "chapter.html",
+          "before": "end",
+          "narration": "첫째, 초대 상태입니다.",
+          "params": {
+            "num": "1",
+            "title": "초대 상태",
+            "subtitle": "정보가 채워지는 다섯 단계",
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+        {
+          "id": "s1a",
+          "file": "motion/invite-flow.html",
+          "before": "end",
+          "narration": "관리자가 이름과 메일 주소를 그리드에 적고 저장합니다. 이 순간 그 사람은 초대 전입니다. 아직 메일은 나가지 않았고, 마음이 바뀌면 이 줄은 그냥 지우면 됩니다. 초대 메일을 보내면 초대 대기 중으로 넘어갑니다. 본인이 링크를 눌러 비밀번호를 만들고, 회사가 가입 필수 응답으로 지정한 항목을 제출하면 정보 작성 중이 됩니다. 남은 제출 항목까지 전부 채워야 비로소 초대 완료입니다. 초대는 메일을 보낸 순간이 아니라, 정보가 다 찬 순간에 끝납니다.",
+          "params": {
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+        {
+          "id": "s1b",
+          "file": "motion/submit-items.html",
+          "before": "end",
+          "narration": "그럼 무엇을 채우게 할까요. 회사가 정합니다. 개인 연락처, 생년월일, 주민등록상 주소, 급여계좌, 신분증 사본 같은 기본 항목이 열네 개 있고, 여기에 회사가 필요한 항목을 더 만들 수 있습니다. 그리고 항목마다 스위치가 두 개 있습니다. 하나는 제출 항목 설정. 이 사람에게 요구할지 말지입니다. 다른 하나는 가입 필수 응답. 지금 당장 쓰지 않으면 초대 수락 자체가 안 되는 항목입니다. 필수로 걸지 않은 항목은 화면에 보이되 나중에 써도 됩니다. 이 두 스위치의 조합이 그 사람이 초대 완료까지 가는 속도를 정합니다.",
+          "params": {
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+
+        {
+          "id": "ch2",
+          "file": "chapter.html",
+          "before": "end",
+          "narration": "둘째, 계정 상태입니다.",
+          "params": {
+            "num": "2",
+            "title": "계정 상태",
+            "subtitle": "지금 쓸 수 있는가, 그리고 요금",
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+        {
+          "id": "s2a",
+          "file": "motion/acct-states.html",
+          "before": "end",
+          "narration": "초대 상태가 정보가 얼마나 찼는가라면, 계정 상태는 지금 이 서비스를 쓸 수 있는가입니다. 네 가지입니다. 대기 중은 초대 메일을 받았지만 아직 첫 로그인을 끝내지 않은 상태고요. 활성화는 수락하고 실제로 쓰고 있는 상태입니다. 계정 잠김은 비밀번호 변경 기한이 지났거나, 오류 횟수를 넘겼거나, 총괄관리자가 직접 막아 둔 상태입니다. 사람은 그대로 있고 문만 잠긴 겁니다. 비활성화는 퇴직처럼 반영구적으로 닫힌 상태입니다. 다만 재입사하면 계정은 복구됩니다.",
+          "params": {
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+        {
+          "id": "s2b",
+          "file": "motion/billing.html",
+          "before": "end",
+          "narration": "인사 사스는 쓰는 사람 수로 요금을 매깁니다. 그런데 여기서 회의에 바로 쓰이는 한 줄이 나옵니다. 방금 본 네 가지 중에서 요금이 붙는 건 두 개뿐입니다. 활성화, 그리고 계정 잠김. 대기 중과 비활성화는 청구되지 않습니다. 잠깐, 계정 잠김이 왜 과금 대상일까요. 잠긴 계정은 지운 게 아니라 잠시 막아 둔 것이고, 그 자리는 회사가 그대로 쥐고 있기 때문입니다. 그래서 앞에서 본 장면이 설명됩니다. 첫 출근이 다음 주여도, 초대를 수락해 로그인을 끝낸 순간 계정 상태는 활성화이고, 그 달부터 요금이 붙습니다. 인사 담당자가 초대 메일 발송 시점을 신경 쓰는 이유가 여기 있습니다.",
+          "params": {
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+
+        {
+          "id": "ch3",
+          "file": "chapter.html",
+          "before": "end",
+          "narration": "셋째, 경계입니다.",
+          "params": {
+            "num": "3",
+            "title": "되돌릴 수 있는 경계",
+            "subtitle": "어디까지 취소되는가",
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+        {
+          "id": "s3a",
+          "file": "motion/cancel-gate.html",
+          "before": "end",
+          "narration": "초대를 잘못 보냈다면 되돌릴 수 있습니다. 다만 두 조건이 동시에 맞아야 합니다. 첫째, 그 사람이 아직 초대 대기 중일 것. 둘째, 발령관리에서 입사발령이 아직 등록되지 않았을 것. 둘 다 맞으면 취소가 열립니다. 하나라도 어긋나면 막힙니다. 상대가 이미 수락해 정보 작성 중으로 넘어갔거나, 입사발령이 등록됐다면 취소 버튼은 눌리지 않습니다. 재발송도 초대 대기 중에서만 되고, 다시 보내는 순간 앞서 보낸 임시 비밀번호는 그 자리에서 만료됩니다.",
+          "params": {
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+        {
+          "id": "s3b",
+          "file": "motion/boundary.html",
+          "before": "end",
+          "narration": "왜 하필 발령일까요. 초대와 수락은 그 사람의 정보를 채우는 일이고요. 발령은 그 사람이 언제부터, 어느 조직에, 어떤 직급으로 속하는지를 확정하는 기록입니다. 발령이 등록되는 순간부터 그 사람은 조직도에 자리를 차지하고, 근태와 휴가 계산이 그 날짜를 기준으로 돌기 시작합니다. 되돌린다는 건 그 기록을 전부 되돌린다는 뜻이 됩니다. 그래서 인사시스템은 취소선을 발령 앞에 그어 둡니다. 발령 전까지는 실수를 다루고, 발령 후에는 이력을 다룹니다.",
+          "params": {
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+
+        {
+          "id": "recap",
+          "file": "motion/recap3.html",
+          "before": "end",
+          "narration": "정리합니다. 사람 한 명에는 두 개의 상태가 동시에 돕니다. 초대 상태는 정보가 채워지는 과정이고, 다섯 단계로 갑니다. 계정 상태는 지금 쓸 수 있는가이고, 네 가지이며, 요금은 그중 활성화와 계정 잠김에만 붙습니다. 그리고 되돌릴 수 있는 경계는 입사발령입니다.",
+          "params": {
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../../../../engine/fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        },
+        {
+          "id": "outro",
+          "file": "outro.html",
+          "before": "end",
+          "narration": "구성원은 한 번에 만들어지지 않습니다. 채워지는 겁니다. 오늘은 이 한 문장을 가져가시면 됩니다.",
+          "params": {
+            "title": "채워져야 끝난다",
+            "subtitle": "인사 기본개념 강좌 · 1강",
+            "brand": "#F97316",
+            "brandSoft": "#FDBA74",
+            "bg": "#140B05",
+            "fontUrl": "../fonts/PretendardVariable.woff2",
+            "wipe": "off"
+          }
+        }
+      ]
+    }
+  },
+
+  "scenes": [],
+  "variants": [
+    { "id": "hr-basics-01-16x9", "width": 1920, "height": 1080 }
+  ]
+}

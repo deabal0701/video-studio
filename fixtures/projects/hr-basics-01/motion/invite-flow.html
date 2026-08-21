@@ -1,0 +1,153 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>초대 상태 5단계 흐름</title>
+<!-- 데이터 흐름 도식 — 노드 4개가 순서대로 점등되고 그 사이를 선이 자라며 잇는다.
+     '초대 취소'는 두 번째 노드에서 아래로 갈라지는 가지로만 그려 둔다(본 설명은 ch3).
+     발화 시각(실측 33.58s / 228자 기준):
+       5.0 초대 전 / 9.5 행 삭제 가능 / 14.0 초대 대기 중 / 22.8 정보 작성 중
+       27.7 초대 완료 / 29.5 "메일이 아니라 정보가 다 찬 순간" -->
+<link rel="stylesheet" href="../../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 0 6%; gap: 0; }
+
+  .flow { display: flex; align-items: flex-start; justify-content: center; width: 100%; }
+
+  .node {
+    position: relative;
+    flex: none;
+    width: 26vh;
+    padding: 2.6vh 1.6vh;
+    border-radius: 1.3vh;
+    background: #1d1108;
+    border: 0.22vh solid #4a2d16;
+    animation-name: popIn;
+    animation-duration: 0.5s;
+    animation-delay: var(--t, 0s);
+    animation-timing-function: cubic-bezier(0.2, 1.3, 0.4, 1);
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: translateY(1.8vh) scale(0.92); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .node.on { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 16%, #1d1108); }
+  .node .step { font-size: 2vh; font-weight: 700; letter-spacing: 0.08em; color: #a08b78; }
+  .node .name { margin-top: 0.9vh; font-size: 3.2vh; font-weight: 800; letter-spacing: -0.02em; }
+  .node .why { margin-top: 1vh; font-size: 2.1vh; font-weight: 600; line-height: 1.35; color: #c2a992; }
+
+  /* 잇는 선 — 다음 노드가 켜지기 직전에 자란다 */
+  .link {
+    flex: none;
+    width: 6vh;
+    height: 0.42vh;
+    margin-top: 6.6vh;
+    background: var(--brand);
+    transform-origin: left center;
+    animation-name: grow;
+    animation-duration: 0.45s;
+    animation-delay: var(--t, 0s);
+  }
+  @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  /* '초대 전' 아래 힌트 — 아직 지울 수 있다 */
+  .hint {
+    position: absolute;
+    left: 50%;
+    top: 105%;
+    width: 26vh;
+    margin-left: -13vh;
+    font-size: 2vh;
+    font-weight: 700;
+    color: #9fc0e6;
+    animation-name: fadeUp;
+    animation-duration: 0.5s;
+    animation-delay: 9.5s;
+  }
+
+  /* 갈라지는 가지 — 초대 취소 */
+  .branch {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 0.35vh;
+    height: 5vh;
+    background: #6b4a2e;
+    transform-origin: top center;
+    animation-name: growY;
+    animation-duration: 0.4s;
+    animation-delay: 17.0s;
+  }
+  @keyframes growY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  .cancel {
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 5vh);
+    margin-left: -11vh;
+    width: 22vh;
+    padding: 1.2vh 0;
+    border-radius: 0.9vh;
+    background: #221408;
+    border: 0.18vh dashed #7a5232;
+    font-size: 2.1vh;
+    font-weight: 700;
+    color: #b08a63;
+    animation-name: fadeUp;
+    animation-duration: 0.45s;
+    animation-delay: 17.4s;
+  }
+
+  .kicker {
+    margin-top: 13vh;
+    font-size: 3.4vh;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--brand-soft);
+    animation-name: fadeUp;
+    animation-duration: 0.6s;
+    animation-delay: 29.5s;
+  }
+  .kicker b { color: #fff; }
+</style>
+
+<div class="stage">
+  <div class="glow animated"></div>
+
+  <div class="flow">
+    <div class="node on animated" style="--t: 5.0s">
+      <div class="step">STEP 1</div>
+      <div class="name">초대 전</div>
+      <div class="why">그리드에 적고 저장</div>
+      <div class="hint animated">↓ 이 줄은 아직 지울 수 있다</div>
+    </div>
+
+    <div class="link animated" style="--t: 13.6s"></div>
+
+    <div class="node on animated" style="--t: 14.0s">
+      <div class="step">STEP 2</div>
+      <div class="name">초대 대기 중</div>
+      <div class="why">초대 메일 발송</div>
+      <div class="branch animated"></div>
+      <div class="cancel animated">초대 취소 (조건부)</div>
+    </div>
+
+    <div class="link animated" style="--t: 22.4s"></div>
+
+    <div class="node on animated" style="--t: 22.8s">
+      <div class="step">STEP 3</div>
+      <div class="name">정보 작성 중</div>
+      <div class="why">비밀번호 생성 + 필수 응답 제출</div>
+    </div>
+
+    <div class="link animated" style="--t: 27.3s"></div>
+
+    <div class="node on animated" style="--t: 27.7s">
+      <div class="step">STEP 4</div>
+      <div class="name">초대 완료</div>
+      <div class="why">제출 항목 전부 채움</div>
+    </div>
+  </div>
+
+  <div class="kicker animated">초대는 메일이 아니라 <b>정보가 다 찬 순간</b>에 끝난다</div>
+</div>
+
+<div class="wipe animated"></div>
+<script src="../../../../engine/motion/_params.js"></script>

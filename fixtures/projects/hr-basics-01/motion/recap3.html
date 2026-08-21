@@ -1,0 +1,70 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>정리 — 두 축과 하나의 경계</title>
+<!-- 배운 것이 내레이션 순서로 쌓인다. 용어를 병기해 '오늘 배운 말'이 산출물이 되게 한다.
+     발화 시각(실측 21.50s / 136자 기준): 0.2 헤드 / 4.9 초대 상태 / 9.8 계정 상태 / 17.7 경계 -->
+<link rel="stylesheet" href="../../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 0 8%; gap: 0; }
+
+  .head {
+    font-size: 3.4vh;
+    font-weight: 800;
+    color: var(--brand-soft);
+    animation-name: fadeUp;
+    animation-duration: 0.5s;
+    animation-delay: 0.2s;
+  }
+
+  .stack { margin-top: 5.2vh; display: flex; flex-direction: column; gap: 2.4vh; width: 100%; }
+
+  .card {
+    display: flex;
+    align-items: center;
+    gap: 3vh;
+    padding: 2.8vh 3.4vh;
+    border-radius: 1.3vh;
+    background: #1d1108;
+    border: 0.2vh solid #4a2d16;
+    border-left: 0.55vh solid var(--brand);
+    text-align: left;
+    animation-name: stackUp;
+    animation-duration: 0.5s;
+    animation-delay: var(--t, 0s);
+    animation-timing-function: cubic-bezier(0.2, 1.2, 0.4, 1);
+  }
+  @keyframes stackUp {
+    from { opacity: 0; transform: translateY(2.6vh); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card .term { flex: none; width: 34vh; font-size: 3.4vh; font-weight: 800; letter-spacing: -0.02em; }
+  .card .mean { font-size: 2.7vh; font-weight: 600; color: #c2a992; line-height: 1.35; }
+  .card .mean b { color: #fff; font-weight: 800; }
+
+  .card.edge { border-left-color: #fff; }
+  .card.edge .term { color: #fff; }
+</style>
+
+<div class="stage">
+  <div class="glow animated"></div>
+
+  <div class="head animated">사람 한 명에는 두 개의 상태가 동시에 돈다</div>
+
+  <div class="stack">
+    <div class="card animated" style="--t: 4.9s">
+      <span class="term">초대 상태</span>
+      <span class="mean">정보가 채워지는 과정 — <b>다섯 단계</b><br>초대 전 · 초대 대기 중 · 정보 작성 중 · 초대 완료 · 초대 취소</span>
+    </div>
+    <div class="card animated" style="--t: 9.8s">
+      <span class="term">계정 상태</span>
+      <span class="mean">지금 쓸 수 있는가 — <b>네 가지</b><br>요금은 <b>활성화 · 계정 잠김</b>에만 붙는다</span>
+    </div>
+    <div class="card edge animated" style="--t: 17.7s">
+      <span class="term">되돌림의 경계</span>
+      <span class="mean"><b>입사발령</b> — 발령 전까지만 취소된다</span>
+    </div>
+  </div>
+</div>
+
+<div class="wipe animated"></div>
+<script src="../../../../engine/motion/_params.js"></script>

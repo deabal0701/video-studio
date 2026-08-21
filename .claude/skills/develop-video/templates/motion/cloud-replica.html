@@ -1,0 +1,148 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>여러 곳에 나눠 보관</title>
+<!-- "안전한가"에 대한 답을 그림으로. 왼쪽은 내 컴퓨터 한 대 — 젖거나 잃어버리면 파일도 사라진다(X).
+     오른쪽은 같은 파일이 세 곳으로 복제되어, 한 곳이 꺼져도 나머지가 남는다.
+     파일 아이콘이 실제로 세 갈래로 날아가는 것이 요점이라 정지 그림으로는 안 된다.
+
+     params:
+       title  상단 문구
+       note   하단 보조 문구
+       wipe=off
+
+     주의: `animation:` 단축 속성을 쓰지 않는다. 9:16 대비 가운데 46% 안. -->
+<link rel="stylesheet" href="_base.css">
+<style>
+  .stage { padding: 0 25%; justify-content: center; gap: 2.6vh; }
+
+  .head {
+    font-size: 4.9vh; font-weight: 800; letter-spacing: -0.03em; line-height: 1.25;
+    animation-name: fadeUp; animation-duration: 0.7s;
+    animation-timing-function: cubic-bezier(0.2,0.7,0.2,1);
+  }
+
+  .cols { display: flex; gap: 2.0vh; width: 100%; height: 30vh; }
+  .col {
+    position: relative; flex: 1; border-radius: 1.5vh; padding: 1.4vh;
+    background: linear-gradient(#0e1730, #16203f); border: 0.26vh solid #2a3960;
+    display: flex; flex-direction: column; align-items: center; gap: 1.2vh;
+  }
+  .col.pick { border-color: var(--brand); background: linear-gradient(#101d3f,#14284f); }
+  .cap { font-size: 2.3vh; font-weight: 800; color: #9fb0d8; }
+  .col.pick .cap { color: var(--brand-soft); }
+
+  /* 파일 아이콘 */
+  .file {
+    width: 4.4vh; height: 5.4vh; border-radius: 0.6vh;
+    background: linear-gradient(#dbe6ff, #b9c9ee);
+    border: 0.24vh solid #ffffff; position: relative;
+  }
+  .file::before {
+    content: ''; position: absolute; right: 0; top: 0;
+    border-width: 0 0 1.5vh 1.5vh; border-style: solid;
+    border-color: transparent transparent #8fa3cf transparent;
+  }
+  .file.sm { width: 3.2vh; height: 4.0vh; }
+
+  /* 왼쪽: 한 대뿐 → 사라진다 */
+  .single { margin-top: 2.0vh; position: relative; }
+  .single .file {
+    animation-name: vanish; animation-duration: 3.2s;
+    animation-timing-function: cubic-bezier(0.4,0,0.6,1);
+  }
+  /* ✕ 는 파일을 덮지 않고 살짝 겹쳐 놓는다 — 파일을 가리면 "무엇을 잃었는지"가 안 보인다 */
+  .xmark {
+    position: absolute; left: 50%; top: 46%; transform: translate(-38%,-50%);
+    font-size: 5.4vh; font-weight: 900; color: #ff6b6b;
+    text-shadow: 0 0 1.2vh rgba(10,18,38,0.9);
+    animation-name: xIn; animation-duration: 3.2s;
+  }
+  .lost { font-size: 2.0vh; color: #ff9b9b; margin-top: 1.2vh;
+          animation-name: xIn; animation-duration: 3.2s; }
+
+  /* 오른쪽: 세 곳으로 복제 */
+  .fan { position: relative; width: 100%; height: 18vh; margin-top: 0.6vh; }
+  .src { position: absolute; left: 50%; top: 0; transform: translateX(-50%); }
+  .dot {
+    position: absolute; bottom: 0.4vh; width: 30%;
+    display: flex; flex-direction: column; align-items: center; gap: 0.6vh;
+  }
+  .d1 { left: 0; }
+  .d2 { left: 35%; }
+  .d3 { right: 0; }
+  .dot .file { animation-name: land; animation-duration: 3.2s;
+               animation-timing-function: cubic-bezier(0.3,0.8,0.3,1); }
+  .d1 .file { animation-delay: 0.55s; }
+  .d2 .file { animation-delay: 0.75s; }
+  .d3 .file { animation-delay: 0.95s; }
+  .site { font-size: 1.7vh; color: #8ea0c8; }
+
+  /* 세 번째 지점이 꺼져도 나머지는 남는다 */
+  .d3 { animation-name: dim; animation-duration: 3.2s; }
+
+  /* 원본 → 세 지점으로 뻗는 선. 회전각을 CSS 변수로 두고 키프레임이 그 변수를 그대로 쓴다 —
+     클래스에 transform: rotate() 를 두고 키프레임에서 또 transform 을 쓰면 회전이 지워진다. */
+  .line {
+    position: absolute; left: 50%; top: 5.8vh; width: 0.24vh; height: 8.4vh;
+    background: linear-gradient(#7ea2ee, rgba(126,162,238,0.15));
+    transform-origin: top center;
+    animation-name: draw; animation-duration: 3.2s;
+    animation-timing-function: cubic-bezier(0.3,0.8,0.3,1);
+  }
+  .l1 { --r: -34deg; animation-delay: 0.45s; }
+  .l2 { --r: 0deg;   animation-delay: 0.65s; }
+  .l3 { --r: 34deg;  animation-delay: 0.85s; }
+
+  .note {
+    font-size: 2.6vh; color: #93a4cc; line-height: 1.5;
+    animation-name: fadeUp; animation-duration: 0.7s; animation-delay: 1.6s;
+    animation-timing-function: cubic-bezier(0.2,0.7,0.2,1);
+  }
+
+  .c1 { animation-name: fadeUp; animation-duration: 0.6s; animation-delay: 0.2s;
+        animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .c2 { animation-name: fadeUp; animation-duration: 0.6s; animation-delay: 0.45s;
+        animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(2.2vh); } to { opacity: 1; transform: none; } }
+  /* 파일이 완전히 사라지면 "무엇을 잃었는지"가 안 보인다 — 흐려지되 남긴다 */
+  @keyframes vanish { 0%,55% { opacity: 1; } 78%,100% { opacity: 0.42; } }
+  @keyframes xIn    { 0%,58% { opacity: 0; } 74%,100% { opacity: 1; } }
+  @keyframes land   { 0% { opacity: 0; transform: translateY(-6vh) scale(0.6); }
+                      45%,100% { opacity: 1; transform: none; } }
+  @keyframes draw   { 0%       { opacity: 0; transform: rotate(var(--r,0deg)) scaleY(0); }
+                      40%,100% { opacity: 0.85; transform: rotate(var(--r,0deg)) scaleY(1); } }
+  @keyframes dim    { 0%,72% { opacity: 1; } 88%,100% { opacity: 0.32; } }
+</style>
+
+<div class="stage">
+  <div class="head animated" data-p="title">한 곳이 꺼져도 파일은 남는다</div>
+
+  <div class="cols">
+    <div class="col animated c1">
+      <div class="cap">내 컴퓨터 한 대</div>
+      <div class="single">
+        <div class="file animated"></div>
+        <div class="xmark animated">✕</div>
+      </div>
+      <div class="lost animated">젖거나 잃어버리면 끝</div>
+    </div>
+
+    <div class="col pick animated c2">
+      <div class="cap">클라우드</div>
+      <div class="fan">
+        <div class="src"><div class="file"></div></div>
+        <div class="line l1 animated"></div>
+        <div class="line l2 animated"></div>
+        <div class="line l3 animated"></div>
+        <div class="dot d1"><div class="file sm animated"></div><div class="site">1번 지역</div></div>
+        <div class="dot d2"><div class="file sm animated"></div><div class="site">2번 지역</div></div>
+        <div class="dot d3 animated"><div class="file sm animated"></div><div class="site">3번 지역</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note animated" data-p="note">같은 파일을 여러 곳에 복제해 둔다</div>
+  <div class="wipe animated"></div>
+</div>
+<script src="_params.js"></script>

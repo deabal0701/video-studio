@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>인트로</title>
+    <link rel="stylesheet" href="_base.css" />
+    <style>
+      /* 브랜드 점이 한 번 "눌리는" 동작 — 제품명이 클릭·탭 은유일 때 잘 맞는다 */
+      .click {
+        position: relative;
+        width: 12vh;
+        height: 12vh;
+        animation-name: clickIn;
+        animation-duration: 0.85s;
+        animation-timing-function: cubic-bezier(0.2, 1.5, 0.4, 1);
+      }
+      .click::before {
+        content: '';
+        position: absolute;
+        inset: 22%;
+        border-radius: 999px;
+        background: var(--brand);
+        box-shadow: 0 0 6vh color-mix(in srgb, var(--brand) 85%, transparent);
+      }
+      .click::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border: 0.5vh solid var(--brand-soft);
+        border-radius: 999px;
+        animation-name: ripple;
+        animation-duration: 1.1s;
+        animation-delay: 0.5s;
+        animation-timing-function: ease-out;
+        animation-fill-mode: both;
+        animation-play-state: paused;
+      }
+      @keyframes clickIn {
+        0%   { opacity: 0; transform: scale(0.2) translateY(-6vh); }
+        55%  { opacity: 1; transform: scale(1.12); }
+        70%  { transform: scale(0.88); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      @keyframes ripple {
+        from { opacity: 0.9; transform: scale(0.9); }
+        to   { opacity: 0; transform: scale(2.6); }
+      }
+
+      .title > span {
+        animation-name: riseUp;
+        animation-duration: 0.7s;
+        animation-delay: 0.55s;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .subtitle > span {
+        animation-name: riseUp;
+        animation-duration: 0.7s;
+        animation-delay: 0.95s;
+        animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .wipe { animation-delay: 1.95s; }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="glow animated"></div>
+      <div class="click animated"></div>
+      <div class="reveal title"><span class="animated" data-p="title">제품 이름</span></div>
+      <div class="reveal subtitle"><span class="animated" data-p="subtitle">한 줄 설명</span></div>
+      <div class="wipe animated"></div>
+    </div>
+    <script src="_params.js"></script>
+  </body>
+</html>

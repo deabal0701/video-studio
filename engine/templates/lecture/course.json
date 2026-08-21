@@ -1,0 +1,36 @@
+{
+  "_읽어보기": "강좌 정체성 — 한 번 채우면 시리즈 내내 고정된다. 회차 scenes.json 의 voice·render 는 여기 값을 그대로 복사한다(SKILL.md 의 일관성 검사가 어긋남을 잡는다). 이 파일은 참조용이라 빌드에 직접 쓰이지 않는다 — 사람이 읽고 복사하는 원본이다.",
+
+  "course": "[강좌id — kebab-case, 회차 폴더 이름의 접두어]",
+  "title": "[강좌명 — 워터마크와 타이틀 카드 kicker 에 그대로 들어간다]",
+  "audience": "[대상 — 주제어를 들어는 봤지만 설명은 못 하는 사람. 과녁은 '회의·미팅에서 흐름을 놓치지 않고 한마디 보탤 수 있는 수준'이고 그 이상(내부 구조·수식·논문 계보)은 다루지 않는다. 용어는 정확하게, 설명은 회의 언어로 — SKILL.md '깊이' 절]",
+  "_회차독립": "모든 회차는 그 편 하나로 완결된다 — 앞 회차 참조('1강에서 배웠듯이') 금지. 필요한 배경은 promise 구간에서 한 문장으로 다시 세운다(SKILL.md '회차는 독립이다' 절).",
+  "tagline": "[시그니처 인트로 한 줄 — 강좌명을 보조한다. 예: '개념 하나를, 5분에'. 개설 때 정하고 바꾸지 않는다]",
+  "episodeLength": "5분 (약 1,900자 — 초당 6.4자)",
+
+  "episodes": [
+    { "n": 1, "id": "[강좌id]-01", "title": "[1강 제목]" },
+    { "n": 2, "id": "[강좌id]-02", "title": "[2강 제목]" }
+  ],
+
+  "_목소리메모": "선희 +8% 또는 인준 +19% — 같은 문단 A/B 실측으로 페이스를 맞춘 값(≈6.4자/초). 시리즈 도중에 바꾸지 않는다.",
+  "voice": {
+    "provider": "edge",
+    "lang": "ko",
+    "gender": "female",
+    "rate": "+8%"
+  },
+
+  "render": {
+    "background": "#070b14",
+    "brand": "#3E63DD",
+    "brandText": "#93A4F5",
+    "subtitleScale": 0.046,
+    "subtitleMargin": 0.065,
+    "watermark": { "text": "[강좌명]" },
+    "watermarkAlign": 9,
+    "bgm": "../../.claude/skills/develop-video/assets/bgm/[곡 — 강좌 개설 때 ffplay 로 들려주고 확정].mp3",
+    "bgmGain": 0.08,
+    "bgmDucking": true
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "video-pipeline",
+  "private": true,
+  "type": "module",
+  "description": "영상 빌드 파이프라인 (develop-video 스킬 스캐폴딩)",
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}

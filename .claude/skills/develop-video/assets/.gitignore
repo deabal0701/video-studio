@@ -1,0 +1,16 @@
+# 내려받은 소재는 저장소에 넣지 않는다.
+#
+# 무료 스톡(Mixkit·Pexels·Pixabay)은 "프로젝트에 사용"은 허용하지만 소재 파일 자체의
+# 재배포는 대부분 금지한다. 저장소에 커밋하면 재배포에 해당한다.
+# 목록(CATALOG.md)과 받아오는 도구(fetch.js)만 커밋하고, 파일은 각자 받는다.
+bgm/
+presenter/
+photo/
+broll/
+*.mp3
+*.m4a
+*.wav
+*.ogg
+*.mp4
+*.mov
+*.webm

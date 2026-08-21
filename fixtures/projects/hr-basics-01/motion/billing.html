@@ -1,0 +1,163 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>요금은 어디에 붙는가 — 훅 회수</title>
+<!-- 반전 + 회수. 네 상태 아래로 과금 뱃지가 떨어지는데 둘만 ₩ 이고 둘은 — 다.
+     마지막에 훅의 김민준 카드가 돌아와 "활성화라서 청구"로 닫힌다.
+     용어 주석(SaaS)은 상단 — 하단은 자막 자리다.
+     발화 시각(실측 45.10s / 296자 기준):
+       0.9 사스 / 8.3~9.8 네 상태 / 12.9 ₩활성화 / 14.0 ₩계정잠김
+       15.2·16.5 — 대기중·비활성화 / 21.0 이유 / 31.5 회수 카드 -->
+<link rel="stylesheet" href="../../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 0 6%; gap: 0; }
+
+  /* 용어 주석 (templates/termnote.css) — 상단 고정 */
+  .termnote {
+    position: absolute;
+    top: 6vh;
+    left: 6%;
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 1.2vh;
+    max-width: 46vh;
+    padding: 1vh 1.8vh;
+    border-radius: 0.9vh;
+    background: rgb(20 11 5 / 0.92);
+    border: 0.16vh solid #4a2d16;
+    border-left: 0.4vh solid var(--brand);
+    text-align: left;
+    opacity: 0;
+    animation-name: fadeUp;
+    animation-duration: 0.5s;
+    animation-delay: var(--tterm, 0.9s);
+  }
+  /* 자식 선택자로 좁힌다 — .ko 안의 강조 b 까지 등폭·큰 글자로 잡히면 문장이 깨진다 */
+  .termnote > b {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 2.3vh;
+    font-weight: 800;
+    color: var(--brand-soft);
+  }
+  .termnote .en { font-size: 1.8vh; font-weight: 600; color: #a08b78; }
+  .termnote .ko {
+    flex-basis: 100%;
+    margin-top: 0.4vh;
+    font-size: 1.9vh;
+    font-weight: 600;
+    color: #c2a992;
+    line-height: 1.35;
+  }
+  .termnote .ko b { font-size: inherit; font-weight: 800; color: #f0dcc6; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2.4vh;
+    width: 100%;
+  }
+
+  .chip {
+    padding: 2.2vh 1.4vh;
+    border-radius: 1.2vh;
+    background: #1d1108;
+    border: 0.22vh solid #4a2d16;
+    font-size: 2.9vh;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    animation-name: fadeUp;
+    animation-duration: 0.45s;
+    animation-delay: var(--t, 0s);
+  }
+  .chip.paid { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 16%, #1d1108); }
+
+  .bills { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.4vh; width: 100%; margin-top: 2.2vh; }
+  .bill {
+    justify-self: center;
+    width: 11vh;
+    height: 7.4vh;
+    border-radius: 1vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.6vh;
+    font-weight: 900;
+    animation-name: drop;
+    animation-duration: 0.45s;
+    animation-delay: var(--t, 0s);
+    animation-timing-function: cubic-bezier(0.2, 1.4, 0.4, 1);
+  }
+  @keyframes drop {
+    from { opacity: 0; transform: translateY(-2.6vh) scale(0.8); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .bill.on { background: var(--brand); color: #1a0d03; box-shadow: 0 0.8vh 3vh color-mix(in srgb, var(--brand) 45%, transparent); }
+  .bill.off { background: #22160c; color: #6b4a2e; border: 0.2vh solid #3d2614; }
+
+  .reason {
+    margin-top: 4.6vh;
+    font-size: 2.8vh;
+    font-weight: 700;
+    line-height: 1.45;
+    color: #d9c6b4;
+    animation-name: fadeUp;
+    animation-duration: 0.6s;
+    animation-delay: 21.0s;
+  }
+  .reason b { color: var(--brand-soft); }
+
+  /* 훅 회수 — 같은 이름이 돌아온다 */
+  .payoff {
+    margin-top: 4vh;
+    display: flex;
+    align-items: center;
+    gap: 2.4vh;
+    padding: 2.2vh 3.4vh;
+    border-radius: 1.2vh;
+    background: color-mix(in srgb, var(--brand) 14%, #1d1108);
+    border: 0.26vh solid var(--brand);
+    font-size: 3vh;
+    font-weight: 800;
+    animation-name: fadeUp;
+    animation-duration: 0.6s;
+    animation-delay: 31.5s;
+  }
+  .payoff .arrow { color: var(--brand-soft); }
+  .payoff .tail { font-size: 2.4vh; font-weight: 700; color: #c2a992; }
+</style>
+
+<div class="stage">
+  <div class="glow animated"></div>
+
+  <div class="termnote animated">
+    <b>SaaS</b><span class="en">Software as a Service</span>
+    <span class="ko">쓰는 만큼 빌려 쓰는 소프트웨어 — 인사 SaaS 는 보통 <b>쓰는 사람 수</b>로 요금을 매긴다</span>
+  </div>
+
+  <div class="grid">
+    <div class="chip animated" style="--t: 8.3s">대기 중</div>
+    <div class="chip paid animated" style="--t: 8.8s">활성화</div>
+    <div class="chip paid animated" style="--t: 9.3s">계정 잠김</div>
+    <div class="chip animated" style="--t: 9.8s">비활성화</div>
+  </div>
+
+  <div class="bills">
+    <div class="bill off animated" style="--t: 15.2s">—</div>
+    <div class="bill on animated" style="--t: 12.9s">₩</div>
+    <div class="bill on animated" style="--t: 14.0s">₩</div>
+    <div class="bill off animated" style="--t: 16.5s">—</div>
+  </div>
+
+  <div class="reason animated">잠긴 계정은 지운 것이 아니라 <b>자리를 그대로 쥐고 있다</b></div>
+
+  <div class="payoff animated">
+    <span>김민준 · 로그인 완료</span>
+    <span class="arrow">→</span>
+    <span>활성화</span>
+    <span class="arrow">→</span>
+    <span>이번 달 청구 <span class="tail">(첫 출근 전이어도)</span></span>
+  </div>
+</div>
+
+<div class="wipe animated"></div>
+<script src="../../../../engine/motion/_params.js"></script>

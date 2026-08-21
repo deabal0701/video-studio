@@ -1,0 +1,30 @@
+# 산출물 — 파생물 (언제든 재생성)
+**/out/
+*.mp4
+*.webm
+
+# 소재 미디어 — 무료 스톡 재배포 금지 (CATALOG.md·fetch.js 만 추적)
+engine/assets/bgm/*
+engine/assets/broll/*
+engine/assets/photo/*
+engine/assets/presenter/*
+!engine/assets/**/.gitignore
+
+# 비밀
+.env
+!.env.sample
+
+# 런타임
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 파생 캐시
+*.sqlite
+*.sqlite3
+.cache/
+
+# OS
+.DS_Store
