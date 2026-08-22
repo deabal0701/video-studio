@@ -61,7 +61,7 @@ def scaffold_course(root: Path, course_id: str, *, title: str, tagline: str = ""
                    "bgm": bgm or "assets/bgm/mixkit-623-loop.mp3"})
 
     course_dir.mkdir(parents=True)
-    (course_dir / "course.json").write_text(dump_json(course), encoding="utf-8")
+    (course_dir / "course.json").write_text(dump_json(course), encoding="utf-8", newline="\n")
     copy_brand_kit(course_dir)
     return course_dir
 
@@ -77,7 +77,7 @@ def copy_brand_kit(course_dir: Path) -> list[str]:
     for name in ("course-intro.html", "course-stinger.html"):
         text = (LECTURE_TEMPLATES / name).read_text(encoding="utf-8")
         text = text.replace('"../../motion/_', f'"{rel_motion}/_')
-        (course_dir / name).write_text(text, encoding="utf-8")
+        (course_dir / name).write_text(text, encoding="utf-8", newline="\n")
         copied.append(name)
     return copied
 
@@ -164,14 +164,14 @@ def scaffold_episode(root: Path, course_id: str, n: int,
 
     (ep_dir / "motion").mkdir(parents=True)
     (ep_dir / "bg").mkdir()
-    (ep_dir / "scenes.json").write_text(dump_json(scenes), encoding="utf-8")
+    (ep_dir / "scenes.json").write_text(dump_json(scenes), encoding="utf-8", newline="\n")
     if PLAN_TEMPLATE.exists():
         (ep_dir / "plan.md").write_text(
-            PLAN_TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8")
+            PLAN_TEMPLATE.read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
 
     # 커리큘럼에 없던 회차면 course.episodes 에 등록 (② 보드가 곧 정본이 되게)
     if entry is None:
         course.setdefault("episodes", []).append(
             {"n": n, "id": eid, "title": ep_title, "subtitle": ep_subtitle})
-        (course_dir / "course.json").write_text(dump_json(course), encoding="utf-8")
+        (course_dir / "course.json").write_text(dump_json(course), encoding="utf-8", newline="\n")
     return ep_dir

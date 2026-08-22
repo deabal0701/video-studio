@@ -1,7 +1,7 @@
 # Video Studio — 설계서 묶음
 
-> 강좌·영상 제작 파이프라인(develop-video · develop-lecture)을 **웹 앱 → 상용 서비스**로
-> 키우기 위한 설계 정본. 이 폴더째 신규 프로젝트 저장소로 옮겨 `docs/design/` 으로 쓴다.
+> 강좌·영상 제작 파이프라인(develop-video · develop-lecture)을 **설치형 데스크톱 앱 →
+> 상용 서비스**로 키우기 위한 설계 정본 (2026-08-21 데스크톱 전환 — [07_desktop.md](07_desktop.md)).
 
 ## 문서 인덱스
 
@@ -13,7 +13,9 @@
 | [03_screens.md](03_screens.md) | 화면 11종 상세 — 레이아웃 · 필드 · 검증 · 상호작용 |
 | [04_api.md](04_api.md) | REST + SSE 설계 · 빌드 잡 상태머신 · 큐 정책 · engine 호출 계약 |
 | [05_agent.md](05_agent.md) | 에이전트 설계 — Claude Agent SDK(Python) · 역할 경계 · 비용 |
-| [06_roadmap.md](06_roadmap.md) | 0~4단계 로드맵 · 상용화 트랙 · **라이선스 리스크** |
+| [06_roadmap.md](06_roadmap.md) | 0~5단계 로드맵 · 상용화 트랙 · **라이선스 리스크** |
+| [07_desktop.md](07_desktop.md) | **데스크톱 전환 (2026-08-21)** — PySide6 · HTTP 제거 · 런타임 동봉 · 패키징 · 첫 실행 위저드 · 5단계 계획 |
+| [08_qt-style.md](08_qt-style.md) | Qt 화면 구성·스타일 규칙 — 3층 스타일(Fusion+팔레트+QSS) · QSS≠CSS 함정 · 레이아웃 리듬 · 위젯 규약 (화면 작업 전 필독) |
 
 ## 새 저장소로 가져갈 것 (카피 목록)
 
@@ -45,9 +47,10 @@
 
 | 항목 | 결정 |
 |---|---|
-| 서버 | **Python 3.12+ / FastAPI** |
-| UI | **Vue 3 + Vite + Element Plus + Tailwind** (h5-saas 프론트와 동일 스택) |
-| 렌더 엔진 | **Node CLI 유지 — 포팅 금지.** 서버가 subprocess 로 호출 |
+| 배포 형태 | **로컬 단독 설치형 Windows 데스크톱 앱** — exe 하나 실행, HTTP 계층 없음 (2026-08-21 D12 — [07_desktop.md](07_desktop.md)) |
+| 로직 | **Python 3.12+ (core/)** — UI 무관·단독 테스트. ~~FastAPI~~ 는 D12 로 제거 |
+| UI | **PySide6** (D13). ~~Vue 3 + Element Plus~~ 는 1~4단계 검증 후 교체 |
+| 렌더 엔진 | **Node CLI 유지 — 포팅 금지.** subprocess 호출, 설치본은 런타임 동봉 (D14) |
 | DB | **없음 — 파일이 SSOT.** 목록용 파생 캐시(SQLite)만, 언제든 재생성 |
-| 에이전트 | **Claude Agent SDK (Python).** LangChain/LangGraph **미채택** — [05_agent.md](05_agent.md) |
-| 에이전트 범위 | 초안 생성·도식 생성·평가만. 편집·빌드·검수는 결정적 코드 (1~3단계는 API 키 불요) |
+| 에이전트 | **Claude Agent SDK (Python) 기본 + OpenAI 선택** (D15). LangChain/LangGraph **미채택** — [05_agent.md](05_agent.md) |
+| 에이전트 범위 | 초안 생성·도식 생성·평가만. 편집·빌드·검수는 결정적 코드 (키 없이 완결 동작) |

@@ -10,9 +10,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from . import ENGINE_DIR
+from . import env
 
-OUT_ROOT = ENGINE_DIR / "out"
+OUT_ROOT = env.out_root()  # 개발 = engine/out (현행), 설치 = 데이터 폴더 (07_desktop)
 
 
 def episode_status(episode_dir: Path, out_root: Path = OUT_ROOT) -> dict[str, Any]:

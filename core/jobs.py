@@ -9,7 +9,7 @@
   · 전역 동시 상한 2 (Chromium+ffmpeg 부하)
 
 구현: in-process 스레드 워커. 이벤트는 잡별 리스트에 쌓고(Condition 브로드캐스트)
-구독자는 subscribe() 제너레이터로 받는다 — api/sse 가 이걸 릴레이한다.
+구독자는 subscribe() 제너레이터로 받는다 — app/bridge 의 JobEventPump 가 Qt Signal 로 릴레이한다.
 상용 전환 시 이 클래스만 큐 서비스+워커 구현으로 교체한다 (인터페이스 유지 — D8).
 """
 
@@ -37,6 +37,7 @@ class JobState(str, Enum):
 
 
 MAX_CONCURRENCY = 2  # Chromium+ffmpeg 부하 — 설정 가능, 상용은 워커 수
+MAX_FINISHED = 100   # 종료 잡 보존 상한 — 무한 누적 방지 (07 결함 6. 이벤트도 함께 버려진다)
 
 TERMINAL = {JobState.DONE, JobState.BLOCKED, JobState.FAILED, JobState.CANCELED}
 
@@ -82,7 +83,7 @@ class JobQueue:
         self._runner = runner or engine_io.build_stream
         self._preflight = preflight or engine_io.inspect
         self._verifier = verifier
-        self._listener = listener  # 전역 이벤트 버스 릴레이 (api /api/events)
+        self._listener = listener  # 잡 이벤트 릴레이 훅 (app/bridge.Bridge → Qt Signal)
         self._max = max_concurrency
         self._lock = threading.Condition()
         self._jobs: dict[str, Job] = {}
@@ -167,8 +168,18 @@ class JobQueue:
                 pass
 
     def _set(self, job: Job, state: JobState) -> None:
-        job.state = state
-        self._emit(job, {"kind": "state", "state": state.value})
+        # 상태 대입과 이벤트 추가를 같은 락 안에서 — 밖에서 대입하면 구독자가 "터미널인데
+        # 이벤트는 아직"인 틈을 보고 마지막 이벤트 없이 조기 종료한다 (5-1 실측 레이스)
+        event = {"kind": "state", "state": state.value}
+        with self._lock:
+            job.state = state
+            job.events.append(event)
+            self._lock.notify_all()
+        if self._listener is not None:
+            try:
+                self._listener(job, event)
+            except Exception:  # noqa: BLE001
+                pass
 
     def _can_start(self, job: Job) -> bool:
         return len(self._active) < self._max and job.episode_id not in self._active_episodes
@@ -234,5 +245,13 @@ class JobQueue:
             with self._lock:
                 self._active.discard(job.id)
                 self._active_episodes.discard(job.episode_id)
+                self._prune()
                 self._pump()
                 self._lock.notify_all()
+
+    def _prune(self) -> None:
+        """종료 잡을 오래된 것부터 버려 MAX_FINISHED 만 남긴다. self._lock 보유 상태에서 호출."""
+        finished = [j for j in self._order if self._jobs[j].state in TERMINAL]
+        for job_id in finished[:max(0, len(finished) - MAX_FINISHED)]:
+            self._order.remove(job_id)
+            del self._jobs[job_id]

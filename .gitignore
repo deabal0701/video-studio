@@ -14,11 +14,18 @@ engine/assets/presenter/*
 .env
 !.env.sample
 
+# 패키징 산출물 (1.3GB — 재생성 가능)
+dist/
+build/
+packaging/out/
+packaging/licenses/
+
 # 런타임
 node_modules/
 __pycache__/
 *.pyc
 .venv/
+.qt-venv/
 venv/
 
 # 파생 캐시

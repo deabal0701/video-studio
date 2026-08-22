@@ -1,21 +1,9 @@
-"""Index(SQLite 캐시)·전역 이벤트 버스 테스트."""
+"""Index(SQLite 캐시) 테스트."""
 
 import shutil
-import threading
-import time
-
-import pytest
-from fastapi.testclient import TestClient
 
 from core import FIXTURES_DIR
-from core.events import bus
 from core.indexer import Index
-from api.main import app
-
-
-@pytest.fixture(autouse=True)
-def fixture_root(monkeypatch):
-    monkeypatch.setenv("VIDEO_STUDIO_PROJECTS", str(FIXTURES_DIR))
 
 
 def test_index_builds_and_rebuilds(tmp_path):
@@ -45,30 +33,7 @@ def test_index_builds_and_rebuilds(tmp_path):
     assert [c["id"] for c in singles] == ["one-off"]
 
 
-def test_courses_endpoint_uses_index():
-    with TestClient(app) as client:
-        body = client.get("/api/courses").json()
-        hr = next(c for c in body if c["id"] == "hr-basics")
-        assert hr["episodeCount"] == 6 and hr["scaffolded"] == 1
-
-
-def test_bus_relays_thread_publish_to_async_subscriber():
-    """무한 스트림이라 SSE 왕복 대신 버스를 직접 검증한다 (엔드포인트는 얇은 릴레이)."""
-    import asyncio
-
-    async def main():
-        bus.attach(asyncio.get_running_loop())
-        gen = bus.subscribe()
-
-        async def first():
-            async for ev in gen:
-                return ev
-
-        fut = asyncio.create_task(first())
-        await asyncio.sleep(0.05)  # 구독이 서고 나서 발행
-        threading.Thread(target=lambda: bus.publish({"type": "job", "jobId": "j1"})).start()
-        ev = await asyncio.wait_for(fut, 5)
-        await gen.aclose()
-        return ev
-
-    assert asyncio.run(main())["jobId"] == "j1"
+def test_list_courses_uses_index(fixtures_root, studio):
+    body = studio.list_courses()
+    hr = next(c for c in body if c["id"] == "hr-basics")
+    assert hr["episodeCount"] == 6 and hr["scaffolded"] == 1

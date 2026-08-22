@@ -29,7 +29,8 @@ def dump_json(value: dict[str, Any]) -> str:
 
 
 def save_json(file: Path, value: dict[str, Any]) -> None:
-    file.write_text(dump_json(value), encoding="utf-8")
+    # newline="\n" — Windows 기본 개행 번역이 LF 정본을 CRLF 로 바꿔 바이트 무손실이 깨진다 (07 결함 5)
+    file.write_text(dump_json(value), encoding="utf-8", newline="\n")
 
 
 class Document:
@@ -46,7 +47,10 @@ class Document:
 
     @classmethod
     def load(cls, file: Path) -> "Document":
-        return cls(file, Path(file).read_text(encoding="utf-8"))
+        # newline="" — 원문 개행(CRLF든 LF든)을 문자열에 그대로 보존한다. 무수정 저장이
+        # "바이트 동일"이려면 읽기에서 개행을 뭉개면 안 된다 (07 결함 5. 수정 시엔 표준형 LF).
+        with open(file, encoding="utf-8", newline="") as f:
+            return cls(file, f.read())
 
     @property
     def dirty(self) -> bool:
@@ -57,7 +61,7 @@ class Document:
         return dump_json(self.data) if self.dirty else self.original_text
 
     def save(self) -> None:
-        self.file.write_text(self.dumps(), encoding="utf-8")
+        self.file.write_text(self.dumps(), encoding="utf-8", newline="\n")
 
 
 class Voice(BaseModel):

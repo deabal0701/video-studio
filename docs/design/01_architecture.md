@@ -1,41 +1,44 @@
 # 01 — 아키텍처
 
+> **2026-08-21 데스크톱 전환 (D12·D13 — [07_desktop.md](07_desktop.md)):** web(Vue)+api(FastAPI)
+> 두 층을 `app/`(PySide6) 한 층으로 교체한다. 아래 구조도는 전환 후 목표 상태이고,
+> 전환 전 웹 구조·제거 일정은 07 문서가 정본이다. core 이하는 변하지 않는다.
+
 ## 전체 구조 — 3층 + 파일 SSOT
 
 ```
-┌─ web/  Vue 3 SPA ────────────────────────────────────────────┐
+┌─ app/  PySide6 데스크톱 (단일 프로세스) ──────────────────────┐
 │  강좌 설정 · 커리큘럼 · 대본 에디터 · 빌드/검수 · 배포 산출물     │
+│  + 첫 실행 위저드 · 설정(키·진단) — qtbridge 가 잡 이벤트 릴레이  │
 └──────────────┬───────────────────────────────────────────────┘
-               │ REST + SSE
-┌─ api/  FastAPI ──────────────────────────────────────────────┐
-│  라우터(자원별) · SSE 브로커 · 인증(상용 트랙)                   │
-└──────────────┬───────────────────────────────────────────────┘
+               │ 직접 호출 (HTTP 없음 — facade 유스케이스)
 ┌─ core/  Python — 로직 전부 (UI 무관, 단독 테스트 가능) ────────┐
-│  storage    파일 접근 추상화 (로컬 fs → 상용 S3)                │
+│  env        설치/데이터 폴더·자식 프로세스 실행환경 (07 — 신설)  │
+│  facade     화면이 부르는 유스케이스 (구 api 라우터 로직 이관)   │
 │  paths      상대경로 계산기 (기준 5종 — 02 문서)                │
 │  schema     course/scenes 모델 (pydantic) + 직렬화              │
 │  validate   글자수 예산 · 일관성 대조 · params/경로 검사         │
 │  indexer    projects/ 스캔 → 강좌·회차 목록 (SQLite 캐시)       │
 │  jobs       빌드 잡 큐 · 동시성 정책 · 진행 이벤트               │
 │  engine_io  Node CLI 호출 계약 (subprocess · stdout 파싱)       │
-│  agents     Claude Agent SDK 러너 (4단계 — 선택 기능)           │
+│  agents     에이전트 러너 — Claude/OpenAI 이중 (D15)            │
 └──────────────┬───────────────────────────────────────────────┘
-               │ subprocess
+               │ subprocess (설치본은 번들 runtime/ 의 node·ffmpeg)
 ┌─ engine/  Node CLI (vendored — 수정 금지) ────────────────────┐
-│  build.js · check-tts.js · chapters.js · inspect.js(신설)      │
+│  build.js · check-tts.js · chapters.js · inspect.js · preview.js│
 │  lib/ (tts·record·motion·overlay·compose·preflight·…)          │
 │  motion/ 공용 템플릿 · templates/ 대본 골격 · fonts/            │
 └──────────────┬───────────────────────────────────────────────┘
                ▼ 읽고 쓴다
-┌─ projects/  파일 SSOT ────────────────────────────────────────┐
+┌─ projects/  파일 SSOT (설치본은 %LOCALAPPDATA%\VideoStudio\) ──┐
 │  <강좌id>/course.json · course-intro.html · course-stinger.html │
 │  <강좌id>-NN/scenes.json · plan.md · facts.md · motion/ · bg/   │
-│  <강좌id>-NN/out/ (산출물 — 파생물, 삭제 가능)                   │
+│  out/ (빌드 산출물 — 파생물, 삭제 가능 · --out 으로 데이터 폴더에)│
 └───────────────────────────────────────────────────────────────┘
 ```
 
-**의존 방향은 위→아래 단방향.** engine 은 core 를 모르고, core 는 api 를 모른다.
-web 이 없어도 API 가 완결이고, api 가 없어도 engine 은 CLI 로 돈다 (지금과 동일).
+**의존 방향은 위→아래 단방향.** engine 은 core 를 모르고, core 는 app 을 모른다.
+app 이 없어도 core 가 완결(단독 테스트)이고, core 가 없어도 engine 은 CLI 로 돈다 (지금과 동일).
 
 ## 신규 저장소 디렉토리
 
@@ -52,18 +55,21 @@ video-studio/
 │   ├── lib/  motion/  templates/  fonts/  assets/(CATALOG.md·fetch.js 만)
 │   ├── package.json  ENGINE_VERSION.md      ← 동기화 기록 (아래)
 ├── core/                  ← Python 패키지 (로직 전부)
-│   ├── storage.py  paths.py  schema.py  validate.py
+│   ├── env.py  facade.py  ← 5단계 신설 (07_desktop)
+│   ├── paths.py  schema.py  validate.py
 │   ├── indexer.py  jobs.py  engine_io.py
-│   └── agents/            (4단계)
-├── api/                   ← FastAPI 앱
-│   ├── main.py  routers/  sse.py  deps.py
-├── web/                   ← Vue 3 (Vite)
-│   ├── src/views/  src/components/  src/api/  src/stores/
-├── projects/              ← 사용자 데이터 (로컬 모드 기본 루트 — 설정으로 변경 가능)
+│   └── agents/            (4단계 — 5-6 에서 Claude/OpenAI 이중화)
+├── app/                   ← PySide6 데스크톱 (5단계 신설 — windows/ widgets/ qtbridge.py)
+├── packaging/             ← PyInstaller spec · 런타임 수집 · Inno Setup · edge-tts 셔틀 (5-7)
+├── projects/              ← 사용자 데이터 (개발 기본 루트 — 설치본은 %LOCALAPPDATA%\VideoStudio\)
 ├── fixtures/projects/     ← 개발·테스트 픽스처 (h5-saas 실전 대본 카피)
 ├── tests/                 ← core 단위 테스트 (경로 계산·검증기가 최우선 대상)
 └── pyproject.toml
 ```
+
+구 웹 콘솔 `api/`(FastAPI)·`web/`(Vue) 은 저장소에서 제거됐다 — `api/` 는 5-2 완료 시점,
+`web/` 은 2026-08-21 사용자 지시(D16)로 조기 삭제. 이식 대조가 필요하면 커밋 `a731a62`
+에서 꺼낸다(`git show a731a62:web/src/...`).
 
 ## engine vendoring — 동기화 규칙
 
@@ -83,13 +89,14 @@ video-studio/
 
 | 층 | 선택 | 버전 기준 |
 |---|---|---|
-| 서버 | Python 3.12+ · FastAPI · uvicorn · pydantic v2 | SSE 는 `sse-starlette` |
-| 파일 감시 | `watchfiles` (Rust 기반) | 외부 편집(Claude Code) 감지 → 인덱스 갱신·편집 충돌 경고 |
+| 로직 | Python 3.12+ · pydantic v2 | conda `penv3.13-insait`. ~~FastAPI·uvicorn·sse-starlette~~ — D12 로 제거 (5-2) |
+| 파일 감시 | ~~watchfiles~~ → `QFileSystemWatcher` (5-3) | 외부 편집(Claude Code) 감지 → 인덱스 갱신·편집 충돌 경고 — 역할 동일 |
 | 캐시 | SQLite (표준 lib) — 파생 캐시 전용 | 스키마 버전 불일치 시 통째 재생성 |
-| UI | Vue 3.5 · Vite · Pinia · Element Plus · Tailwind v4 | h5-saas insait-frontend 와 동일 계열 |
-| 엔진 | Node 20.12+ · Playwright(Chromium) · ffmpeg | 기존 그대로 |
-| TTS | edge(기본·키 불요) / azure / eleven | 엔진이 이미 지원. 상용은 azure 계약([06](06_roadmap.md)) |
-| 에이전트 | `claude-agent-sdk` (Python) | 4단계에만. [05_agent.md](05_agent.md) |
+| UI | **PySide6 (LGPL)** — QWebEngineView(프리뷰)·QMediaPlayer(재생) (D13) | ~~Vue 3.5·Vite·Element Plus·Tailwind~~ 는 1~4단계 검증 후 5-5 에서 제거. 디자인 토큰(D11) 값은 Qt 스타일시트로 이식 |
+| 엔진 | Node 20.12+ · Playwright(Chromium) · ffmpeg | 기존 그대로. 설치본은 runtime/ 동봉 (D14 — [07](07_desktop.md)) |
+| TTS | edge(기본·키 불요) / azure / eleven | 엔진이 이미 지원. Azure·Eleven 실키 확보·인증 실측 (2026-08-21). 상용은 azure 계약([06](06_roadmap.md)) |
+| 에이전트 | `claude-agent-sdk`(기본) + OpenAI SDK(선택) — D15 | [05_agent.md](05_agent.md) |
+| 패키징 | PyInstaller(onedir) + Inno Setup — 관리자 권한 불요 설치 | [07_desktop.md](07_desktop.md) |
 
 ## LangChain / LangGraph 를 쓰는가 — **아니오**
 
@@ -129,11 +136,18 @@ query 를 N 개 띄우면 된다 — 그래프 프레임워크가 필요한 규�
 
 같은 코드가 설정으로 갈린다. 로컬 모드가 기본이고 1~3단계의 전부다.
 
-| | 로컬 (1~3단계) | 상용 (별도 트랙) |
+| | 로컬 (데스크톱 앱) | 상용 (별도 트랙) |
 |---|---|---|
-| storage | `LocalFS(root=projects/)` | `S3Storage(bucket, prefix=tenant/…)` + 로컬 작업 캐시 |
-| jobs | in-process 큐 (동시 2) | 큐 서비스 + 렌더 워커 풀 (컨테이너: Node+Chromium+ffmpeg) |
-| 인증 | 없음 (localhost) | 세션 + 테넌트 격리 |
-| 에이전트 키 | 사용자 본인 키 (.env) | 서비스 키 + 사용량 미터링 |
+| storage | **추상화 없음** — `core.env`(데이터 폴더) + `core.paths`(상대경로)로 파일을 직접 읽고 쓴다 | `S3Storage(bucket, prefix=tenant/…)` + 로컬 작업 캐시 — **이 시점에 storage 계층을 신설한다** |
+| jobs | in-process 큐 (동시 2) | 큐 서비스 + 렌더 워커 풀 (컨테이너: Node+Chromium+ffmpeg — 이 시점에 엔진 Python 포팅 재평가, D14) |
+| 인증 | 없음 (단일 사용자 데스크톱) | 세션 + 테넌트 격리 |
+| 에이전트 키 | 사용자 본인 키 (.env / 첫 실행 위저드) | 서비스 키 + 사용량 미터링 |
 
-**storage·jobs 인터페이스를 1단계부터 지키는 것**이 상용 전환 비용을 정하는 전부다 (D8·D9).
+**jobs 인터페이스를 1단계부터 지키는 것**이 상용 전환 비용을 정하는 전부다 (D8).
+
+> **D9(storage 추상화) 정정 — 2026-08-22 코드 리뷰.** `core/storage.py`(Storage 프로토콜 +
+> LocalFS)는 0단계에 만들어 두고 **끝내 아무도 쓰지 않았다** — facade·indexer·schema 전부
+> `pathlib` 로 직접 읽고 쓴다. 참조자는 자기 자신을 검사하는 테스트 하나뿐이었다. 쓰이지 않는
+> 인터페이스는 이음매가 아니라 **이음매가 있다는 착각**이라, 파일을 지우고 이 표에 현실을 적었다.
+> 상용 전환 때는 `core.env`·`core.paths` 를 통과하는 파일 접근을 storage 로 감싸며 신설한다
+> (그 접근이 두 모듈에 모여 있는 것이 실제 이음매다).

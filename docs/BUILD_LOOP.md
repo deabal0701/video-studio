@@ -29,6 +29,7 @@ docs/BUILD_LOOP.md 의 루프 프로토콜을 따라, 다음 미완 단계를 �
 | 2 | 강좌 편집 | ✅ 2026-08-15 | 화면만으로 개설→회차 생성→(파일 편집)→빌드 완주 — Playwright 실측. 라운드트립 diff 0 은 테스트 고정 |
 | 3 | 대본 에디터 | ✅ 2026-08-15 | 새 회차(hr-basics-02)를 화면만으로 완성 — 대본(피커·자동 폼)→빌드(46.2s mp4)→검수(자막 diff 0)→youtube.md. 결함 입력 시점 차단 실측 |
 | 4 | 에이전트 | ✅ 2026-08-15 | AI 초안($0.25)→손질→빌드(109s mp4)→AI 평가($0.21, 6항목 채점) 실키 완주. 1~3단계 키 없이 동작 ✅ |
+| 5 | 데스크톱 전환 | 🔄 5-8 까지 코드 완료 · **사용자 준비물 대기** (2026-08-22) | 깨끗한 Windows PC 에서 설치→위저드→픽스처 빌드·검수·배포 준비물까지 화면만으로 완주 (정본: [07_desktop.md](design/07_desktop.md) — 하위 5-0~5-8) |
 
 상태 기호: ⬜ 미착수 · 🔄 진행 중 · ✅ 수용 기준 충족 (검증 완료)
 
@@ -253,19 +254,150 @@ web = 대시보드·강좌·회차 목록·scenes 뷰어(편집 없음)·빌드 
       추가/삭제·합계 행 보호)하고 나머지 문서는 보존, 예산 게이지 실시간(셀 수정 즉시 반영
       실측 2,763/1,850자) — 브라우저 실측 (2026-08-15)
 
-**백로그 소진 — SSOT 상 남은 항목은 "4단계 실키 완주 검증"(키 제공 대기) 뿐.**
-이후 루프는 매 반복 키 확인만 하며, 다음 갈래는 사용자 결정 사항: ① 키 제공 → 4단계 마감
-② 상용 트랙 S1~S4 착수 지시 ③ 루프 중지.
-- [ ] 상용 트랙 S1~S4 (06_roadmap — 4단계 실키 검증 뒤 착수 판단)
+~~백로그 소진~~ → **2026-08-21 사용자 결정: 5단계(데스크톱 전환) 착수.** 상용 트랙은 5단계 뒤.
+- [ ] 상용 트랙 S1~S4 (06_roadmap — 5단계 완성 뒤 착수 판단. S1 시점에 엔진 포팅 재평가)
+
+### 5단계 (데스크톱 전환 — 2026-08-21 착수 결정)
+
+```
+5단계를 진행하라. docs/design/07_desktop.md 가 정본 — 하위 단계 표(5-0~5-8)의 첫 미완
+항목을 순서대로. 각 하위 단계의 수용 기준을 실측 검증하고 이 체크리스트를 갱신하라.
+Python 은 conda penv3.13-insait (.claude/memory/python-environment.md — 의존성 설치 상태 주의).
+```
+
+주의: 엔진 무수정 원칙 유지 (산출물 경로는 `--out`, 실행환경은 env.py 의 child_env 주입).
+api/·web/ 는 삭제 완료 (api/=5-2 · web/=2026-08-21 D16 조기 삭제). 구 Vue 화면을 대조해야
+하면 커밋 `a731a62` 에서 꺼낸다 — `git show a731a62:web/src/components/ClipEditor.vue`.
+
+진행 체크리스트 (수용 기준 상세: 07 단계 표):
+
+- [x] 5-0 위험 스파이크 (2026-08-21 — 3종 전부 실측 통과):
+      ① 이식성 — 임시 폴더 사본 + PATH=runtime 3폴더(+System32)만 + PLAYWRIGHT_BROWSERS_PATH
+      + `--out` 외부 지정으로 셀프테스트(mp4 2개) 및 **픽스처 풀빌드 292.766667s = 0단계
+      기준(292.77s) 정확 일치**, 8s 프레임 눈검수 통과. 소재 3종(CATALOG 출처) 재다운로드 포함
+      ② PySide6 6.11.2 — QWebEngineView 로드·URL 질의 params DOM 반영·getAnimations
+      currentTime=2500ms 시킹 + Chromium 교차 스크린샷으로 타이틀 카드 시각 검증.
+      발견 2건: conda 환경에서 Qt6Core DLL 충돌(→ python.org venv 사용, .claude/memory 기록)·
+      프리뷰는 wipe 포함 전체 params 필요(흰 전환막)
+      ③ edge-tts 셔틀 — PATH 1순위 해석으로 합성 확인 (자기완결 exe 빌드는 5-7)
+- [x] 5-1 core/env.py + 결함 수정 (2026-08-21) — env.py(설치/데이터 분리·child_env)·
+      engine_io(utf-8·CREATE_NO_WINDOW·--out·junction)·write_text newline 9곳·잡 보존 상한
+      + **추가 발견 4건 수정**: 드라이브 교차 relpath(절대경로 폴백 — 구 저장소가 C:라 잠복)·
+      워크트리 CRLF(.gitattributes eol=lf + 픽스처 정규화 + Document 원문 개행 보존)·
+      jobs _set 상태/이벤트 레이스·indexer sqlite 연결 누수.
+      **pytest 78건 전건 통과 (스킵 0 — out 캐시 이식으로 검수·배포 테스트까지 활성)**
+- [x] 5-2 facade 추출 (2026-08-21) — (a) core/facade.py 신설(Studio + StudioError 예외
+      위계 — 04 표 전량 이관, **preview 화이트리스트** 포함) (b) 라우터 8종 껍데기化 →
+      기존 HTTP 테스트 78건 전건 통과로 **등가 증명** (c) 테스트 13종을 conftest(studio·
+      fixtures_root·copy_root) + Studio 직호출로 재작성, 화이트리스트 회귀 테스트 추가
+      (d) **api/ 삭제** + pyproject 정리(fastapi·uvicorn·sse-starlette·watchfiles·httpx 제거,
+      wheel packages=core만) → **79건 전건 통과.** 파일 감시(watchfiles)의 역할은 5-3 의
+      QFileSystemWatcher 가 승계 예정
+- [x] 5-3 Qt 셸 + 읽기 콘솔 (2026-08-21) — app/(theme=D11 토큰 이식·bridge·MainWindow·
+      대시보드·강좌 보드·회차 페이지 ⑤뷰어/⑥검수) + packaging/setup-qt-venv.ps1.
+      **실측(스모크·실창 캡처)**: 대시보드→강좌→회차 탐색 · 클립 16행 · 검수 프레임 4+1종
+      (kind 라벨·명암 실측 시각) · 무음 리포트 · mp4 소스 로드 · **실엔진 TTS 부분빌드 done**
+      (진행 로그 릴레이·상태 칩·잡 칩 복귀 — 1단계 실측과 동일 방식).
+      함정 2건 해결·기록: 클로저 시그널 연결=direct(워커에서 위젯 접근)·QRunnable autoDelete
+      로 큐드 전달 유실 → **영속 디스패처(QObject) 경유로 확립** (bridge.py — 이후 전 화면 공통).
+      offscreen 캡처는 한글 폰트 미로드(두부) — 자동화 캡처는 실창로, 잔여 육안 확인
+      (mp4 소리·영상 실재생)은 사람 확인 항목
+- [x] 5-4 편집 ①②③ + 스캐폴딩 + 새 강좌 위저드 (2026-08-21) — course_settings(목소리
+      프리셋+TTS 실합성 미리듣기·팔레트 피커·BGM 콤보+듣기·etag 저장+일관성 배지)·
+      brandkit(간이 프리뷰·프리셋 재적용 확인 모달)·보드 [회차 생성]/[+ 회차 추가]·
+      새 강좌 위저드 + widgets(ColorButton·AudioPreview).
+      **E2E 실측(스모크)**: 빈 루트 → 위저드 개설(qt-demo·BGM 목록 로드) → 회차 생성
+      (qt-demo-01) → (대본은 파일 편집 — 2단계 방식) → **화면 전체 빌드 done → mp4+srt +
+      verifying 자동 생성(프레임 5장)** → 타이틀 카드 프레임 눈검수(위저드 팔레트·워터마크
+      상속 확인). ① 탭 실창 캡처: 픽스처 값 로드·인준 프리셋 자동 체크·TTS "재생 중" 실측.
+      발견·수정 2건: repo engine/node_modules 미설치(전체 빌드에서 첫 노출 — npm install),
+      입력 위젯 OS 다크 팔레트 상속(theme 기본 스타일 추가). 라운드트립 diff 0 은
+      테스트(79건)가 계속 고정
+- [x] 5-5 ⑤ 대본 에디터 + ④⑥⑦ (2026-08-22) — app/pages/{clip_editor,plan_tab,deploy_tab}.py
+      신설 + episode.py 전면 개편 + app/bootstrap.py(QtWebEngine 기동 설정).
+      **실측(스모크 전 구간 통과 · 실창 눈검수)**:
+      ⑤ 3열 — 클립 16 드래그 리스트(실측 라벨)·예산 2,074/1,850자 **112% 빨강**·
+      **결함 차단 4종**: ① 받는 키만 폼(progress·wipe 만 노출, brand/bg/fontUrl 은
+      "강좌 상속 중" 뱃지) + 오타 키 `tterm` 주입 → 빨간 경고 1건 → [제거] → 0건
+      ② 피커로만 선택 ③ 자동 주입 키 폼 비노출 ④ videoStart 18s → "구간 2.0s > 소스 0.9s
+      — 마지막 1.1s 정지 프레임" 즉시 빨강(정상 시 "여유 13.9s ✓") · 발화시각 계산기
+      (구절→3.12s) · **프리뷰 실물 렌더**(QWebEngineView 가 hook-bill 을 한글로 그림,
+      anims 2, 스크럽 3.5s→currentTime 3500ms) · 음성 캐시 8.3s ·
+      **연속 저장 2회 etag 왕복(409 교착 없음 — 구 웹 결함 회귀 방지)**
+      ④ plan 16행 파싱·예산 99% · ⑥ 프레임 5장·자막 diff 0(1,565자)·체크리스트 기록·무음 0
+      ⑦ 제목 `[인사 기본개념 강좌] 1강 — 구성원`·챕터 5·srt·썸네일 5·youtube.md 저장
+      발견·수정 1건: **QtWebEngine 은 GPU 컨텍스트 실패 시 페이지를 아예 못 연다**
+      (loadFinished=False). QApplication 이전 임포트 + `--disable-gpu` 폴백을 bootstrap 으로
+      고정 — 담당자 PC GPU 사정이 제각각이라 설치본에도 필요.
+      남긴 것: ④ 셀 단위 구조 편집(현재는 원문 편집 + 파싱 표 미리보기 + 예산 게이지)
+- [x] 5-6 에이전트 이중 제공자 + 설정 화면 (2026-08-22) — core/agents/providers.py(제공자
+      선택·모델 해석·키 게이트)·openai_runner.py(구조화 생성 + **파일 기입은 우리 코드**)·
+      core/config.py(홈 공용 .env 병합 쓰기·자가진단) + app/pages/settings.py +
+      ②[✨ AI 초안]·회차[✨ AI 평가] 배선.
+      **실측(스모크 전 구간 통과 · 실창 눈검수)**:
+      · 기본 claude·키 없음 → 비활성 + 사유. 화면에서 OpenAI 키 입력 + 제공자 전환 +
+        테스트 모드 체크 → 저장 → **"사용 가능 ✓ · 모델 전부 gpt-4o-mini (테스트 모드 —
+        최저가 강제)"**, 파일에 `AGENT_PROVIDER=openai`·`AGENT_TEST_MODE=1` 기록
+      · AI 버튼 게이트: 키 있으면 활성(툴팁에 제공자·모델), **키를 지우면 다시 잠김**
+      · 자가진단 9항목 전부 판정(Node v24·ffmpeg·ffprobe·Playwright·Chromium·데이터 폴더·키 3종)
+      · openai 경로: 가짜 클라이언트로 draft → plan.md·facts.md·scenes.json 기입,
+        내레이션·`_화면메모` 반영, **골격 밖 새 클립에도 palette 자동 주입**, `_경로메모` 보존
+      · 키 마스킹(Password 에코)·저장 위치 표시·셸/저장소 우선 시 경고 문구
+      **pytest 93건** (test_providers 6 + test_config 4 신설). 실키 완주는 사용자 판단
+      (claude 경로는 4단계에서 이미 실키 완주 — openai 는 키 제공 시)
+- [x] 5-7 설치본 🔄 (2026-08-22 — **동결본 실측 통과. 남은 것은 사용자 준비물 2종**)
+      packaging/{VideoStudio.spec, collect-runtime.ps1, VideoStudio.iss, smoke-frozen.py} +
+      app/{pages/first_run.py, smoke_probe.py} + .qt-venv(동결 전용).
+      **동결 환경 확정**: pip 휠 venv (conda 금지 — conda-forge 는 Qt 자산을 site-packages
+      밖에 둬 PySide6 훅이 빈손. 실측 dlls_in_pkg conda 0 / pip 144, 두 세션 각각 재현)
+      **동결본 스모크 PASS** (임시 폴더 사본 + **PATH=System32 만**으로 실행):
+      기동(frozen=true)·강좌 1·클립 16·**템플릿 20(node subprocess 가 설치 배치에서 동작)**·
+      **프리뷰 렌더**(anims 2·"김민준 신규 구성원…"·시킹 후 고유색 28)·**설치 폴더 쓰기 0건**
+      발견·수정 3건:
+      ① `.cache/index-*.sqlite` 가 설치 폴더로 샘 → indexer·agents USAGE_FILE 을
+         `env.cache_dir()` 로 (5-1 에서 놓친 경로 — 스냅샷 검사가 잡았다)
+      ② 스모크 판정이 느슨해 조기 통과(JS 응답만 확인) → URL 대기 + **시킹 후** 픽셀
+         고유색>1 을 판정에 포함 (t=0 은 페이드인 전이라 단색이 정상)
+      ③ **설치본에 스톡 소재가 들어감(R3 재배포 금지 위반)** → robocopy `/XD` 로 제외.
+         headless shell 제거·Qt 자산 가지치기와 함께 1,586→**1,100MB**
+      ⬜ 남은 것 (사용자 준비물): **깨끗한 Windows PC 설치 실측** · Inno Setup 컴파일(ISCC)
+      첫 실행 위저드. 깨끗한 PC 실측
+- [x] 5-8 배포 준비 🔄 (2026-08-22 — **서명 외 전부 완료. 남은 것은 인증서**)
+      · **라이선스 고지**: `packaging/NOTICE.md`(구성요소 8종 표 + LGPL 교체권·소스 제공 안내
+        + 소재 미동봉·edge TTS 약관 고지) + `collect-licenses.ps1`.
+        **전문 10종 실제 동봉 확인** — LGPL-3.0·GPL-3.0·LGPL-2.1·ffmpeg·node·playwright·
+        Pretendard·pydantic·edge-tts·chromium. 발견: **PySide6 휠에 LGPL 전문이 없고**
+        (상용 참조만) Playwright Chromium 에도 라이선스 파일이 0개 → 정본(gnu.org·chromium
+        저장소)에서 받아 캐시. **누락 시 빌드 실패**로 막음 (고지 없는 배포 사고 방지)
+      · **사용 안내**: `packaging/사용안내.md` — 담당자용(설치·첫 실행 4단계·영상 한 편
+        만들기 6단계·문제 해결 표·업데이트/제거). 설치기가 시작 메뉴에 바로가기로 건다
+      · **업데이트 경로**: 새 Setup 덮어쓰기 — 데이터 폴더가 분리돼 작업 파일 보존.
+        제거 시 데이터 폴더는 남고 받아 둔 소재만 사라짐(재다운로드 가능)
+      · **`build-installer.ps1`** — 동결→런타임→라이선스→**스모크→설치기** 한 명령.
+        스모크 실패면 설치기를 만들지 않는다. ISCC 없으면 그 단계만 건너뛰고 안내
+      · 설치기: `InfoBeforeFile=NOTICE.md`(LGPL prominent notice) + SignTool 절 주석으로 예약
+      발견·수정 1건: 신규 ps1 3종의 **BOM 누락으로 한글이 깨져 파서 오류** — BOM+CRLF 부여
+        (3c 가 경고한 함정을 그대로 밟음. 08 §9 규칙이 맞았다)
+      ⬜ 남은 것 (사용자 준비물): **코드 서명 인증서** (없으면 SmartScreen 차단)
 
 ## 완료 기록
 
 | 날짜 | 단계 | 내용 |
 |---|---|---|
+| 2026-08-21 | 정리 | **잔재 일괄 삭제 (사용자 지시).** `web/`(Vue 29파일·1,595줄 — D16 으로 5-5 앞당김) · `projects/` 검증 잔재(bread-basics·bread-basics-01·test) · `core/events.py`(SSE 전용 EventBus — 소비자 소멸, Qt 는 JobQueue.listener→Signal 직결)와 그 테스트 · `web/dist`·`engine/out/qt-demo-01`·`.cache/*.sqlite`·`__pycache__` 파생물. 참조 문서 8종 갱신(D11 토큰 정본 → `app/theme.py`, D16 신설). pytest 78건 전건 통과 |
 | 2026-08-14 | — | 저장소 이행 완료 (설계서·엔진·스킬·픽스처). BUILD_LOOP.md 작성, 0단계 착수 |
 | 2026-08-14 | 0 | **수용 기준 충족.** 셀프테스트 mp4 2개 · inspect.js 신설 · 픽스처 경로 이전 후 hr-basics-01 재현 빌드(292.77s, 4:53 — 허용 4:40~5:20 내) · Python 골격(conda penv3.13-insait, pytest 11건). 실측 반영: 02 경로 표를 현행 엔진 기준으로 교체(bgm·video=엔진 루트, 모션 file=대본 폴더), 자막 폰트는 시스템 폰트 제약 확인 — subtitleFont 지정 제거·R2 는 상용 트랙으로. 픽스처 실결함 1건(billing.html 미수용 tterm param) preflight 로 검출·제거 |
 | 2026-08-14 | 1(선행) | core/jobs.py 잡 큐 + 테스트 4건 (0단계 빌드 대기 중 착수) |
 | 2026-08-15 | 2 | **수용 기준 충족.** paths.py(실측 5행+역산) · Document(diff 0) · 저장 API(If-Match/409+현재본) · 회차 스캐폴딩(일관성 0건) · 강좌 개설(템플릿+참조 재계산) · TTS 미리듣기(edge 실측) · 라이브러리(CATALOG 정본 파싱/추가·라이선스 필수) · web ①②③. **E2E 실측**: 빈 루트에서 위저드 개설(demo-course) → 보드 회차 추가 → 파일로 대본 편집 → 화면 빌드 done → 15s mp4·프레임 5장·타이틀 카드 눈검수(파랑 팔레트 정상). pytest 59건 |
+| 2026-08-22 | 5-7·5-8 | **설치본 파이프라인 완성 — 준비물 대기.** 동결 환경=pip 휠 venv 확정(conda 는 Qt 자산 미포함), 동결본 스모크 PASS(PATH=System32·설치 폴더 쓰기 0건·프리뷰 고유색 28), 라이선스 10종 동봉(휠에 LGPL 전문이 없어 정본에서 수집·누락 시 빌드 실패), 담당자 사용 안내, build-installer.ps1 한 명령. 결함 4건 수정(캐시 누수·조기 통과 판정·**스톡 소재 동봉(R3 위반)**·ps1 BOM). 용량 1,586→1,291MB. 남은 것: 깨끗한 PC·ISCC·서명 인증서 |
+| 2026-08-22 | 5-7 | **설치본 용량 1,291→1,100MB (−191MB).** `excludes=` 가 파이썬 바인딩만 막고 **DLL·qml·리소스는 그대로 수집**되고 있었다 — WebEngine 디버그 pak 72MB·전 언어 locales 44MB·안 쓰는 모듈 DLL 45MB·전 언어 qm 9MB. spec 에 `_prune()` 추가, **동결 스모크 PASS 로 판정**(프리뷰 로드·픽셀). 프리뷰 고유색 28→17 은 가지치기가 아니라 09 의 16:9 고정 때문 — 가지치기 없는 conda 트리에서도 17 로 대조 확인. 덤: `collect-runtime.ps1` 이 자기 머리말 규칙(네이티브 종료코드로 판정)을 두 곳에서 어겨 **깨끗한 재빌드에서만 터지던 잠복 결함** 수정 |
+| 2026-08-22 | 5-6 | **에이전트 이중 제공자 + 설정 화면.** providers(제공자·모델·키 게이트)·openai_runner(구조화 생성+결정적 파일 기입)·config(홈 .env 병합·자가진단 9항목)·설정 화면. 화면에서 openai 전환+테스트 모드 → 최저가 강제 실측, 키 넣고 빼며 AI 버튼 게이트 실측. pytest 93건 |
+| 2026-08-22 | 5-5 | **⑤ 대본 에디터 + ④⑥⑦ — 3단계 등가 실측.** 결함 차단 4종 전부 화면 상태로 검증(받는 키만·오타 키 경고·상속 뱃지·B롤 초과 빨강), 프리뷰 실물 렌더+스크럽 시킹, 연속 저장 etag 왕복. QtWebEngine GPU 폴백을 bootstrap 으로 고정 |
+| 2026-08-21 | 5-4 | **편집 ①②③ + 위저드 — 2단계 등가 실측** (빈 루트 위저드 개설→회차 생성→화면 전체 빌드 done→mp4·타이틀 카드 눈검수. TTS 실합성 미리듣기 "재생 중" 실측). **파이썬 conda 통일**(사용자 지시): pip 휠 대신 conda-forge pyside6+qt6-webengine+qt6-multimedia — 앱 스모크 conda 로 통과, .qt-venv 폐기(패키징 후보로만), run.ps1/README/메모리 갱신 |
+| 2026-08-21 | 5-3 | **Qt 셸 + 읽기 콘솔 — 1단계 등가 실측.** app/ 신설(D11 토큰 스타일시트·영속 디스패처 브리지·대시보드/보드/회차 ⑤⑥), 실엔진 TTS 빌드 화면 완주(로그·칩), 검수 프레임 4+1·무음·mp4 로드. Qt 스레딩 함정 2건(direct 클로저·autoDelete 유실) 해결책 확립. 실창 캡처 눈검수 통과 |
+| 2026-08-21 | 5-2 | **facade 추출 완료 — HTTP 계층 소멸.** Studio(04 계약 전량)+예외 위계, 라우터 껍데기化로 등가 증명(78건) 후 테스트 13종 facade 직호출 전환·api/ 삭제·의존성 정리. 최종 79건 전건 통과. preview 임의 경로 읽기 결함은 화이트리스트+회귀 테스트로 봉쇄 |
+| 2026-08-21 | 5-0·5-1 | **스파이크 3종 통과 + env 계층·결함 10종 수정.** 이식 빌드 292.766667s 정확 재현(제한 PATH·번들 런타임·외부 --out) · PySide6 프리뷰 시킹 검증(conda 충돌 → python.org venv) · edge-tts 셔틀 해석 확인. env.py 신설, 07 결함 6종 + 추가 발견 4종(크로스드라이브 relpath·CRLF 워크트리·jobs 레이스·sqlite 누수) 수정. pytest 78건 전건 통과(스킵 0) |
+| 2026-08-21 | 5(설계) | **데스크톱 전환 결정·설계 완료** (D12~D15). 07_desktop.md 신설 + 00·01·03·04·05·06·README 정합 수정. 사전 실측: 엔진 `--out`/`--video-root` 지원·ffmpeg 맨이름 호출·edge-tts=Python 확인, Azure 키 실합성 OK·Eleven 키 인증 OK(user_read 권한만 결핍), 저장소 .env 7키 로드 확인. 코드리뷰 결함 6종은 5-1 에 편입. 화면 도식 아티팩트 승인 |
 | 2026-08-14 | 1 | **수용 기준 충족.** core(jobs 취소·verifying / indexer SQLite 캐시 / events 버스 / status·media_ops) + api(조회·build·잡 SSE·전역 SSE·media·검수) + web(대시보드·보드·대본 뷰어·빌드+SSE 로그·프레임 그리드·mp4). pytest 26건. 브라우저 실측: 대시보드→보드→회차 화면에서 TTS 부분빌드 완주(전체 빌드는 같은 경로 — API 로 0단계에 기실측)·프레임 5장·mp4 재생. 의도 검증 완료: 데이터 모델·stdout 파서·SSE 전부 실동작 |
 
 ## 알려진 결손·리스크 메모 (착수 전 확인)

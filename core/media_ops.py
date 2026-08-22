@@ -12,6 +12,7 @@ import subprocess
 from pathlib import Path
 
 from .status import OUT_ROOT
+from .validate import CHARS_PER_SEC_LECTURE
 
 import json as _json
 import re as _re
@@ -64,7 +65,8 @@ def clip_start_times(episode_dir: Path) -> dict[str, float]:
         starts[clip["id"]] = cursor
         spoken = (manifest.get(f"motion-{clip['id']}") or {}).get("duration")
         if clip.get("narration"):
-            base = spoken + 0.5 if spoken else len(clip["narration"]) / 6.4 + 0.5
+            base = (spoken + 0.5 if spoken
+                    else len(clip["narration"]) / CHARS_PER_SEC_LECTURE + 0.5)
             cursor += max(clip.get("duration") or 0, base)
         else:
             cursor += clip.get("duration") or 0

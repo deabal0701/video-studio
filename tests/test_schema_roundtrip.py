@@ -10,11 +10,20 @@ FIXTURE_FILES = [
 
 
 def test_load_save_diff_zero(tmp_path):
-    """수정 없이 열고 저장 → 바이트 동일 (한 줄 객체 등 손서식 보존)."""
+    """수정 없이 열고 저장 → **바이트** 동일 (손서식은 물론 개행까지 — CRLF 번역 회귀 방지).
+
+    read_text 비교는 universal newline 디코딩이 CRLF 를 지워 항상 통과했다 (07 결함 5) —
+    실제 파일 바이트로 검사해야 무손실 규약이 진짜로 고정된다.
+    """
+    import shutil
+
     for src in FIXTURE_FILES:
-        doc = Document.load(src)
+        copy = tmp_path / src.name
+        shutil.copy(src, copy)
+        doc = Document.load(copy)
         assert not doc.dirty
-        assert doc.dumps() == src.read_text(encoding="utf-8"), src.name
+        doc.save()
+        assert copy.read_bytes() == src.read_bytes(), src.name
 
 
 def test_edit_preserves_comments_and_key_order(tmp_path):

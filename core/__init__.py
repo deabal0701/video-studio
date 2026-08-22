@@ -3,10 +3,7 @@
 구조·책임은 docs/design/01_architecture.md, 데이터 모델은 02_data-model.md 가 정본.
 """
 
-from pathlib import Path
+# 경로의 정본은 core.env (07_desktop — 설치/데이터 폴더 분리). 여기는 호환 재수출만.
+from .env import ENGINE_DIR, REPO_ROOT  # noqa: F401
 
-# 저장소 루트 — core/ 의 부모. 엔진·픽스처·projects/ 위치의 기준점.
-REPO_ROOT = Path(__file__).resolve().parent.parent
-ENGINE_DIR = REPO_ROOT / "engine"
-PROJECTS_DIR = REPO_ROOT / "projects"
 FIXTURES_DIR = REPO_ROOT / "fixtures" / "projects"

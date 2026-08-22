@@ -5,6 +5,8 @@
 settingSources 로 네이티브 로드한다 (프롬프트로 재인코딩하지 않는다, 원칙 3).
 """
 
-from .runner import KINDS, agent_enabled, make_agent_work, usage_summary
+from .providers import KINDS, PROVIDERS
+from .runner import agent_enabled, make_agent_work, provider, test_mode, usage_summary
 
-__all__ = ["KINDS", "agent_enabled", "make_agent_work", "usage_summary"]
+__all__ = ["KINDS", "PROVIDERS", "agent_enabled", "make_agent_work", "provider",
+           "test_mode", "usage_summary"]

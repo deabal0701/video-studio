@@ -41,7 +41,9 @@ projects/
 | `tagline` | str | 스팅어 한 줄 — 개설 때 정하고 불변 | ① |
 | `episodeLength` | str | 분량 규약 (예: "5분 — 약 1,850자") | ① (예산 계산 원천) |
 | `episodes[]` | `{n, id, title, subtitle, 근거}` | 커리큘럼. `id` = 회차 폴더명 | ② 커리큘럼 보드 |
-| `voice` | `{provider, lang, gender, rate}` | 시리즈 내내 고정 | ① (미리듣기) |
+| `voice` | `{provider, lang, gender, rate, voice?}` | 시리즈 내내 고정 | ① (제공자·목소리·미리듣기) |
+| ↳ `provider` | `edge`(무료·기본) · `azure` · `eleven` · `sapi` | 키 없으면 화면에서 비활성 | — |
+| ↳ `voice` | 목소리 id — **있으면 `gender` 표보다 이것이 이긴다** (engine/lib/tts.js `resolveVoiceFor`). 카탈로그 실측(2026-08-22): edge 3종 · azure 10종 · eleven 계정별 | 미지정이면 `lang×gender` 기본값 | — |
 | `palette` | `{brand, brandSoft, bg}` | 모션 클립 params 에 **수동 복붙되던 것** — 앱이 자동 주입 | ③ 브랜드 킷 |
 | `render` | scenes.json render 와 동일 부분집합 | 회차가 그대로 복사해야 하는 블록 | ① (일관성 대조 기준) |
 

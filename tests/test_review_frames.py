@@ -1,19 +1,12 @@
 """검수 프레임 명암 선별·타이틀 시각·직전 회차 쌍."""
 
 import pytest
-from fastapi.testclient import TestClient
 
 from core import FIXTURES_DIR, media_ops
-from api.main import app
 
-client = TestClient(app)
+pytestmark = pytest.mark.usefixtures("fixtures_root")
 EP = FIXTURES_DIR / "hr-basics-01"
 BUILT = media_ops.final_mp4("hr-basics-01") is not None
-
-
-@pytest.fixture(autouse=True)
-def fixture_root(monkeypatch):
-    monkeypatch.setenv("VIDEO_STUDIO_PROJECTS", str(FIXTURES_DIR))
 
 
 def test_clip_start_times_accumulate():
@@ -37,10 +30,10 @@ def test_review_frames_kinds_and_brightness():
 
 
 @pytest.mark.skipif(not BUILT, reason="픽스처 빌드 산출물 없음")
-def test_consistency_title_pair_shape():
-    body = client.get("/api/episodes/hr-basics-01/consistency").json()
+def test_consistency_title_pair_shape(studio):
+    body = studio.consistency("hr-basics-01")
     # 1강은 직전 회차(0강)가 없다 — 쌍 없음이 정답
     assert body["titlePair"] is None
-    # 프레임 API 는 kind 라벨을 싣는다
-    frames = client.get("/api/episodes/hr-basics-01/frames?preset=review").json()["frames"]
+    # 프레임 유스케이스는 kind 라벨을 싣는다
+    frames = studio.frames("hr-basics-01", preset="review")["frames"]
     assert {f["kind"] for f in frames} == {"title", "bright", "dark", "motion", "last"}

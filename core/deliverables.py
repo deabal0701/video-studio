@@ -31,11 +31,13 @@ def build(episode_dir: Path, projects_root: Path) -> dict[str, Any]:
     eid = episode_dir.name
     scenes, course, n, ep_title, ep_subtitle = _episode_meta(episode_dir)
 
+    chapters_error = None
     try:
         chapter_lines = [l for l in engine_io.chapters(eid, projects_root).splitlines()
                          if re.match(r"^\d\d:\d\d ", l)]
-    except Exception as err:  # noqa: BLE001 — 캐시 없음 등은 빈 챕터로
+    except Exception as err:  # noqa: BLE001 — 캐시 없음 등은 빈 챕터로 가되, 사유는 드러낸다
         chapter_lines = []
+        chapters_error = str(err)[-300:]  # 조용히 비면 배포물이 반쪽 — 화면이 사유를 보여준다 (07 결함 4)
 
     course_title = course.get("title", "")
     title = f"[{course_title}] {n}강 — {ep_title}" if course_title else f"{eid} — {ep_title}"
@@ -60,6 +62,7 @@ def build(episode_dir: Path, projects_root: Path) -> dict[str, Any]:
         "title": title,
         "description": description,
         "chapters": chapter_lines,
+        "chaptersError": chapters_error,
         "srt": [f.name for f in srt],
         "thumbnails": [f.name for f in thumbs],
         "subtitle": ep_subtitle,
@@ -69,7 +72,7 @@ def build(episode_dir: Path, projects_root: Path) -> dict[str, Any]:
 def write_youtube_md(episode_dir: Path, title: str, description: str) -> Path:
     """youtube.md 저장 — 배포 준비물의 파일 정본 (02 파일 지도)."""
     out = episode_dir / "youtube.md"
-    out.write_text(f"# {title}\n\n{description}\n", encoding="utf-8")
+    out.write_text(f"# {title}\n\n{description}\n", encoding="utf-8", newline="\n")
     return out
 
 

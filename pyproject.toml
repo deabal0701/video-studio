@@ -7,21 +7,22 @@ name = "video-studio"
 version = "0.0.1"
 description = "강좌(시리즈) 영상 제작 스튜디오 — 파일 SSOT · FastAPI · engine(Node CLI) subprocess"
 requires-python = ">=3.12"
+# 5-2 (07_desktop): HTTP 계층 제거 — fastapi·uvicorn·sse-starlette·watchfiles 삭제.
+# 파일 감시는 Qt(QFileSystemWatcher — 5-3), UI 는 별도 qt-venv(PySide6 — conda 충돌,
+# .claude/memory/pyside6-environment.md).
 dependencies = [
-  "fastapi>=0.110",
-  "uvicorn[standard]>=0.29",
   "pydantic>=2.7",
-  "sse-starlette>=2.1",
-  "watchfiles>=0.21",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "pytest-timeout>=2.3", "httpx>=0.27"]
-# 에이전트(4단계) — 키 없으면 앱이 이 그룹 없이도 완결 동작한다
+dev = ["pytest>=8", "pytest-timeout>=2.3"]
+# 에이전트 — 키 없으면 앱이 이 그룹 없이도 완결 동작한다 (D15: openai 는 5-6 에서 추가)
 agent = ["claude-agent-sdk>=0.2"]
+# D15 OpenAI 경로 (선택) — 키가 있어도 미설치면 사유를 화면이 알린다
+agent-openai = ["openai>=1.40"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["core", "api"]
+packages = ["core"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

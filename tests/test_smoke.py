@@ -1,32 +1,18 @@
-"""0단계 골격 스모크 — 모듈 임포트·LocalFS·스키마 라운드트립·인덱서·엔진 inspect 계약.
+"""0단계 골격 스모크 — 모듈 임포트·스키마 라운드트립·인덱서·엔진 inspect 계약.
 
 paths.py 실측 5행 고정 테스트와 무손실(diff 0) 직렬화 테스트는 2단계 수용 기준
 (06_roadmap "테스트 전략")이라 여기 없다.
 """
 
-import json
 import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
 
 from core import ENGINE_DIR, FIXTURES_DIR
 from core import engine_io, indexer, paths, schema, validate
-from core.storage import LocalFS
 
 FIXTURE_EPISODE = FIXTURES_DIR / "hr-basics-01"
-
-
-def test_localfs_roundtrip_and_etag(tmp_path: Path):
-    fs = LocalFS(tmp_path)
-    fs.write_bytes("a/b.txt", "한글".encode())
-    assert fs.read_bytes("a/b.txt").decode() == "한글"
-    tag1 = fs.etag("a/b.txt")
-    fs.write_bytes("a/b.txt", "바뀜".encode())
-    assert fs.etag("a/b.txt") != tag1
-    with pytest.raises(ValueError):
-        fs.abspath("../탈출")
 
 
 def test_scenes_fixture_roundtrip_semantic(tmp_path: Path):

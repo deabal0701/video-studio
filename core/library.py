@@ -154,7 +154,7 @@ def add_asset(kind: str, url: str, *, license: str, source: str | None = None,
         if lines[i].startswith("|"):
             end = i
     lines.insert(end + 1, row)
-    catalog.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    catalog.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
     # ref 는 목록 API 와 같은 규약 — scenes 기입값(엔진 루트 기준)
     return {"kind": kind, "name": file_name,

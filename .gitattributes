@@ -1,0 +1,22 @@
+# 개행 정본 = LF (02 직렬화 규약 — Node 엔진 writeJson 과 동일).
+# core.autocrlf 가 체크아웃 때 CRLF 로 바꾸면 바이트 무손실 라운드트립이 깨진다 (07 결함 5).
+* text=auto eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.js text eol=lf
+*.py text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.vue text eol=lf
+
+# 바이너리
+*.png binary
+*.jpg binary
+*.mp3 binary
+*.mp4 binary
+*.woff2 binary
+*.docx binary
+
+# 배치는 CRLF 여야 안전하다 (cmd.exe)
+*.bat text eol=crlf
+*.ps1 text eol=crlf

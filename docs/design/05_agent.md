@@ -1,8 +1,10 @@
 # 05 — 에이전트 설계
 
-> 결론 먼저: **Claude Agent SDK (Python) · LangChain/LangGraph 미채택 · 하이브리드**
+> 결론 먼저: **Claude Agent SDK (Python) 기본 · LangChain/LangGraph 미채택 · 하이브리드**
 > (에이전트는 저작·평가만, 나머지는 결정적 코드). 근거는 [01_architecture.md](01_architecture.md)의
 > 비교표 — 여기서는 실행 설계만 다룬다.
+> **2026-08-21 (D15): 제공자 이중화** — Claude 경로에 더해 OpenAI 경로를 선택 지원하고,
+> `AGENT_TEST_MODE` 로 테스트 시 최저가 모델을 강제한다 (아래 "제공자 이중화" 절).
 
 ## 왜 이 구조인가 — 한 단락 요약
 
@@ -74,9 +76,30 @@ async for message in query(prompt=task_prompt, options=options):
 | 잡 통합 | 에이전트 실행도 **같은 잡 큐**의 잡 (kind=agent). SSE 로 진행 릴레이, 취소 지원 |
 | 파일 경계 | 해당 회차 폴더 + 스킬(읽기) 밖 쓰기 금지 — disallowedTools 와 프롬프트 규칙으로 이중 |
 | 편집 충돌 | 에이전트 잡 실행 중 그 회차는 UI 편집 잠금 (같은 파일을 동시에 쓰면 안 됨). 종료 후 watchfiles 가 UI 갱신 |
-| 키 | `.env` 의 `ANTHROPIC_API_KEY` (agent.mjs 와 동일 규약 — 구독 불가·종량제). 키 없으면 에이전트 메뉴가 통째로 비활성 + 안내. **앱의 다른 전부는 키 없이 동작** |
-| 비용 가드 | maxTurns + 지출 상한 안내(발급 절차는 video-agent/README 검증분 재사용) + `usage` 미터 화면 |
-| 모델 | 기본 최신 Opus 계열, 설정으로 변경. 도식 생성(B)은 Sonnet 급으로 낮출 수 있게 |
+| 키 | `.env` 의 `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` — 셸 → 저장소 `.env` → `~/.claude/develop-video.env`(공용) 순 (엔진과 동일 규약). 설치본은 첫 실행 위저드가 공용 파일에 기록. **선택 제공자의 키가 없으면 에이전트 메뉴만 비활성 + 사유 — 앱의 다른 전부는 키 없이 동작** |
+| 비용 가드 | maxTurns + `AGENT_TEST_MODE`(최저가 강제) + `usage` 미터 화면 |
+| 모델 | 작업별 기본(`TASK_MODELS`) + `.env` `AGENT_MODEL_DRAFT/DIAGRAM/REVIEW` 오버라이드. **현행 운영: 전부 Haiku** (2026-08-15 사용자 지시 — 4단계 실키 완주 $0.46/편). Opus/Sonnet 은 명시 지시 시 |
+
+## 제공자 이중화 (D15 — 2026-08-21 사용자 지시)
+
+전환 스위치는 데스크톱 **설정 화면** (.env 가 정본, 화면은 그 편집기).
+
+```
+AGENT_PROVIDER=claude|openai      # 기본 claude
+AGENT_TEST_MODE=1                 # 켜면 제공자 불문 최저가 모델 강제 — "테스트는 싸게"
+OPENAI_API_KEY=…  OPENAI_MODEL=…  # openai 경로. 모델 미지정 시 최저가 티어 기본
+```
+
+| | claude (기본) | openai (선택) |
+|---|---|---|
+| 구현 | 기존 `claude-agent-sdk` 경로 그대로 — 에이전틱(스킬 문서를 직접 읽고 파일 순회·기입) | 신규 — chat completions 구조화 생성으로 **내용만** 받고, plan.md·facts.md·scenes.json 파일 기입은 우리 코드가 결정적으로 수행 |
+| 규약 주입 | `.claude/skills/` 네이티브 로드 (settingSources) | 스킬 규약의 기계화 가능 요지를 프롬프트에 요약 주입 — 원칙 3 의 예외를 명시적으로 감수 (품질은 claude 경로 우위) |
+| 평가(C) | 완성본·프레임을 SDK 도구로 직접 읽음 | 검수 프레임 4+1장을 vision 입력으로 전달 |
+| 테스트 모델 | `claude-haiku-4-5` ($1/$5 MTok) | nano/mini 티어 (OPENAI_MODEL 로 교체) |
+| 키 게이트 | 제공자별 독립 — 선택된 제공자의 키만 검사 |
+
+openai 경로의 존재 이유: 비용 비교, 그리고 조직 정책상 OpenAI 키만 가진 담당자의 대안.
+초안 품질의 기본 권장은 claude 경로다.
 
 ## 사람 ↔ 에이전트 동선 (제품 관점)
 

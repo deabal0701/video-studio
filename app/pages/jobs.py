@@ -1,0 +1,120 @@
+"""작업 큐 (03_screens "작업 큐" 행) — 전역 잡 목록·취소·AI 사용량 미터.
+
+동시성 정책을 화면에 적어 둔다 (04_api 표): 같은 회차 직렬 · 전역 동시 2 ·
+사전점검 치명이면 굽지 않음. "왜 내 빌드가 기다리는가"를 사람이 읽고 이해하게.
+잡 상태 변화는 하단 상태바와 같은 신호(Bridge.job_event)로 받아 자동 갱신한다.
+"""
+
+from __future__ import annotations
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView, QLabel,
+                               QPushButton, QTableWidget, QTableWidgetItem,
+                               QVBoxLayout, QWidget)
+
+from .. import theme
+from ..bridge import error_text, run_bg
+
+STATE_LABEL = {"queued": ("대기", theme.INK_3), "preflight": ("사전점검", theme.WARNING),
+               "running": ("진행 중", theme.WARNING), "verifying": ("검수 자료", theme.WARNING),
+               "done": ("완료", theme.SUCCESS), "failed": ("실패", theme.DANGER),
+               "blocked": ("차단됨", theme.DANGER), "canceled": ("취소됨", theme.INK_3)}
+ACTIVE = {"queued", "preflight", "running", "verifying"}
+
+
+class JobsPage(QWidget):
+    def __init__(self, make_studio):
+        super().__init__()
+        self._make_studio = make_studio
+        self._jobs: list[dict] = []
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(theme.PAGE_PAD, 24, theme.PAGE_PAD, 24)
+        head = QHBoxLayout()
+        title = QLabel("작업 큐")
+        title.setObjectName("pageTitle")
+        head.addWidget(title)
+        head.addStretch(1)
+        self.usage = QLabel("")
+        self.usage.setProperty("chip", "info")
+        head.addWidget(self.usage)
+        self.refresh_btn = QPushButton("새로고침")
+        self.refresh_btn.clicked.connect(self.refresh)
+        head.addWidget(self.refresh_btn)
+        outer.addLayout(head)
+        desc = QLabel("빌드는 동시에 2편까지 돕니다. 같은 회차는 순서대로 하나씩 굽고, "
+                      "사전점검에서 치명 결함이 나오면 굽지 않고 멈춥니다.")
+        desc.setObjectName("pageDesc")
+        desc.setWordWrap(True)
+        outer.addWidget(desc)
+
+        self.table = QTableWidget(0, 4)
+        self.table.setHorizontalHeaderLabels(["작업", "회차", "상태", "메모"])
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setColumnWidth(0, 90)
+        self.table.setColumnWidth(1, 220)
+        self.table.setColumnWidth(2, 120)
+        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.table.itemSelectionChanged.connect(self._on_select)
+        outer.addWidget(self.table, 1)
+
+        row = QHBoxLayout()
+        self.cancel_btn = QPushButton("선택한 작업 중단")
+        self.cancel_btn.setObjectName("danger")
+        self.cancel_btn.setEnabled(False)
+        self.cancel_btn.clicked.connect(self._cancel)
+        self.result = QLabel("")
+        self.result.setObjectName("caption")
+        row.addWidget(self.cancel_btn)
+        row.addWidget(self.result, 1)
+        outer.addLayout(row)
+
+    def refresh(self) -> None:
+        studio = self._make_studio()
+
+        def get():
+            return studio.jobs(), studio.agent_usage()
+
+        run_bg(get, done=self._fill, fail=lambda e: self.result.setText(error_text(e)))
+
+    def _fill(self, result) -> None:
+        jobs, usage = result
+        self._jobs = jobs
+        self.table.setRowCount(len(jobs))
+        for i, j in enumerate(jobs):
+            label, color = STATE_LABEL.get(j["state"], (j["state"], theme.INK_2))
+            state = QTableWidgetItem(label)
+            state.setForeground(Qt.red if j["state"] in ("failed", "blocked") else Qt.black)
+            for col, item in enumerate([QTableWidgetItem(j["jobId"]),
+                                        QTableWidgetItem(j["episodeId"]), state,
+                                        QTableWidgetItem(j.get("error") or "")]):
+                self.table.setItem(i, col, item)
+        cost = usage.get("totalCostUsd") or 0
+        self.usage.setText(f"AI 사용 {usage.get('count', 0)}회 · ${cost:.4f}"
+                           if usage.get("count") else "AI 사용 기록 없음")
+        active = sum(1 for j in jobs if j["state"] in ACTIVE)
+        self.result.setText(
+            f"진행 중 {active}건 · 전체 {len(jobs)}건" if jobs
+            else "아직 실행한 작업이 없습니다 — 회차 화면에서 [빌드] 를 누르면 여기에 쌓입니다.")
+
+    def _on_select(self) -> None:
+        row = self.table.currentRow()
+        ok = 0 <= row < len(self._jobs) and self._jobs[row]["state"] in ACTIVE
+        self.cancel_btn.setEnabled(ok)
+
+    def _cancel(self) -> None:
+        row = self.table.currentRow()
+        if not (0 <= row < len(self._jobs)):
+            return
+        jid, studio = self._jobs[row]["jobId"], self._make_studio()
+        run_bg(lambda: studio.cancel_job(jid),
+               done=lambda out: (self.result.setText(
+                   f"{jid} 중단 요청됨" if out.get("canceled") else f"{jid} 는 중단할 수 없는 상태입니다"),
+                   self.refresh()),
+               fail=lambda e: self.result.setText(error_text(e)))
+
+    def on_job_event(self, _job_id: str, _episode_id: str, ev: dict) -> None:
+        """상태 변화만 반영 — 로그 줄마다 새로고침하면 표가 떨린다."""
+        if ev.get("kind") == "state" and self.isVisible():
+            self.refresh()

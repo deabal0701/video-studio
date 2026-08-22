@@ -1,12 +1,18 @@
-# 04 — API · 잡 큐 · engine 호출 계약
+# 04 — 유스케이스 계약 (구 API) · 잡 큐 · engine 호출 계약
+
+> **2026-08-21 데스크톱 전환 (D12):** HTTP 계층은 제거된다. 아래 REST 표의 각 행은
+> `core/facade.py` 유스케이스의 계약으로 **1:1 승계**된다 — 경로 표기는 유스케이스 이름의
+> 역할을 하고, 상태 코드는 예외 종류로 바뀐다 (409→`EtagMismatch`, 422→`ValidationError` 류).
+> SSE 는 잡 큐 이벤트의 Qt Signal 릴레이로 대체된다 ([07_desktop.md](07_desktop.md) 대응표).
+> 잡 상태머신·동시성 정책·engine 호출 계약은 변경 없이 그대로다.
 
 ## 원칙
 
-- REST + SSE. 웹소켓 불요 (서버→클라 단방향 스트림뿐).
-- 모든 쓰기(파일 저장)는 **If-Match: `<etag>`** (etag = 파일 mtime+size 해시). 불일치 409 →
-  클라가 diff 표시 후 사람이 병합. 파일 SSOT 라 낙관적 잠금이 유일한 정답.
-- 자원 id = 폴더명 (`hr-basics`, `hr-basics-01`). URL 인코딩 주의 (한글 폴더 허용).
-- 에러: `{code, message, hint?}`. 검증 실패는 422 + 필드별 상세.
+- 모든 쓰기(파일 저장)는 **etag 검사** (etag = 파일 mtime+size 해시 — 구 If-Match). 불일치면
+  현재 내용을 동봉해 실패 → 화면이 diff 표시 후 사람이 병합. 파일 SSOT 라(앱 밖에서
+  에디터·Claude Code 가 같은 파일을 고친다) 낙관적 잠금이 유일한 정답 — HTTP 가 없어져도 유지.
+- 자원 id = 폴더명 (`hr-basics`, `hr-basics-01`).
+- 에러: `{code, message, hint?}` 구조의 예외. 검증 실패는 필드별 상세 동봉.
 
 ## REST 설계
 
@@ -20,10 +26,14 @@
 | `PUT /api/courses/{cid}` | course.json 저장 (If-Match) → 일관성 재검사 결과 반환 |
 | `GET /api/courses/{cid}/episodes` | 커리큘럼 보드 데이터 (episodes[] × 파생 상태 join) |
 | `POST /api/courses/{cid}/episodes` | 회차 스캐폴딩 (템플릿+voice/render/palette 주입+골격 클립) |
-| `GET /api/episodes/{id}` | scenes.json(자산 참조로 역산된 형태) + etag + 파생 상태 |
-| `PUT /api/episodes/{id}` | 저장: 자산 참조 → 경로 계산 기입 → `_` 보존 직렬화 → 검증 결과 동봉 |
-| `GET/PUT /api/episodes/{id}/plan` | plan.md 표 라운드트립 |
-| `POST /api/episodes/{id}/plan/apply` | 구성표 → 클립 골격 반영 |
+| `GET /api/episodes/{id}` | scenes.json 원문 + etag + 파생 상태 |
+| `PUT /api/episodes/{id}` | 저장: `_` 보존 직렬화 → 검증 결과 + **pathIssues**(경로 역산 실존 검사) 동봉. 경로 기입은 UI 피커+paths.py 가 입력 시점에 수행 — "자산 참조 역산 응답" 방식은 3단계에서 이 구도로 대체 확정 (2026-08-15 실측) |
+| `GET/PUT /api/episodes/{id}/plan` | plan.md 라운드트립 (④ 표 편집기) |
+| `POST /api/episodes/{id}/plan/apply` | 구성표 → 클립 골격 반영 (없는 구간만 표 순서 자리에 삽입) |
+| `POST /api/episodes/{id}/sync-course` | voice·render 를 course 값으로 맞춤 (일관성 [강좌 값으로 맞추기]) |
+| `GET /api/episodes/{id}/inspect` | inspect.js 원본 JSON — ⑤ 에디터 재료 (templates 받는 키·audioCache 실측·media) |
+| ~~`GET /api/episodes/{id}/files?path=…`~~ | **폐기 (2026-08-22 코드 리뷰).** 회차 폴더 원본 파일 읽기용이었으나 Qt 화면이 끝내 쓰지 않았다 — ⑤ 프리뷰는 `template_preview` + `paths.invert` 로 실제 경로를 직접 연다. `facade.episode_file` 삭제 |
+| `POST /api/courses/{cid}/brandkit/apply` | 프리셋 타이틀 카드·스팅어 재카피 (③ — 덮어쓰기 확인은 화면 몫) |
 
 ### 검증·빌드·검수
 
@@ -38,9 +48,12 @@
 | `GET /api/episodes/{id}/frames?t=12.5` | 임의 시각 프레임 |
 | `GET /api/episodes/{id}/silence` | silencedetect + 원인 분류 (`uniform-breath` vs `clip-end`) |
 | `GET /api/episodes/{id}/consistency` | voice/render ≡ course + 직전 회차 타이틀 프레임 쌍 |
+| `GET /api/episodes/{id}/subtitle-check` | 자막 대조 — .srt ↔ 대본 공백무시 diff (어긋나면 첫 지점 전후 동봉) |
+| `POST /api/episodes/{id}/bg-frame` | B롤 videoStart 프레임 → bg/ 저장 → html 기준 src 상대경로 반환 (⑤ title 특수 버튼) |
 | `GET/PUT /api/episodes/{id}/review` | 검수 체크리스트 기록 (frames 확인 체크 등 — `out/review.json`) |
 | `GET /api/episodes/{id}/deliverables` | 제목·설명·챕터(chapters.js)·srt 경로·썸네일 후보 |
-| `GET /api/media/{id}/**` | out/ 정적 서빙 (mp4 Range 지원 — 재생용) |
+| `POST /api/episodes/{id}/deliverables/save` | 편집한 제목·설명 → youtube.md 저장 (⑦) |
+| `GET /api/media/{id}/**` | out/ 산출물 접근 (데스크톱은 파일 경로 직접 반환 — QMediaPlayer 가 읽음) |
 
 ### 자산·템플릿·TTS
 
@@ -48,10 +61,11 @@
 |---|---|
 | `GET /api/assets?kind=broll\|bgm\|photo\|font` | 라이브러리 (길이·해상도·라이선스 메타) |
 | `POST /api/assets` | `{kind, url, name?}` — fetch.js 로직 (허용 호스트 검증) + 라이선스 필수 |
+| `GET /api/assets/file?kind=…&name=…` | 소재 실물 (BGM 재생·B롤 프리뷰용) |
 | `GET /api/templates?scope=common\|{episodeId}` | 모션 템플릿 + `paramsKeys` + 썸네일 |
-| `GET /api/templates/preview?file=…&params=…` | iframe 용 렌더 문서 (preview.js) |
+| `GET /api/templates/preview?file=…` | QWebEngineView 용 렌더 문서 (preview.js — params 는 URL 질의). **file 은 갤러리 목록의 화이트리스트만 허용** — 임의 경로 통과 금지 (2026-08-21 리뷰: HTTP 시절 저장소 밖 파일 읽기 가능 결함) |
 | `POST /api/tts/sample` | `{text, voice}` → mp3 (미리듣기 — edge 무료) |
-| `POST /api/episodes/{id}/tts` | 특정 클립만 TTS 갱신 (`--only tts` 부분판) |
+| ~~`POST /api/episodes/{id}/tts`~~ | **폐기 (2026-08-22 코드 리뷰).** `submit_build(only="tts")` 한 줄 래퍼(`facade.refresh_tts`)였고 화면은 `submit_build` 를 직접 부른다 — 같은 일을 하는 두 번째 문이라 삭제 |
 
 ### 에이전트 (4단계 — [05_agent.md](05_agent.md))
 
@@ -60,7 +74,8 @@
 | `POST /api/agent/draft` | `{episodeId, brief, sourceDocs[]}` → 잡 (plan.md+facts.md+scenes.json 초안) |
 | `POST /api/agent/diagram` | `{episodeId, clipId, describe}` → 잡 (motion html 생성) |
 | `POST /api/agent/review` | `{episodeId}` → 잡 (reviewer — 점수·지적) |
-| `GET /api/agent/usage` | 토큰·비용 미터 |
+| `GET /api/agent/status` | 게이트 — 선택 제공자(D15: claude\|openai)의 키 유무·모델. 없으면 버튼 비활성+사유 |
+| `GET /api/agent/usage` | 토큰·비용 미터 (`.cache/agent-usage.jsonl` 적산) |
 
 ## 빌드 잡 — 상태머신·큐 정책
 
@@ -85,17 +100,19 @@ queued → preflight → running(tts → record? → compose) → verifying(프�
 
 잡 기록: `jobs/` (SQLite). 로그 파일은 `out/<id>/work/build-<jobId>.log` — 파일 SSOT 원칙 유지.
 
-## SSE 이벤트 스키마
+## 잡 이벤트 스키마 (구 SSE → Qt Signal 페이로드)
 
 ```
-event: progress   data: {"jobId","phase":"tts|record|compose|verify","step":"s1a","pct":44,"msg":"모션 렌더 7/16"}
-event: log        data: {"jobId","line":"  · hook   8.9s  이 사람은…"}
-event: done       data: {"jobId","result":{"files":[…],"duration":296.2}}
-event: failed     data: {"jobId","error":"…","logTail":[…]}
+progress   {"jobId","phase":"tts|record|compose|verify","step":"s1a","pct":44,"msg":"모션 렌더 7/16"}
+log        {"jobId","line":"  · hook   8.9s  이 사람은…"}
+done       {"jobId","result":{"files":[…],"duration":296.2}}
+failed     {"jobId","error":"…","logTail":[…]}
 ```
 
-phase·step 은 build.js stdout 을 파싱해 얻는다 (아래 계약). 전역 스트림
-`GET /api/events` 도 제공 (상단 바 칩·커리큘럼 보드 실시간 갱신용 — 잡 상태 변화 + 파일 외부 변경 알림).
+phase·step 은 build.js stdout 을 파싱해 얻는다 (아래 계약). 이벤트 원천은 동일하게
+`JobQueue.subscribe()`(잡별)·`listener` 훅(전역)이고, 데스크톱에서는 qtbridge 가 이를
+Qt Signal 로 릴레이한다 — 하단 상태바 칩·보드 실시간 갱신용. 파일 외부 변경 알림은
+QFileSystemWatcher 가 같은 채널로 발행한다.
 
 ## engine 호출 계약 (core/engine_io.py)
 

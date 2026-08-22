@@ -14,9 +14,11 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Callable
 
-from .. import REPO_ROOT
+from .. import REPO_ROOT, env
+from . import providers
 
-USAGE_FILE = REPO_ROOT / ".cache" / "agent-usage.jsonl"
+# 사용량 미터는 파생물 — 설치 모드에선 데이터 폴더에 쌓인다 (설치 폴더 무쓰기)
+USAGE_FILE = env.cache_dir() / "agent-usage.jsonl"
 
 # ── 환경 설정 조회 — 셸 → 저장소 .env → 홈 공용 파일 순 (engine util 과 같은 규약) ──
 def _env_value(name: str) -> str | None:
@@ -33,34 +35,30 @@ def _env_value(name: str) -> str | None:
     return None
 
 
-# ── 키 게이트 — 없으면 메뉴 통째로 비활성 (앱의 다른 전부는 키 없이 동작) ──────
-def _find_key() -> str | None:
-    return _env_value("ANTHROPIC_API_KEY")
+# ── 제공자·모델 (D15 — 선택·해석은 providers 가 정본) ─────────────────────────
+def provider() -> str:
+    return providers.provider(_env_value)
 
 
-# ── 작업별 모델 (05_agent: 기본 최신 Opus 계열, 도식은 Sonnet 급 — 설정으로 변경) ──
-# .env 의 AGENT_MODEL_DRAFT / AGENT_MODEL_DIAGRAM / AGENT_MODEL_REVIEW 로 오버라이드.
-TASK_MODELS = {
-    "draft": "claude-opus-5",     # 열린 저작 — 규약 준수·구성력이 본체
-    "diagram": "claude-sonnet-5", # html 1장 생성 — 비용을 낮춘다
-    "review": "claude-opus-5",    # 평가 일관성
-}
+def test_mode() -> bool:
+    return providers.test_mode(_env_value)
+
+
+# ── 키 게이트 — 선택한 제공자의 키만 검사 (앱의 다른 전부는 키 없이 동작) ──────
+def _find_key(prov: str | None = None) -> str | None:
+    return _env_value(providers.KEY_ENV[prov or provider()])
 
 
 def task_model(kind: str) -> str:
-    return _env_value(f"AGENT_MODEL_{kind.upper()}") or TASK_MODELS[kind]
+    return providers.task_model(_env_value, kind)
 
 
 def agent_enabled() -> dict[str, Any]:
-    models = {k: task_model(k) for k in KINDS}
-    if _find_key():
-        return {"enabled": True, "models": models}
-    return {"enabled": False, "models": models,
-            "reason": "ANTHROPIC_API_KEY 없음 — .env 에 넣으면 켜집니다 (종량제 키, 구독 불가)"}
+    return providers.status(_env_value)
 
 
 # ── 작업 3종 규칙 — 상세 규약은 스킬 문서가 정본, 여기는 과업 지시만 ────────────
-KINDS = ("draft", "diagram", "review")
+KINDS = providers.KINDS
 
 TASK_RULES = {
     "draft": (
@@ -126,9 +124,20 @@ def usage_summary() -> dict[str, Any]:
 def make_agent_work(kind: str, episode_id: str, payload: dict[str, Any],
                     projects_root: Path,
                     query_fn: Callable | None = None) -> Callable[[], Iterator[dict]]:
-    """잡 큐에 실을 work 제너레이터 팩토리. query_fn 주입으로 SDK 없이 테스트한다."""
+    """잡 큐에 실을 work 제너레이터 팩토리. query_fn 주입으로 SDK 없이 테스트한다.
+
+    제공자에 따라 갈린다 (D15): openai 는 구조화 생성 + 결정적 파일 기입(openai_runner),
+    claude 는 아래 에이전틱 SDK 경로. query_fn 주입은 claude 경로 테스트용이다.
+    """
     if kind not in KINDS:
         raise ValueError(f"모르는 에이전트 작업: {kind}")
+
+    if query_fn is None and provider() == "openai":
+        from . import openai_runner
+
+        return openai_runner.make_work(kind, episode_id, payload, projects_root,
+                                       key=_find_key("openai") or "",
+                                       model=task_model(kind))
 
     def work() -> Iterator[dict[str, Any]]:
         yield {"kind": "log", "line": f"에이전트 {kind} 시작 — {episode_id}"}
@@ -188,7 +197,8 @@ def make_agent_work(kind: str, episode_id: str, payload: dict[str, Any],
             for ev in loop.run_until_complete(drain()):
                 yield ev
             usage = task.result()
-            _record_usage(kind, episode_id, {"model": task_model(kind), **(usage or {})})
+            _record_usage(kind, episode_id,
+                          {"provider": "claude", "model": task_model(kind), **(usage or {})})
             yield {"kind": "log", "line": f"에이전트 {kind} 완료"
                    + (f" — ${usage.get('costUsd'):.4f}" if usage.get("costUsd") else "")}
         finally:

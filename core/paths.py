@@ -35,8 +35,17 @@ class RefKind(str, Enum):
 
 
 def relpath(target: Path, base_dir: Path) -> str:
-    """base_dir 기준 POSIX 상대경로. 모든 계산의 공통 말단."""
-    return Path(os.path.relpath(Path(target).resolve(), Path(base_dir).resolve())).as_posix()
+    """base_dir 기준 POSIX 상대경로. 모든 계산의 공통 말단.
+
+    드라이브가 다르면(Windows — 예: 설치 D:·데이터 C:) 상대화가 불가능하므로 절대경로를
+    기입한다 — 엔진의 path.resolve 는 절대경로를 그대로 쓰고, invert 의 pathlib 결합도
+    절대 성분이 이긴다 (5-1 실측: 구 저장소가 C: 라 잠복했던 결함).
+    """
+    target = Path(target).resolve()
+    try:
+        return Path(os.path.relpath(target, Path(base_dir).resolve())).as_posix()
+    except ValueError:  # 다른 드라이브 — 상대경로가 존재하지 않는다
+        return target.as_posix()
 
 
 def compute(kind: RefKind, target: Path, *, scenes_dir: Path | None = None,

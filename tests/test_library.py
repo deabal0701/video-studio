@@ -3,12 +3,9 @@
 import subprocess
 
 import pytest
-from fastapi.testclient import TestClient
 
 from core import library
-from api.main import app
-
-client = TestClient(app)
+from core.facade import Invalid, UpstreamError
 
 
 def test_parse_catalog_real_file():
@@ -18,37 +15,37 @@ def test_parse_catalog_real_file():
     assert cat["broll/office-talk.mp4"]["source"].startswith("https://www.pexels.com")
 
 
-def test_list_assets_joins_catalog_and_probe():
-    bgm = client.get("/api/assets", params={"kind": "bgm"}).json()
+def test_list_assets_joins_catalog_and_probe(studio):
+    bgm = studio.assets("bgm")
     loop = next(a for a in bgm if a["name"] == "mixkit-623-loop.mp3")
     assert loop["licensed"] is True and loop["license"] == "Mixkit Free License"
     assert loop["duration"] > 200          # ffprobe 실측 (264s)
     assert loop["ref"] == "assets/bgm/mixkit-623-loop.mp3"  # scenes 기입값 (엔진 루트 기준)
 
-    broll = client.get("/api/assets", params={"kind": "broll"}).json()
+    broll = studio.assets("broll")
     talk = next(a for a in broll if a["name"] == "office-talk.mp4")
     assert (talk["width"], talk["height"]) == (1920, 1080)
 
-    fonts = client.get("/api/assets", params={"kind": "font"}).json()
+    fonts = studio.assets("font")
     assert any(f["name"] == "PretendardVariable.woff2" for f in fonts)
 
-    assert client.get("/api/assets", params={"kind": "없는종류"}).status_code == 422
+    with pytest.raises(Invalid):
+        studio.assets("없는종류")
 
 
-def test_add_requires_license():
-    r = client.post("/api/assets", json={"kind": "bgm", "url": "https://assets.mixkit.co/x.mp3"})
-    assert r.status_code == 422
-    assert "라이선스" in r.json()["detail"]["message"]
+def test_add_requires_license(studio):
+    with pytest.raises(Invalid) as e:
+        studio.add_asset(kind="bgm", url="https://assets.mixkit.co/x.mp3", license="")
+    assert "라이선스" in e.value.message
 
 
-def test_add_rejected_host_propagates():
-    r = client.post("/api/assets", json={
-        "kind": "bgm", "url": "https://youtube.com/x.mp3", "license": "?"})
-    assert r.status_code == 502
-    assert "허용되지 않은 호스트" in r.json()["detail"]["message"]
+def test_add_rejected_host_propagates(studio):
+    with pytest.raises(UpstreamError) as e:
+        studio.add_asset(kind="bgm", url="https://youtube.com/x.mp3", license="?")
+    assert "허용되지 않은 호스트" in e.value.message
 
 
-def test_add_appends_catalog_row(tmp_path, monkeypatch):
+def test_add_appends_catalog_row(tmp_path):
     """다운로드는 가짜 runner 로 — CATALOG 행 추가 로직만 검증 (실 CATALOG 무변경)."""
     cat = tmp_path / "CATALOG.md"
     cat.write_text("# 목록\n\n## 받아 둔 BGM\n\n| 파일 | 길이 | 출처 | 라이선스 | 용도 메모 |\n"

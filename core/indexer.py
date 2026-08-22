@@ -12,10 +12,11 @@ import hashlib
 import json
 import re
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import REPO_ROOT
+from . import env
 
 _EPISODE_RE = re.compile(r"^(?P<course>.+)-(?P<n>\d{2,})$")
 
@@ -55,12 +56,16 @@ class Index:
 
     def __init__(self, root: Path, cache_dir: Path | None = None):
         self.root = Path(root)
-        cache_dir = cache_dir or (REPO_ROOT / ".cache")
+        # 정본은 env.cache_dir() — 설치 모드에선 데이터 폴더다 (설치 폴더는 읽기 전용)
+        cache_dir = cache_dir or env.cache_dir()
         cache_dir.mkdir(parents=True, exist_ok=True)
         stamp = hashlib.sha1(str(self.root).encode()).hexdigest()[:10]
         self.db_file = cache_dir / f"index-{stamp}.sqlite"
 
     def _connect(self) -> sqlite3.Connection:
+        """주의: sqlite3 의 `with con:` 은 커밋만 하고 닫지 않는다 — 열린 연결이 남으면
+        Windows 에서 캐시 삭제("언제나 삭제 가능" 규약)가 WinError 32 로 막힌다 (5-1 실측).
+        호출부는 `with closing(self._connect()) as con, con:` 으로 닫힘+트랜잭션을 함께 건다."""
         con = sqlite3.connect(self.db_file)
         con.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
         con.execute("CREATE TABLE IF NOT EXISTS courses "
@@ -78,7 +83,7 @@ class Index:
 
     def rescan(self) -> None:
         courses, singles = scan(self.root)
-        with self._connect() as con:
+        with closing(self._connect()) as con, con:
             con.execute("DELETE FROM courses")
             con.execute("DELETE FROM episodes")
             for c in courses:
@@ -100,14 +105,14 @@ class Index:
         return meta.get("schema") == str(SCHEMA_VERSION) and meta.get("signature") == self._signature()
 
     def ensure_fresh(self) -> None:
-        with self._connect() as con:
+        with closing(self._connect()) as con, con:
             fresh = self._fresh(con)
         if not fresh:
             self.rescan()
 
     def courses(self) -> list[dict]:
         self.ensure_fresh()
-        with self._connect() as con:
+        with closing(self._connect()) as con, con:
             rows = con.execute("SELECT id, title, episode_count FROM courses ORDER BY id").fetchall()
             out = [{"id": r[0], "title": r[1], "episodeCount": r[2],
                     "episodes": [e[0] for e in con.execute(

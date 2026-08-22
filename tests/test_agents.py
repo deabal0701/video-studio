@@ -3,21 +3,19 @@
 import time
 
 import pytest
-from fastapi.testclient import TestClient
 
 from core import FIXTURES_DIR
 from core.agents import runner
+from core.facade import AgentDisabled, Studio
 from core.jobs import JobQueue, JobState
-from api.main import app
 
-client = TestClient(app)
+pytestmark = pytest.mark.usefixtures("fixtures_root")
 
 
 @pytest.fixture(autouse=True)
 def no_key(monkeypatch, tmp_path):
     import os
 
-    monkeypatch.setenv("VIDEO_STUDIO_PROJECTS", str(FIXTURES_DIR))
     monkeypatch.setattr(runner, "USAGE_FILE", tmp_path / "usage.jsonl")
     # 개발 머신의 .env(실키·모델 오버라이드)와 격리 — 테스트는 프로세스 환경변수만 본다
     monkeypatch.setattr(runner, "_env_value", lambda name: os.environ.get(name) or None)
@@ -26,22 +24,22 @@ def no_key(monkeypatch, tmp_path):
         monkeypatch.delenv(k, raising=False)
 
 
-def test_no_key_disables_agent_menu():
+def test_no_key_disables_agent_menu(studio):
     """키 없으면 에이전트만 비활성 — 나머지 앱은 정상 (수용 기준 절반)."""
-    body = client.get("/api/agent/status").json()
+    body = studio.agent_status()
     assert body["enabled"] is False and "ANTHROPIC_API_KEY" in body["reason"]
     # 작업별 모델 (05_agent: 초안·평가 Opus 계열 · 도식 Sonnet 급)
     assert body["models"] == {"draft": "claude-opus-5", "diagram": "claude-sonnet-5",
                               "review": "claude-opus-5"}
-    r = client.post("/api/agent/review", json={"episodeId": "hr-basics-01"})
-    assert r.status_code == 403 and r.json()["detail"]["code"] == "agent_disabled"
+    with pytest.raises(AgentDisabled):
+        studio.agent_submit("review", "hr-basics-01", {})
     # 키 없이도 조회·검증은 그대로 동작
-    assert client.get("/api/courses").status_code == 200
-    assert client.get("/api/agent/usage").json()["count"] == 0
+    assert studio.list_courses()
+    assert studio.agent_usage()["count"] == 0
 
 
 def test_agent_job_runs_in_queue(monkeypatch, tmp_path):
-    """가짜 query_fn 으로 에이전트 잡이 큐에서 돌고 SSE 이벤트·사용량이 남는다."""
+    """가짜 query_fn 으로 에이전트 잡이 큐에서 돌고 이벤트·사용량이 남는다."""
     async def fake_query(kind, episode_id, payload, queue):
         await queue.put({"kind": "log", "line": "대본을 읽는다"})
         await queue.put({"kind": "log", "line": "평가를 쓴다"})
@@ -63,13 +61,12 @@ def test_agent_job_runs_in_queue(monkeypatch, tmp_path):
     assert usage["count"] == 1 and usage["totalCostUsd"] == 0.1234
 
 
-def test_agent_api_submits_when_enabled(monkeypatch):
+def test_agent_submit_when_enabled(monkeypatch):
     async def fake_query(kind, episode_id, payload, queue):
         await queue.put({"kind": "log", "line": f"{kind} ok"})
         return {"costUsd": 0.0}
 
     from core import agents as agents_pkg
-    from api.routers import agent as agent_router
 
     monkeypatch.setattr(agents_pkg, "agent_enabled", lambda: {"enabled": True})
     monkeypatch.setattr(
@@ -77,12 +74,12 @@ def test_agent_api_submits_when_enabled(monkeypatch):
         lambda kind, eid, payload, root: runner.make_agent_work(
             kind, eid, payload, root, query_fn=fake_query))
 
-    r = client.post("/api/agent/draft", json={"episodeId": "hr-basics-01", "brief": "테스트"})
-    assert r.status_code == 200
-    job_id = r.json()["jobId"]
+    st = Studio(queue=JobQueue(runner=None, preflight=lambda d: {"preflight": []},
+                               verifier=None))
+    job_id = st.agent_submit("draft", "hr-basics-01", {"brief": "테스트"})["jobId"]
     deadline = time.time() + 10
     while time.time() < deadline:
-        state = client.get(f"/api/jobs/{job_id}").json()["state"]
+        state = st.job(job_id)["state"]
         if state in ("done", "failed"):
             break
         time.sleep(0.05)
