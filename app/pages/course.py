@@ -239,12 +239,27 @@ class CoursePage(QWidget):
                            or f"근거를 주면 초안을 만듭니다 ({gate.get('provider')} · "
                               f"{gate.get('models', {}).get('draft')})")
 
+    def _begin_create(self) -> bool:
+        """영상 생성 계열([영상 만들기]·[AI 초안]·[+ 영상 추가]) 공통 잠금.
+
+        더블클릭이면 같은 n 에 생성이 두 번 나가 Conflict 오류가 노출된다 (35회차 P18).
+        생성은 수백 ms — 플래그 하나로 직렬화하고 done/fail 에서 푼다."""
+        if getattr(self, "_creating_episode", False):
+            return False
+        self._creating_episode = True
+        return True
+
+    def _end_create(self) -> None:
+        self._creating_episode = False
+
     def _ai_draft(self, n: int) -> None:
         """[AI 초안] — 영상을 만들고(필요시) 영상 화면의 **완전판 AI 대화상자**로 간다.
 
         예전엔 여기서 자체 입력창으로 바로 제출했는데, ② 대본의 대화상자(근거 문서·
         영상까지 한 번에)와 경험이 갈라졌다 (루프 3회차 P11). 진입점을 하나로 합친다.
         """
+        if not self._begin_create():
+            return
         cid, studio = self.cid, self._make_studio()
 
         def ensure():
@@ -256,14 +271,19 @@ class CoursePage(QWidget):
                 eid = studio.create_episode(cid, n)["id"]
             return eid
 
-        run_bg(ensure, done=self.open_episode_ai.emit, fail=self._fail)
+        run_bg(ensure,
+               done=lambda eid: (self._end_create(), self.open_episode_ai.emit(eid)),
+               fail=lambda e: (self._end_create(), self._fail(e)))
 
     # ── 스캐폴딩 (03 ② — 지금 수동으로 하는 것 전부) ─────────────────────────
     def _create_episode(self, n: int) -> None:
+        if not self._begin_create():
+            return
         cid, studio = self.cid, self._make_studio()
         run_bg(lambda: studio.create_episode(cid, n),
-               done=lambda out: (self.load(cid), self.open_episode.emit(out["id"])),
-               fail=self._fail)
+               done=lambda out: (self._end_create(), self.load(cid),
+                                 self.open_episode.emit(out["id"])),
+               fail=lambda e: (self._end_create(), self._fail(e)))
 
     def _delete_episode(self, eid: str, label: str) -> None:
         from PySide6.QtWidgets import QMessageBox
@@ -307,7 +327,10 @@ class CoursePage(QWidget):
         title = dlg.textValue()
         if not ok or not title.strip():
             return
+        if not self._begin_create():
+            return
         cid, studio = self.cid, self._make_studio()
         run_bg(lambda: studio.create_episode(cid, n, title=title.strip()),
-               done=lambda out: (self.load(cid), self.open_episode.emit(out["id"])),
-               fail=self._fail)
+               done=lambda out: (self._end_create(), self.load(cid),
+                                 self.open_episode.emit(out["id"])),
+               fail=lambda e: (self._end_create(), self._fail(e)))
