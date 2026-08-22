@@ -86,6 +86,11 @@ class LibraryPage(QWidget):
         self.add_btn = QPushButton("받기")
         self.add_btn.setObjectName("primary")
         self.add_btn.clicked.connect(self._add)
+        # URL·라이선스가 있어야 눌린다 — 누른 뒤 오류를 설명하는 대신 예방 (27회차 P20,
+        # AI 대화상자 [시작]과 같은 문법)
+        self.add_btn.setEnabled(False)
+        for w in (self.url, self.license):
+            w.textChanged.connect(self._sync_add_btn)
         for w in (self.url, self.license, self.name, self.add_btn):
             form.addWidget(w, 1 if w is self.url else 0)
         outer.addLayout(form)
@@ -153,13 +158,13 @@ class LibraryPage(QWidget):
                fail=lambda e: self.result.setText(error_text(e)))
 
     # ── 받기 ────────────────────────────────────────────────────────────────
+    def _sync_add_btn(self, *_a) -> None:
+        self.add_btn.setEnabled(bool(self.url.text().strip())
+                                and bool(self.license.text().strip()))
+
     def _add(self) -> None:
         url, lic = self.url.text().strip(), self.license.text().strip()
-        if not url:
-            self.result.setText("URL 을 넣으세요")
-            return
-        if not lic:   # core 도 거부하지만, 화면에서 먼저 막는 것이 이 앱의 1원칙
-            self.result.setText("라이선스가 필요합니다 — 소재 페이지에서 확인해 적으세요")
+        if not url or not lic:   # 버튼 활성화 조건이 이미 막지만 이중 방어
             return
         kind, name = self.kind.currentData(), self.name.text().strip() or None
         studio = self._make_studio()
