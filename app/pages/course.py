@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QInputDialog, QLabel, QPushButton,
                                QScrollArea, QTabWidget, QVBoxLayout, QWidget)
 
@@ -289,6 +289,20 @@ class CoursePage(QWidget):
         dlg.setLabelText(f"{n}편 제목")
         dlg.setMinimumWidth(560)
         dlg.resize(560, dlg.sizeHint().height())
+
+        def _wire():
+            # 빈 제목으로 [OK]를 누르면 조용히 무시되던 결함 — 제목이 있어야
+            # 눌린다 (32회차 P19·P20. QInputDialog 내부 위젯은 show 후에 생긴다)
+            from PySide6.QtWidgets import QDialogButtonBox
+
+            bb = dlg.findChild(QDialogButtonBox)
+            if bb:
+                okb = bb.button(QDialogButtonBox.Ok)
+                okb.setEnabled(bool(dlg.textValue().strip()))
+                dlg.textValueChanged.connect(
+                    lambda t: okb.setEnabled(bool(t.strip())))
+
+        QTimer.singleShot(0, _wire)
         ok = bool(dlg.exec())
         title = dlg.textValue()
         if not ok or not title.strip():

@@ -253,12 +253,14 @@ class CourseSettingsTab(QWidget):
         n = self.voice.count()
         if prov == "eleven":   # 유료는 얼마나 쓰는지 먼저 말하고 묻는다
             chars = n * len(voices.SAMPLE_TEXT)
+            # 과금 확인의 기본 버튼은 [취소] — 엔터 연타가 결제가 되면 안 된다 (32회차 P20)
             if QMessageBox.question(
                     self, "미리듣기 만들기",
                     f"ElevenLabs 목소리 {n}종을 한 번씩 합성합니다 — "
                     f"약 {chars:,}자가 과금됩니다. "
-                    "한 번 만들면 이후 들어보기는 과금 없이 즉시 납니다. 계속할까요?"
-            ) != QMessageBox.Yes:
+                    "한 번 만들면 이후 들어보기는 과금 없이 즉시 납니다. 계속할까요?",
+                    QMessageBox.Yes | QMessageBox.Cancel,
+                    QMessageBox.Cancel) != QMessageBox.Yes:
                 return
         studio = self._make_studio()
         self.prefetch_btn.setEnabled(False)
