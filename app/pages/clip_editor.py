@@ -1011,10 +1011,20 @@ class ClipEditorTab(QWidget):
     def _save(self) -> None:
         eid, etag, studio = self.eid, self._etag, self._make_studio()
         body = self.doc
+        # 저장 중 잠금 — 안 잠그면 중복 클릭이 옛 etag 로 두 번째 저장을 보내
+        # 409 충돌 에러를 띄운다 (P18·P20)
+        self.save_btn.setEnabled(False)
+        self.save_btn.setText("저장 중…")
         run_bg(lambda: studio.put_episode(eid, body, etag),
-               done=self._saved, fail=lambda e: self._show_issue(error_text(e)))
+               done=self._saved,
+               fail=lambda e: (self._show_issue(error_text(e)), self._save_done()))
+
+    def _save_done(self) -> None:
+        self.save_btn.setEnabled(True)
+        self.save_btn.setText("저장")
 
     def _saved(self, out: dict) -> None:
+        self._save_done()
         self._etag = out["etag"]  # 경로 문제가 있어도 채택 — 다음 저장 409 교착 방지
         issues = out.get("pathIssues") or []
         cons = out.get("consistency") or []

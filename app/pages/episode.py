@@ -591,7 +591,10 @@ class EpisodePage(QWidget):
             run_bg(lambda: self._studio.cancel_job(jid), fail=self._fail)
 
     def _set_building(self, on: bool) -> None:
-        for b in (self.build_btn, self.tts_only_btn, self.compose_btn, self.ai_review_btn):
+        # 클립 탭 [음성 다시 만들기]도 함께 — 안 잠그면 작업 중 재클릭이
+        # 중복 TTS 잡을 큐에 쌓는다 (22회차 P18·P20)
+        for b in (self.build_btn, self.tts_only_btn, self.compose_btn,
+                  self.ai_review_btn, self.clip_tab.tts_btn):
             b.setEnabled(not on)
         self.cancel_btn.setVisible(on)
         if not on and self.eid:
