@@ -28,6 +28,10 @@ __pycache__/
 .qt-venv/
 venv/
 
+# 개발 모드의 데이터 폴더 — 담당자가 만든 강좌가 쌓이는 곳이지 소스가 아니다.
+# (동결본은 <data>/projects 를 쓴다. 재현용 정본은 fixtures/projects/ 다)
+projects/
+
 # 파생 캐시
 *.sqlite
 *.sqlite3
