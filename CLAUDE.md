@@ -34,7 +34,7 @@
 - **경로 문자열을 손으로 만들지 않는다** — 상대경로 기준이 5종([02](docs/design/02_data-model.md)). 경로는 `core/paths.py` 계산기가 기입하고, 그 실측 5행이 단위 테스트다.
 - 제작 규약(대본 문법·도식 규칙·검증 절차)의 정본 = [.claude/skills/](.claude/skills/) 의 develop-video·develop-lecture. 코드로 복제하지 말고 기계화 가능한 검증만 옮긴다.
 - 픽스처 = `fixtures/projects/hr-basics*`. 경로 이전 완료(2026-08-14) — 이 저장소 단독으로 재현 빌드된다. 미디어 파일(bgm·broll)은 커밋 안 되므로 새 클론에서는 engine/assets/CATALOG.md 출처에서 다시 받는다.
-- 구현 진행의 SSOT = [docs/BUILD_LOOP.md](docs/BUILD_LOOP.md) — 세션을 새로 열면 이 파일의 루프 프로토콜대로 다음 미완 단계를 이어간다. Python 은 conda `penv3.13-insait`.
+- 구현 진행의 SSOT = [docs/BUILD_LOOP.md](docs/BUILD_LOOP.md) — 세션을 새로 열면 이 파일의 루프 프로토콜대로 다음 미완 단계를 이어간다. Python 은 conda `penv3.13-video`.
 - 커밋은 사용자가 요청할 때만.
 
 ## 진행 상태
@@ -45,6 +45,6 @@
 - [x] 2단계 — 강좌 편집 (2026-08-15 수용 기준 충족 — 화면 개설→회차 생성→빌드 E2E 실측, 라운드트립 diff 0, pytest 59건)
 - [x] 3단계 — 대본 에디터 (2026-08-15 수용 기준 충족 — 새 회차를 화면만으로 완성(대본→빌드→검수→배포) E2E 실측, 결함 4종 입력 시점 차단, pytest 66건)
 - [x] 4단계 — 에이전트 (2026-08-15 수용 기준 충족 — 실키로 AI 초안→손질→빌드→AI 평가 완주($0.46), 키 없이 1~3단계 동작 재확인. 모델은 당분간 전부 Haiku — .env 오버라이드)
-- [ ] 5단계 — 데스크톱 전환 🔄 5-6 까지 완료 (2026-08-21~22 — 스파이크·env·facade/api 삭제·Qt 읽기 콘솔·편집 ①②③/위저드·⑤ 대본 에디터+④⑥⑦(결함 차단 4종·프리뷰 스크럽)·에이전트 이중 제공자+설정 화면 실측. 파이썬은 conda 하나로 통일(PySide6=conda-forge). 5-7·5-8 은 코드까지 완료 — **남은 것은 사용자 준비물 3종**(깨끗한 Windows PC 설치 실측·Inno Setup·코드 서명 인증서). 체크리스트는 [BUILD_LOOP](docs/BUILD_LOOP.md))
+- [ ] 5단계 — 데스크톱 전환 🔄 5-6 까지 완료 (2026-08-21~22 — 스파이크·env·facade/api 삭제·Qt 읽기 콘솔·편집 ①②③/위저드·⑤ 대본 에디터+④⑥⑦(결함 차단 4종·프리뷰 스크럽)·에이전트 이중 제공자+설정 화면 실측. 파이썬은 conda `penv3.13-video` 하나로 통일(전부 pip — 2026-08-22 insait 분리·.qt-venv 은퇴). 5-7·5-8 은 코드까지 완료 — **남은 것은 사용자 준비물 3종**(깨끗한 Windows PC 설치 실측·Inno Setup·코드 서명 인증서). 체크리스트는 [BUILD_LOOP](docs/BUILD_LOOP.md))
 
 단계가 끝나면 이 체크박스를 갱신한다.

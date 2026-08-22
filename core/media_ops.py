@@ -11,6 +11,7 @@ import re
 import subprocess
 from pathlib import Path
 
+from . import env
 from .status import OUT_ROOT
 from .validate import CHARS_PER_SEC_LECTURE
 
@@ -32,7 +33,7 @@ def media_duration(file: Path) -> float:
     out = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
          "-of", "csv=p=0", str(file)],
-        capture_output=True, text=True, timeout=60, check=True,
+        capture_output=True, timeout=60, check=True, **env.child_kwargs(),
     ).stdout.strip()
     return float(out)
 
@@ -49,7 +50,7 @@ def extract_frame(episode_id: str, t: float) -> Path:
         subprocess.run(
             ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
              "-ss", f"{t:.2f}", "-i", str(video), "-frames:v", "1", str(out)],
-            timeout=60, check=True,
+            timeout=60, check=True, **env.child_kwargs(),
         )
     return out
 
@@ -84,7 +85,7 @@ def _brightness_samples(video: Path, samples: int = 14) -> list[tuple[float, flo
         ["ffmpeg", "-hide_banner", "-i", str(video),
          "-vf", f"fps={fps},signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-",
          "-f", "null", "-"],
-        capture_output=True, text=True, timeout=300,
+        capture_output=True, timeout=300, **env.child_kwargs(),
     )
     out: list[tuple[float, float]] = []
     t: float | None = None
@@ -141,7 +142,7 @@ def extract_bg_frame(episode_dir: Path, source: Path, t: float) -> Path:
         ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
          "-ss", f"{t:.2f}", "-i", str(source), "-frames:v", "1",
          "-vf", "scale=1920:-1", str(out)],
-        timeout=60, check=True,
+        timeout=60, check=True, **env.child_kwargs(),
     )
     return out
 
@@ -161,7 +162,7 @@ def detect_silence(episode_id: str, *, noise: str = "-35dB", min_dur: float = 0.
     proc = subprocess.run(
         ["ffmpeg", "-hide_banner", "-i", str(video),
          "-af", f"silencedetect=noise={noise}:d={min_dur}", "-f", "null", "-"],
-        capture_output=True, text=True, timeout=300,
+        capture_output=True, timeout=300, **env.child_kwargs(),
     )
     silences: list[dict] = []
     start: float | None = None

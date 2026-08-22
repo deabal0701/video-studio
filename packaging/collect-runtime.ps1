@@ -74,11 +74,11 @@ Get-ChildItem $chDir -Directory -Filter "chromium_headless_shell*" -ErrorAction 
 $ttsDir = Join-Path $rt "tts"
 if ($Force -or -not (Test-Path (Join-Path $ttsDir "edge-tts.exe"))) {
   Write-Host "[4/5] edge-tts 셔틀" -ForegroundColor Cyan
-  $py = Join-Path $repo ".qt-venv\Scripts\python.exe"
+  $CondaEnv = "penv3.13-video"
   # pip 는 정상 종료해도 stderr 를 쓴다 — PS 5.1 은 그걸 NativeCommandError 로 바꾸고
   # $ErrorActionPreference=Stop 이 종료시킨다. 이 파일 머리말의 규칙대로 종료코드로 판정한다.
   $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-  & $py -m pip install --quiet edge-tts pyinstaller
+  conda run -n $CondaEnv python -m pip install --quiet edge-tts pyinstaller
   $pipCode = $LASTEXITCODE
   $ErrorActionPreference = $prev
   if ($pipCode -ne 0) { throw "edge-tts 의존 설치 실패 (pip exit $pipCode)" }
@@ -86,7 +86,7 @@ if ($Force -or -not (Test-Path (Join-Path $ttsDir "edge-tts.exe"))) {
   Set-Content $shim "import sys`nfrom edge_tts.util import main`nsys.exit(main())" -Encoding utf8
   # pyinstaller 도 INFO 를 stderr 로 쓴다 — pip 와 같은 함정 (위 참조)
   $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-  & (Join-Path $repo ".qt-venv\Scripts\pyinstaller.exe") --onefile --name edge-tts `
+  conda run -n $CondaEnv pyinstaller --onefile --name edge-tts `
     --distpath $ttsDir --workpath (Join-Path $env:TEMP "tts-build") `
     --specpath (Join-Path $env:TEMP "tts-build") --noconfirm $shim
   $pyiCode = $LASTEXITCODE

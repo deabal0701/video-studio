@@ -9,7 +9,7 @@
 ## 점검 루프 (1화면 = 1사이클)
 
 ```
-1. 캡처   conda run -n penv3.13-insait python packaging\capture-screens.py
+1. 캡처   conda run -n penv3.13-video python packaging\capture-screens.py
           → docs\ui-shots\NN-화면.png (같은 이름으로 덮어써 전/후가 대조된다)
 2. 점검   아래 "공통 점검 항목" 8개 + 그 화면의 고유 항목을 눈으로 확인
 3. 수정   app/pages/*.py · app/theme.py

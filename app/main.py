@@ -1,4 +1,4 @@
-"""진입점 — `python -m app` (conda penv3.13-insait). 저장소 루트를 sys.path 에 보장한다."""
+"""진입점 — `python -m app` (conda penv3.13-video). 저장소 루트를 sys.path 에 보장한다."""
 
 from __future__ import annotations
 
@@ -14,9 +14,11 @@ from PySide6.QtWidgets import QApplication  # noqa: E402
 
 def main() -> int:
     app = QApplication(sys.argv)
-    from app import i18n, theme
+    from app import i18n, icons, theme
 
     i18n.install_korean(app)   # Qt 표준 버튼("Cancel"·"Yes") 한국어화 (09 G6)
+    # 창 아이콘 — 한 번 걸면 메인 창·대화상자·작업표시줄이 모두 받는다 (Qt 기본 로고 대체)
+    app.setWindowIcon(icons.app_icon())
     from app.main_window import MainWindow
 
     # 3층 스타일 규칙 — 이 순서 고정 (08_qt-style §1: 스타일 → 팔레트 → QSS)

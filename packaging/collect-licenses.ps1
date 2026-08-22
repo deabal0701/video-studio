@@ -39,8 +39,12 @@ Grab (Join-Path $repo "engine\fonts\LICENSE.txt") "Pretendard-LICENSE.txt" | Out
 Grab (Join-Path $repo "engine\node_modules\playwright\LICENSE") "playwright-LICENSE.txt" | Out-Null
 Grab (Join-Path $dist "runtime\ffmpeg\LICENSE-ffmpeg.txt") "ffmpeg-LICENSE.txt" | Out-Null
 Grab (Join-Path $dist "runtime\chromium\ffmpeg-1011\COPYING.LGPLv2.1") "LGPL-2.1.txt" | Out-Null
-# pydantic — 동결 venv 의 dist-info 에서
-Get-ChildItem (Join-Path $repo ".qt-venv\Lib\site-packages") -Directory -Filter "pydantic-*.dist-info" -EA SilentlyContinue |
+# pydantic — 동결 env(penv3.13-video) 의 dist-info 에서
+$prevEA = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+$sitePkg = (conda run -n penv3.13-video python -c "import sysconfig; print(sysconfig.get_paths()['purelib'])" 2>$null | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1)
+$ErrorActionPreference = $prevEA
+if (-not $sitePkg) { throw "penv3.13-video site-packages 를 못 찾았다" }
+Get-ChildItem $sitePkg -Directory -Filter "pydantic-*.dist-info" -EA SilentlyContinue |
   ForEach-Object { Grab (Join-Path $_.FullName "licenses\LICENSE") "pydantic-LICENSE.txt" | Out-Null }
 
 # Node LICENSE — zip 안에 있다. 없으면 배포 zip 에서 한 번 더 받는다.
@@ -56,8 +60,8 @@ if (-not (Test-Path (Join-Path $cache "node-LICENSE.txt"))) {
   Grab (Join-Path $tmp "node-$ver-win-x64\LICENSE") "node-LICENSE.txt" | Out-Null
 }
 
-# edge-tts — 동결 venv 의 dist-info
-Get-ChildItem (Join-Path $repo ".qt-venv\Lib\site-packages") -Directory -Filter "edge_tts-*.dist-info" -EA SilentlyContinue |
+# edge-tts — 동결 env 의 dist-info
+Get-ChildItem $sitePkg -Directory -Filter "edge_tts-*.dist-info" -EA SilentlyContinue |
   ForEach-Object {
     $f = Get-ChildItem $_.FullName -Recurse -Include "LICENSE*" -File -EA SilentlyContinue | Select-Object -First 1
     if ($f) { Copy-Item $f.FullName (Join-Path $cache "edge-tts-LICENSE.txt") -Force }

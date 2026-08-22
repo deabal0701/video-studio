@@ -8,7 +8,7 @@ PATH 를 System32 만 남기고 실행한다. 화면은 offscreen 으로 띄우�
   3. **프리뷰가 로드된다** (QtWebEngineProcess·pak·icudtl + bootstrap 플래그 — 08 §9)
   4. 프리뷰 픽셀이 잡힌다 (offscreen grab — 08 §6)
 
-사용:  .\.qt-venv\Scripts\python.exe packaging\smoke-frozen.py   (판정 로직만 호스트에서)
+사용:  conda run -n penv3.13-video python packaging\smoke-frozen.py   (판정 로직만 호스트에서)
 실제 판정은 동결본 안의 파이썬이 아니라 **동결 exe 를 실행**해 결과 파일로 받는다.
 """
 

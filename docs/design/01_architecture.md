@@ -89,7 +89,7 @@ video-studio/
 
 | 층 | 선택 | 버전 기준 |
 |---|---|---|
-| 로직 | Python 3.12+ · pydantic v2 | conda `penv3.13-insait`. ~~FastAPI·uvicorn·sse-starlette~~ — D12 로 제거 (5-2) |
+| 로직 | Python 3.12+ · pydantic v2 | conda `penv3.13-video`. ~~FastAPI·uvicorn·sse-starlette~~ — D12 로 제거 (5-2) |
 | 파일 감시 | ~~watchfiles~~ → `QFileSystemWatcher` (5-3) | 외부 편집(Claude Code) 감지 → 인덱스 갱신·편집 충돌 경고 — 역할 동일 |
 | 캐시 | SQLite (표준 lib) — 파생 캐시 전용 | 스키마 버전 불일치 시 통째 재생성 |
 | UI | **PySide6 (LGPL)** — QWebEngineView(프리뷰)·QMediaPlayer(재생) (D13) | ~~Vue 3.5·Vite·Element Plus·Tailwind~~ 는 1~4단계 검증 후 5-5 에서 제거. 디자인 토큰(D11) 값은 Qt 스타일시트로 이식 |

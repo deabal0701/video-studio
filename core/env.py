@@ -90,3 +90,20 @@ def child_env() -> dict[str, str]:
     if chromium.is_dir():
         env["PLAYWRIGHT_BROWSERS_PATH"] = str(chromium)
     return env
+
+
+def child_kwargs() -> dict:
+    """자식 프로세스 호출 규약 한 벌 — `subprocess.run/Popen(**env.child_kwargs())`.
+
+    셋 다 빠지면 설치본에서만 깨지고 개발 PC 에서는 멀쩡해 보인다 (07 결함 2·3):
+
+    - `encoding="utf-8"` — 없으면 파이썬이 로케일(한국어 Windows = cp949)로 디코드해
+      한글 출력에서 UnicodeDecodeError. **conda penv3.13-video 는 UTF-8 모드(PEP 540)가
+      켜져 있어 이 결함을 가려 준다** — 동결본의 python.org 런타임은 꺼져 있어 그대로 터진다
+      (2026-08-22 실측: 같은 테스트가 conda 통과·venv 실패).
+    - `creationflags=CREATE_NO_WINDOW` — GUI 앱에서 호출마다 콘솔 창이 깜빡인다.
+    - `env=child_env()` — 설치본의 node·ffmpeg 는 `runtime\\` 에만 있다. 이걸 빠뜨리면
+      맨이름 호출이 PATH 에서 안 잡혀 담당자 PC 에서만 실패한다.
+    """
+    return {"encoding": "utf-8", "errors": "replace",
+            "creationflags": CREATE_NO_WINDOW, "env": child_env()}

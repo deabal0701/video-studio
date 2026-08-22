@@ -1,39 +1,31 @@
-# PySide6 실행 환경 — conda 로 통일 (2026-08-21 확정)
+# PySide6 실행 환경 — conda penv3.13-video 하나 (2026-08-22 재통일)
 
-## 어느 환경을 쓰나 (한 줄 규칙 — 2026-08-22 사용자 질문으로 명문화)
+## 한 줄 규칙
 
-| 하는 일 | 환경 | 직접 만질 일 |
-|---|---|---|
-| **개발 전부** — 앱 실행·pytest·캡처·core | conda `penv3.13-insait` | O (일상) |
-| **설치본 동결만** — `build-installer.ps1` | `.qt-venv` (pip 휠) | **X — 스크립트가 알아서 만들고 쓴다** |
+**모든 것이 conda `penv3.13-video` 다** — 개발·pytest·앱 실행·캡처·**동결(PyInstaller)까지**.
+설치는 전부 pip: `pip install PySide6 pydantic pytest pytest-timeout claude-agent-sdk openai
+edge-tts pyinstaller`. `run.ps1 -Setup` 이 자동으로 한다. `.qt-venv` 는 은퇴했다(삭제됨).
 
-`.qt-venv` 는 개발 환경이 아니라 **빌드 도구다** (Inno Setup 과 같은 지위). 지워도 되고
-(`build-installer.ps1` 이 재생성), 활성화할 일도 없고, 새 conda env(penv3.13-video 등)를
-만들어도 통일되지 않는다 — 문제는 env 이름이 아니라 **conda 의 파일 배치 자체**라서다:
+## 이력 — 왜 두 번 바뀌었나
 
-- pip 휠 PySide6 ← conda 파이썬에서 안 뜬다 (Qt6Core.dll WinError 127, 실측)
-- conda-forge PySide6 ← PyInstaller 훅이 Qt 자산을 못 찾는다 (site-packages 밖
-  `$PREFIX\Library\` 에 있음 — 실측 conda 0개 vs pip 휠 144개 DLL)
+1. **2026-08-21**: penv3.13-insait 에서 pip 휠 PySide6 가 Qt6Core.dll WinError 127 로
+   죽어 conda-forge 빌드로 갔다. 동결은 conda-forge 배치(Qt 자산이 site-packages 밖
+   `$PREFIX\Library\`)를 PyInstaller 훅이 못 찾아(실측 0개 vs pip 휠 144개 DLL)
+   별도 `.qt-venv` 를 뒀다 — 환경이 둘.
+2. **2026-08-22**: insait 와 분리하려고 깨끗한 `penv3.13-video` 를 만들어 보니
+   **pip 휠 PySide6 가 정상**. WinError 127 의 진범은 conda 가 아니라 **insait env 의
+   DLL 오염**(수많은 `Libraryin` DLL — libffi 승격으로 ctypes 까지 깨져 있었다)이었다.
+   pip 휠이면 PyInstaller 훅도 정상이라 **동결까지 한 env 로 합쳐졌다**. 검증:
+   pytest 141 · GUI 스모크(프리뷰 로드·고유색 34) · 동결 Qt DLL 42종+WebEngineProcess+icudtl.
 
-양쪽 제약이 반대 방향이라 **두 개가 최소**다. 개발자는 conda 만 기억하면 된다.
+## 지키는 것
 
-**파이썬은 conda `penv3.13-insait` 하나다** — core·pytest·앱(PySide6) 전부.
-단, PySide6 는 **pip 휠 금지, conda-forge 빌드 필수**:
-
-```
-conda install -n penv3.13-insait -c conda-forge pyside6 qt6-webengine qt6-multimedia
-```
-
-## 왜 (5-0~5-4 실측 이력)
-
-- **pip 휠 PySide6 는 conda 파이썬에서 Qt6Core.dll 로드 실패** (WinError 127 —
-  PATH 정리·MSVC 런타임 대조로도 해결 안 됨. conda 파이썬의 DLL 배치와 충돌).
-- conda-forge 가 conda 생태계에 맞게 빌드한 pyside6 는 정상. **WebEngine·Multimedia 는
-  별도 패키지**(`qt6-webengine`·`qt6-multimedia`) — 빼먹으면 해당 임포트만 "모듈 없음".
-- 공유 env 영향 실측: libexpat·libffi·openssl 빌드 승격뿐 (dry-run 확인 완료).
-- 통일 검증: 앱 스모크(대시보드→회차→검수 프레임 5장) conda 파이썬으로 통과.
-- 한때 python.org venv(.qt-venv) 우회를 썼다 — 폐기. `packaging/setup-qt-venv.ps1` 은
-  **PyInstaller 패키징(5-7)에서만** 재평가 (동결 빌드는 비-conda 가 정석일 수 있음).
+- **이 env 에 conda 패키지를 더하지 않는다** — 특히 ffmpeg (conda-forge ffmpeg 9.0.1 은
+  libass 없음 — `ass` 필터가 없어 빌드가 합성에서 죽는다. 시스템 ffmpeg 를 쓰는 것이 맞고,
+  자가진단 "ffmpeg 자막" 행이 지킨다). Qt 도 conda-forge 로 다시 깔면 훅이 빈손이 된다.
+- insait 는 인사이트 프로젝트 전용으로 돌려놨다 (pyside6·qt6-*·claude-agent-sdk 제거).
+  insait 의 `Libraryinfi.dll` 사본은 남겨 뒀다 — libffi 3.7 승격이 깨뜨린 ctypes 의
+  복구라 지우면 그 env 의 ctypes 가 다시 죽는다.
 
 ## 함께 알아둘 것
 

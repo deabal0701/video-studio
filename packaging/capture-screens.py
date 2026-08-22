@@ -1,6 +1,6 @@
 """화면 전수 캡처 — UI/UX 점검의 재료 (09_ui-review 의 스크린샷 생성기).
 
-    conda run -n penv3.13-insait python packaging\\capture-screens.py [출력폴더]
+    conda run -n penv3.13-video python packaging\\capture-screens.py [출력폴더]
 
 실창(onscreen)으로 띄운다 — offscreen 은 Qt 위젯 한글이 두부라 눈검수에 못 쓴다
 (08_qt-style §6). 창이 잠깐 떴다 사라지는 것이 정상이다.
@@ -32,10 +32,11 @@ from app import bootstrap  # noqa: E402,F401
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 app = QApplication(sys.argv)
-from app import i18n, theme  # noqa: E402
+from app import i18n, icons, theme  # noqa: E402
 from app.main_window import MainWindow  # noqa: E402
 
 i18n.install_korean(app)   # 앱과 같은 조건으로 찍는다
+app.setWindowIcon(icons.app_icon())
 app.setStyle("Fusion")
 app.setPalette(theme.make_palette())
 app.setStyleSheet(theme.STYLESHEET)

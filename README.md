@@ -23,7 +23,7 @@ engine/            Node CLI 렌더 엔진 (vendored — 수정 금지, ENGINE_VE
 core/              Python — 로직 전부 (env·facade·storage·paths·schema·validate·indexer·jobs·engine_io)
 app/               PySide6 데스크톱 UI — 실행 진입점 (`python -m app`)
 run.ps1 · run.bat  실행 런처 (준비 자동화 — 아래 "실행")
-packaging/         setup-qt-venv.ps1 (패키징 5-7 전용 후보) · PyInstaller·Inno Setup (5-7 예정)
+packaging/         PyInstaller spec·런타임 수집·Inno Setup — 전부 conda penv3.13-video 에서
 projects/          사용자 데이터 (강좌·회차 — 파일이 SSOT)
 fixtures/projects/ 개발·테스트 픽스처 (hr-basics 강좌 실전 대본)
 tests/             core 단위 테스트 (경로 계산기 최우선)
@@ -35,22 +35,22 @@ tests/             core 단위 테스트 (경로 계산기 최우선)
 .\run.ps1              # 앱 실행 (데이터 = projects\) — 준비가 안 돼 있으면 알아서 준비하고 띄운다
 .\run.ps1 -Fixtures    # 데이터 = fixtures\projects (개발용 hr-basics)
 .\run.ps1 -Setup       # 준비만 (최초 1회 — PySide6(conda-forge) · engine 의존성)
-.\run.ps1 -Test        # pytest (conda penv3.13-insait) — 101건
+.\run.ps1 -Test        # pytest (conda penv3.13-video) — 101건
 ```
 
 `run.bat` 은 같은 것을 실행 정책 우회로 감싼 것이다(더블클릭·cmd 용).
 
-전제: Node 20+ · ffmpeg/ffprobe · conda `penv3.13-insait` — **파이썬은 이 하나다**
+전제: Node 20+ · ffmpeg/ffprobe · conda `penv3.13-video` — **파이썬은 이 하나다**
 (2026-08-21 통일). PySide6 는 pip 휠이 아니라 **conda-forge 빌드**를 쓴다(pip 휠은 conda
 파이썬에서 Qt6Core DLL 충돌 — [.claude/memory/pyside6-environment.md](.claude/memory/pyside6-environment.md)).
 
 런처 없이 손으로 하면:
 
 ```powershell
-conda run -n penv3.13-insait pip install -e ".[dev]"    # core · 테스트
-conda install -n penv3.13-insait -c conda-forge pyside6 qt6-webengine qt6-multimedia
+conda run -n penv3.13-video pip install -e ".[dev]"    # core · 테스트
+conda install -n penv3.13-video -c conda-forge pyside6 qt6-webengine qt6-multimedia
 cd engine; npm install; npx playwright install chromium; cd ..
-conda run --no-capture-output -n penv3.13-insait python -m app   # 실행
+conda run --no-capture-output -n penv3.13-video python -m app   # 실행
 ```
 
 미디어 소재(무료 스톡 — 저장소에 없음)는 CATALOG 출처에서 받는다:

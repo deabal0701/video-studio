@@ -1,11 +1,12 @@
 # PyInstaller spec — Video Studio 설치본 (07_desktop "단일 실행파일 — 패키징").
 #
-#   .\.qt-venv\Scripts\pyinstaller.exe packaging\VideoStudio.spec --noconfirm
+#   conda run -n penv3.13-video pyinstaller packaging\VideoStudio.spec --noconfirm
 #
-# ★ 동결은 반드시 **pip 휠 venv(.qt-venv)** 에서 (conda 금지). 근거 실측 (2026-08-22):
-#   conda-forge 는 Qt 자산을 site-packages 밖($PREFIX\Library\)에 두어 PySide6 훅이 빈손이 된다
-#   — conda: Qt6*.dll 0개·plugins 없음 / pip 휠: 144개·plugins·QtWebEngineProcess.exe·icudtl 전부 있음.
-#   상세 배치 대조표는 docs/design/08_qt-style.md §9.
+# ★ 동결도 개발과 같은 env(penv3.13-video)에서 한다 — 단 그 env 의 PySide6 가 **pip 휠**
+#   이어야 한다. PyInstaller 훅은 pip 휠 배치만 안다 (conda-forge 는 Qt 자산을 site-packages
+#   밖 $PREFIX\Library\ 에 두어 훅이 빈손 — 실측 conda-forge 0개 vs pip 휠 144개 DLL).
+#   깨끗한 conda env 에선 pip 휠 PySide6 가 정상이라(2026-08-22 실측 — 옛 env 실패는 DLL
+#   오염) 개발·동결이 한 env 로 합쳐졌다. 상세 배치 대조표는 docs/design/08_qt-style.md §9.
 #
 # onedir 인 이유: onefile 은 600MB 를 매 실행 임시 해제라 기동 30초+·백신 오탐 (07 표).
 # engine/·runtime/ 는 exe 옆에 **그대로 복사**한다 — Node 가 읽는 파일 배치가 그대로여야

@@ -4,25 +4,30 @@
 #   .\packaging\build-installer.ps1            # 동결 → 런타임 → 라이선스 → 스모크 → 설치기
 #   .\packaging\build-installer.ps1 -SkipFreeze  # 동결 건너뛰고 나머지만
 #
-# ★ 동결은 반드시 .qt-venv(pip 휠). conda 로는 Qt 자산이 안 딸려온다 (08_qt-style §9).
+# ★ 동결도 개발과 같은 conda env(penv3.13-video, pip 휠 PySide6)에서 한다 — 2026-08-22
+#   통일. 옛 .qt-venv 는 은퇴: pip 휠 실패는 conda 가 아니라 옛 env 의 DLL 오염이었다.
 # 판정은 $LASTEXITCODE 로 — PS 5.1 은 네이티브 stderr 를 오류로 던진다 (08 §9).
 param([switch]$SkipFreeze, [switch]$SkipSmoke)
 $ErrorActionPreference = "Stop"
 $repo = Split-Path $PSScriptRoot -Parent
-$venvPy = Join-Path $repo ".qt-venv\Scripts\python.exe"
-$pyi = Join-Path $repo ".qt-venv\Scripts\pyinstaller.exe"
+$CondaEnv = "penv3.13-video"
 
-if (-not (Test-Path $venvPy)) {
-  Write-Host "동결 venv 준비 중…" -ForegroundColor Cyan
-  & (Join-Path $PSScriptRoot "setup-qt-venv.ps1")
-  & $venvPy -m pip install --quiet pyinstaller edge-tts
+$prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+conda run -n $CondaEnv python -c "import PySide6, PyInstaller" 2>$null
+$envReady = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $prev
+if (-not $envReady) {
+  throw "conda env $CondaEnv 가 준비되지 않았다 — .un.ps1 -Setup 을 먼저 실행"
 }
 
 if (-not $SkipFreeze) {
-  Write-Host "[1/5] 동결 (PyInstaller onedir)" -ForegroundColor Cyan
-  & $pyi (Join-Path $PSScriptRoot "VideoStudio.spec") --noconfirm `
+  Write-Host "[1/5] 동결 (PyInstaller onedir — $CondaEnv)" -ForegroundColor Cyan
+  $ErrorActionPreference = "Continue"
+  conda run -n $CondaEnv pyinstaller (Join-Path $PSScriptRoot "VideoStudio.spec") --noconfirm `
       --distpath (Join-Path $repo "dist") --workpath (Join-Path $repo "build") | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "동결 실패" }
+  $code = $LASTEXITCODE
+  $ErrorActionPreference = $prev
+  if ($code -ne 0) { throw "동결 실패 (exit $code)" }
 }
 
 Write-Host "[2/5] 런타임 수집 (node·ffmpeg·chromium·edge-tts·engine)" -ForegroundColor Cyan
@@ -33,8 +38,11 @@ Write-Host "[3/5] 라이선스 수집" -ForegroundColor Cyan
 
 if (-not $SkipSmoke) {
   Write-Host "[4/5] 동결본 스모크 (PATH=System32 만 · 설치 폴더 무쓰기 검사 포함)" -ForegroundColor Cyan
-  & $venvPy (Join-Path $PSScriptRoot "smoke-frozen.py")
-  if ($LASTEXITCODE -ne 0) { throw "동결본 스모크 실패 — 설치기를 만들지 않는다" }
+  $ErrorActionPreference = "Continue"
+  conda run -n $CondaEnv python (Join-Path $PSScriptRoot "smoke-frozen.py")
+  $code = $LASTEXITCODE
+  $ErrorActionPreference = $prev
+  if ($code -ne 0) { throw "동결본 스모크 실패 — 설치기를 만들지 않는다" }
 }
 
 Write-Host "[5/5] 설치기 (Inno Setup)" -ForegroundColor Cyan

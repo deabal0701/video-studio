@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from . import ENGINE_DIR
+from . import ENGINE_DIR, env
 
 ASSETS_DIR = ENGINE_DIR / "assets"
 CATALOG = ASSETS_DIR / "CATALOG.md"
@@ -45,7 +45,8 @@ def _probe(file: Path) -> dict[str, Any]:
                 ["ffprobe", "-v", "error", "-select_streams", "v:0",
                  "-show_entries", "stream=width,height:format=duration",
                  "-of", "json", str(file)],
-                capture_output=True, text=True, timeout=60, check=True).stdout
+                capture_output=True, timeout=60, check=True,
+                **env.child_kwargs()).stdout
             info = _json.loads(out)
             _probe_cache[key] = {
                 "duration": round(float(info.get("format", {}).get("duration", 0) or 0), 2),
@@ -119,9 +120,10 @@ def add_asset(kind: str, url: str, *, license: str, source: str | None = None,
     if not license.strip():
         raise ValueError("라이선스가 필요하다 — 소재 페이지에서 확인해 적는다 (CATALOG 규약)")
 
+    # 설치본에서는 node 가 runtime\ 에만 있다 — node_exe()+child_kwargs() 를 반드시 거친다
     run = runner or (lambda args: subprocess.run(
-        ["node", "assets/fetch.js", *args], cwd=ENGINE_DIR,
-        capture_output=True, text=True, timeout=300))
+        [env.node_exe(), "assets/fetch.js", *args], cwd=ENGINE_DIR,
+        capture_output=True, timeout=300, **env.child_kwargs()))
     proc = run([kind, url] + ([name] if name else []))
     if proc.returncode != 0:
         raise RuntimeError((proc.stderr or proc.stdout or "").strip()[-500:])

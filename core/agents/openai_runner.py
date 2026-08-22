@@ -79,7 +79,7 @@ def _client(key: str):
         from openai import OpenAI
     except ImportError as err:  # noqa: BLE001
         raise RuntimeError(
-            "openai 패키지가 없습니다 — conda run -n penv3.13-insait pip install openai"
+            "openai 패키지가 없습니다 — conda run -n penv3.13-video pip install openai"
         ) from err
     return OpenAI(api_key=key)
 

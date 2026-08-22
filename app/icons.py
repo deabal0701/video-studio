@@ -15,7 +15,8 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import (QColor, QIcon, QPainter, QPen, QPixmap, QPolygonF)
+from PySide6.QtGui import (QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap,
+                           QPolygonF)
 
 GRID = 24.0
 
@@ -104,6 +105,50 @@ _SHAPES = {
     "jobs": _draw_jobs,
     "settings": _draw_settings,
 }
+
+
+def _draw_app(p: QPainter, size: int) -> None:
+    """앱 마크 — 필름 칸 + 재생 삼각형. **작게도 읽혀야 한다**(타이틀바 16px).
+
+    그래서 선이 아니라 **면**으로 그린다 — 16px 에서 1.9px 획은 뭉개져 사라진다.
+    """
+    brand, deep = QColor("#0071e3"), QColor("#0B1220")
+    body = QRectF(1.5, 3.5, 21, 17)
+    shape = QPainterPath()
+    shape.addRoundedRect(body, 4.2, 4.2)
+    p.setPen(Qt.NoPen)
+    p.setBrush(deep)
+    p.drawPath(shape)                                          # 필름 몸통
+    # 위 띠는 **몸통 모양으로 잘라** 그린다 — 안 그러면 둥근 모서리 밖으로 삐져나온다
+    p.save()
+    p.setClipPath(shape)
+    p.setBrush(brand)
+    p.drawRect(QRectF(1.5, 3.5, 21, 3.4))                      # 위 띠 — '영상' 신호
+    if size >= 24:      # 작은 크기에선 구멍이 뭉개져 오히려 지저분하다
+        p.setBrush(QColor("#ffffff"))
+        for x in (4.2, 8.4, 12.6, 16.8):
+            p.drawRoundedRect(QRectF(x, 4.6, 2.2, 1.2), 0.5, 0.5)
+    p.restore()
+    p.setBrush(QColor("#ffffff"))
+    p.drawPolygon(QPolygonF([QPointF(9.6, 9.6), QPointF(16.6, 14.0),
+                             QPointF(9.6, 18.4)]))
+
+
+def app_icon() -> QIcon:
+    """창·작업표시줄 아이콘 — 크기별로 따로 그려 넣는다.
+
+    Qt 가 하나를 늘려 쓰면 16px 타이틀바에서 뭉개진다. `app.setWindowIcon()` 한 번이면
+    **메인 창과 모든 대화상자**가 함께 받는다 (부모를 창으로 주고 있으므로).
+    """
+    icon = QIcon()
+    for size in (16, 24, 32, 48, 64, 128, 256):
+        px, p = _canvas(size, 1.0)
+        try:
+            _draw_app(p, size)
+        finally:
+            p.end()
+        icon.addPixmap(px)
+    return icon
 
 
 # ── 밖에서 쓰는 것 ───────────────────────────────────────────────────────────

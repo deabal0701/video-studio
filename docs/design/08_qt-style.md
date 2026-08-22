@@ -189,27 +189,29 @@ theme.py 에 있다. 통째 테마를 얹으면 웹판과의 시각 연속성이
   프리뷰를 쓰는 스크립트·스모크도 반드시 같은 경로(`import app.bootstrap` 먼저)를 탄다.
   **동결본(PyInstaller onedir)에서도 이 임포트 순서는 유지된다** — 별도 runtime hook 불필요
   (5-7 실측 2026-08-22: 동결본 프리뷰 정상 렌더 `anims=2`·고유색 28).
-- 파이썬은 conda `penv3.13-insait` **하나**다 (2026-08-21 통일). PySide6 는 pip 휠이 아니라
-  **conda-forge 빌드**(`pyside6`·`qt6-webengine`·`qt6-multimedia`) — pip 휠은 conda
-  파이썬에서 Qt6Core DLL 충돌. 실행은 `.\run.ps1`.
-- **동결(PyInstaller)만은 예외로 pip 휠 venv 에서 한다** — 5-7 착수 전 확인용 실측
-  (2026-08-22). conda-forge 는 Qt 자산을 파이썬 패키지 **밖**에 둔다:
+- 파이썬은 conda `penv3.13-video` **하나**다 (2026-08-22 재통일 — insait 와 분리).
+  PySide6 포함 **전부 pip** 으로 설치하고, **동결(PyInstaller)도 같은 env** 에서 한다.
+  실행은 `.\run.ps1`, 설치본은 `.\packaging\build-installer.ps1`.
+  옛 env(penv3.13-insait)의 pip 휠 실패(Qt6Core DLL WinError 127)는 conda 자체가 아니라
+  **그 env 의 DLL 오염**(libffi 승격 — ctypes 까지 깨져 있었다)이었다. 깨끗한 env 실측:
+  pytest 141 · 프리뷰 고유색 34 · 동결 Qt DLL 42종+WebEngineProcess+icudtl 정상.
+- **단, 이 env 의 PySide6 는 pip 휠이어야 한다** — conda-forge 로 다시 깔면 동결이 깨진다.
+  conda-forge 는 Qt 자산을 파이썬 패키지 **밖**에 둔다:
 
-  | 자산 | conda-forge (개발) | pip 휠 (PyInstaller 훅이 찾는 곳) |
+  | 자산 | conda-forge | pip 휠 (PyInstaller 훅이 찾는 곳) |
   |---|---|---|
   | `Qt6*.dll` 81개 | `$PREFIX\Library\bin\` | `site-packages\PySide6\` |
   | 플랫폼 플러그인 | `$PREFIX\Library\lib\qt6\plugins\platforms\` | `site-packages\PySide6\plugins\platforms\` |
   | `QtWebEngineProcess.exe` | `$PREFIX\Library\lib\qt6\` | `site-packages\PySide6\` |
   | `*.pak`·`icudtl.dat`·locales | `$PREFIX\Library\share\qt6\resources\`·`translations\` | `site-packages\PySide6\resources\`·`translations\` |
 
-  conda 환경의 `site-packages\PySide6` 안에는 **Qt6 DLL 0개·plugins 없음**(대조: pip 휠
-  venv 는 144개·plugins/platforms/QtWebEngineProcess/resources/icudtl 전부 있음 — 두 세션이
-  각각 재현)이라 훅의
-  `collect_dynamic_libs('PySide6')` 가 빈손이 된다 → 동결본이 "could not find or load the
-  Qt platform plugin" 로 죽거나, 떠도 WebEngine 프리뷰(D10)가 못 뜬다. 그래서
-  `packaging/setup-qt-venv.ps1`(pip 휠 venv)이 **동결 전용으로** 남아 있다.
-  Qt 버전은 양쪽 6.11.2 로 동일해 동작 차이는 없다. conda 로 동결하려면 훅을 직접
-  써서 위 4종을 수동 수집해야 하는데, 그 유지비가 venv 하나보다 비싸다는 판단.
+  conda-forge 설치본의 `site-packages\PySide6` 안에는 **Qt6 DLL 0개·plugins 없음**(대조:
+  pip 휠은 144개·plugins/platforms/QtWebEngineProcess/resources/icudtl 전부 — 두 세션이
+  각각 재현)이라 훅의 `collect_dynamic_libs('PySide6')` 가 빈손이 된다 → 동결본이
+  "could not find or load the Qt platform plugin" 로 죽거나, 떠도 WebEngine 프리뷰(D10)가
+  못 뜬다. **한때 이 때문에 동결 전용 `.qt-venv` 를 따로 뒀는데**, pip 휠이 깨끗한 conda
+  env 에서 정상임이 확인되며 은퇴했다(2026-08-22 — setup-qt-venv.ps1 삭제). 개발과 동결이
+  같은 env 를 쓰는 지금, 이 표는 "**이 env 의 PySide6 를 pip 휠로 지켜야 하는 이유**"다.
 - **`.ps1` 은 UTF-8 BOM 으로 저장한다 — 새 스크립트를 만들 때마다, 기존 것을 다시 쓸 때마다.**
   PowerShell 5.1 은 BOM 없는 파일을 ANSI 로 읽어 한글·em-dash 가 깨지고, 깨진 문자가
   구문에 걸리면 `Unexpected token '}'` 로 **파서까지 죽는다**(실행 전에는 안 드러난다).

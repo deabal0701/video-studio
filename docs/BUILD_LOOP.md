@@ -58,7 +58,7 @@ docs/BUILD_LOOP.md 의 루프 프로토콜을 따라, 다음 미완 단계를 �
       office-talk.mp4 재다운로드(18.92s, Pexels), preflight 이상 없음,
       재현 빌드 성공 — final 292.77s mp4+srt, 프레임 5장 눈검수 통과 (2026-08-14)
 - [x] 0-4 Python 골격: pyproject.toml + core 모듈 뼈대(storage·paths·schema·validate·indexer·jobs·engine_io)
-      + api/main.py + pytest 7건 통과 (conda `penv3.13-insait`)
+      + api/main.py + pytest 7건 통과 (conda `penv3.13-video`)
 - [x] CLAUDE.md·이 파일 상태 갱신 + 수용 기준 항목별 보고 (2026-08-14)
 
 ### 1단계
@@ -262,7 +262,7 @@ web = 대시보드·강좌·회차 목록·scenes 뷰어(편집 없음)·빌드 
 ```
 5단계를 진행하라. docs/design/07_desktop.md 가 정본 — 하위 단계 표(5-0~5-8)의 첫 미완
 항목을 순서대로. 각 하위 단계의 수용 기준을 실측 검증하고 이 체크리스트를 갱신하라.
-Python 은 conda penv3.13-insait (.claude/memory/python-environment.md — 의존성 설치 상태 주의).
+Python 은 conda penv3.13-video (.claude/memory/python-environment.md — 의존성 설치 상태 주의).
 ```
 
 주의: 엔진 무수정 원칙 유지 (산출물 경로는 `--out`, 실행환경은 env.py 의 child_env 주입).
@@ -347,9 +347,10 @@ api/·web/ 는 삭제 완료 (api/=5-2 · web/=2026-08-21 D16 조기 삭제). �
       (claude 경로는 4단계에서 이미 실키 완주 — openai 는 키 제공 시)
 - [x] 5-7 설치본 🔄 (2026-08-22 — **동결본 실측 통과. 남은 것은 사용자 준비물 2종**)
       packaging/{VideoStudio.spec, collect-runtime.ps1, VideoStudio.iss, smoke-frozen.py} +
-      app/{pages/first_run.py, smoke_probe.py} + .qt-venv(동결 전용).
-      **동결 환경 확정**: pip 휠 venv (conda 금지 — conda-forge 는 Qt 자산을 site-packages
-      밖에 둬 PySide6 훅이 빈손. 실측 dlls_in_pkg conda 0 / pip 144, 두 세션 각각 재현)
+      app/{pages/first_run.py, smoke_probe.py}.
+      **동결 환경**: conda `penv3.13-video` (pip 휠 PySide6 — 2026-08-22 재통일로 .qt-venv
+      은퇴. PyInstaller 훅은 pip 휠 배치만 알며(실측 conda-forge 0 / pip 144 DLL), 깨끗한
+      conda env 에선 pip 휠이 정상이라 개발·동결이 한 env 가 됐다)
       **동결본 스모크 PASS** (임시 폴더 사본 + **PATH=System32 만**으로 실행):
       기동(frozen=true)·강좌 1·클립 16·**템플릿 20(node subprocess 가 설치 배치에서 동작)**·
       **프리뷰 렌더**(anims 2·"김민준 신규 구성원…"·시킹 후 고유색 28)·**설치 폴더 쓰기 0건**
@@ -386,10 +387,11 @@ api/·web/ 는 삭제 완료 (api/=5-2 · web/=2026-08-21 D16 조기 삭제). �
 |---|---|---|
 | 2026-08-21 | 정리 | **잔재 일괄 삭제 (사용자 지시).** `web/`(Vue 29파일·1,595줄 — D16 으로 5-5 앞당김) · `projects/` 검증 잔재(bread-basics·bread-basics-01·test) · `core/events.py`(SSE 전용 EventBus — 소비자 소멸, Qt 는 JobQueue.listener→Signal 직결)와 그 테스트 · `web/dist`·`engine/out/qt-demo-01`·`.cache/*.sqlite`·`__pycache__` 파생물. 참조 문서 8종 갱신(D11 토큰 정본 → `app/theme.py`, D16 신설). pytest 78건 전건 통과 |
 | 2026-08-14 | — | 저장소 이행 완료 (설계서·엔진·스킬·픽스처). BUILD_LOOP.md 작성, 0단계 착수 |
-| 2026-08-14 | 0 | **수용 기준 충족.** 셀프테스트 mp4 2개 · inspect.js 신설 · 픽스처 경로 이전 후 hr-basics-01 재현 빌드(292.77s, 4:53 — 허용 4:40~5:20 내) · Python 골격(conda penv3.13-insait, pytest 11건). 실측 반영: 02 경로 표를 현행 엔진 기준으로 교체(bgm·video=엔진 루트, 모션 file=대본 폴더), 자막 폰트는 시스템 폰트 제약 확인 — subtitleFont 지정 제거·R2 는 상용 트랙으로. 픽스처 실결함 1건(billing.html 미수용 tterm param) preflight 로 검출·제거 |
+| 2026-08-14 | 0 | **수용 기준 충족.** 셀프테스트 mp4 2개 · inspect.js 신설 · 픽스처 경로 이전 후 hr-basics-01 재현 빌드(292.77s, 4:53 — 허용 4:40~5:20 내) · Python 골격(conda penv3.13-video, pytest 11건). 실측 반영: 02 경로 표를 현행 엔진 기준으로 교체(bgm·video=엔진 루트, 모션 file=대본 폴더), 자막 폰트는 시스템 폰트 제약 확인 — subtitleFont 지정 제거·R2 는 상용 트랙으로. 픽스처 실결함 1건(billing.html 미수용 tterm param) preflight 로 검출·제거 |
 | 2026-08-14 | 1(선행) | core/jobs.py 잡 큐 + 테스트 4건 (0단계 빌드 대기 중 착수) |
 | 2026-08-15 | 2 | **수용 기준 충족.** paths.py(실측 5행+역산) · Document(diff 0) · 저장 API(If-Match/409+현재본) · 회차 스캐폴딩(일관성 0건) · 강좌 개설(템플릿+참조 재계산) · TTS 미리듣기(edge 실측) · 라이브러리(CATALOG 정본 파싱/추가·라이선스 필수) · web ①②③. **E2E 실측**: 빈 루트에서 위저드 개설(demo-course) → 보드 회차 추가 → 파일로 대본 편집 → 화면 빌드 done → 15s mp4·프레임 5장·타이틀 카드 눈검수(파랑 팔레트 정상). pytest 59건 |
 | 2026-08-22 | 5-7·5-8 | **설치본 파이프라인 완성 — 준비물 대기.** 동결 환경=pip 휠 venv 확정(conda 는 Qt 자산 미포함), 동결본 스모크 PASS(PATH=System32·설치 폴더 쓰기 0건·프리뷰 고유색 28), 라이선스 10종 동봉(휠에 LGPL 전문이 없어 정본에서 수집·누락 시 빌드 실패), 담당자 사용 안내, build-installer.ps1 한 명령. 결함 4건 수정(캐시 누수·조기 통과 판정·**스톡 소재 동봉(R3 위반)**·ps1 BOM). 용량 1,586→1,291MB. 남은 것: 깨끗한 PC·ISCC·서명 인증서 |
+| 2026-08-22 | env | **환경 재통일 — conda `penv3.13-video` 하나, 전부 pip** (사용자 지시: insait 와 분리). 깨끗한 env 를 만들어 보니 pip 휠 PySide6 가 정상 — 8-21 의 WinError 127 은 conda 자체가 아니라 **insait env 의 DLL 오염**이었다(libffi 3.7 승격이 ctypes 까지 깨뜨림). pip 휠이면 PyInstaller 훅도 정상이라 **`.qt-venv` 은퇴** — 개발·pytest·캡처·동결이 한 env. 부수 효과: 새 env 에 conda ffmpeg 가 없어 시스템 ffmpeg(libass 있음)가 잡힘 — 개발 빌드의 합성 실패도 자연 해소. insait 는 우리가 넣은 것(pyside6·qt6-*·claude-agent-sdk) 제거로 원상 복구(단 ffi.dll 사본은 ctypes 복구라 유지) |
 | 2026-08-22 | 5-7 | **자가진단이 거짓말하던 지점 하나.** ffmpeg 가 PATH 에 있는지만 보고 OK 라고 했는데, **conda-forge ffmpeg 9.0.1 에는 `ass` 필터(libass)가 없다** — 존재 검사는 통과하고 빌드는 `[3] 합성` 에서 `No option name near '<회차>.ass'` 로 죽는다. 개발 환경에서 앱의 [빌드] 가 깨져 있었고 아무도 몰랐다(직접 `node build.js` 를 돌리면 시스템 ffmpeg 가 잡혀 성공하므로 가려졌다). **설치본 동봉본(7.1 full)에는 있어 배포본은 무사하다.** 자가진단에 "ffmpeg 자막" 행 추가 + 테스트 4건 |
 | 2026-08-22 | 5-7 | **설치본 용량 1,291→1,100MB (−191MB).** `excludes=` 가 파이썬 바인딩만 막고 **DLL·qml·리소스는 그대로 수집**되고 있었다 — WebEngine 디버그 pak 72MB·전 언어 locales 44MB·안 쓰는 모듈 DLL 45MB·전 언어 qm 9MB. spec 에 `_prune()` 추가, **동결 스모크 PASS 로 판정**(프리뷰 로드·픽셀). 프리뷰 고유색 28→17 은 가지치기가 아니라 09 의 16:9 고정 때문 — 가지치기 없는 conda 트리에서도 17 로 대조 확인. 덤: `collect-runtime.ps1` 이 자기 머리말 규칙(네이티브 종료코드로 판정)을 두 곳에서 어겨 **깨끗한 재빌드에서만 터지던 잠복 결함** 수정 |
 | 2026-08-22 | 5-6 | **에이전트 이중 제공자 + 설정 화면.** providers(제공자·모델·키 게이트)·openai_runner(구조화 생성+결정적 파일 기입)·config(홈 .env 병합·자가진단 9항목)·설정 화면. 화면에서 openai 전환+테스트 모드 → 최저가 강제 실측, 키 넣고 빼며 AI 버튼 게이트 실측. pytest 93건 |

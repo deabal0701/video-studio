@@ -8,8 +8,8 @@ version = "0.0.1"
 description = "강좌(시리즈) 영상 제작 스튜디오 — 파일 SSOT · FastAPI · engine(Node CLI) subprocess"
 requires-python = ">=3.12"
 # 5-2 (07_desktop): HTTP 계층 제거 — fastapi·uvicorn·sse-starlette·watchfiles 삭제.
-# 파일 감시는 Qt(QFileSystemWatcher — 5-3), UI 는 별도 qt-venv(PySide6 — conda 충돌,
-# .claude/memory/pyside6-environment.md).
+# 파일 감시는 Qt(QFileSystemWatcher — 5-3). 환경은 conda penv3.13-video 하나(pip 휠
+# PySide6 — .claude/memory/pyside6-environment.md).
 dependencies = [
   "pydantic>=2.7",
 ]
