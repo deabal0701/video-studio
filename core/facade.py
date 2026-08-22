@@ -151,6 +151,8 @@ class Studio:
 
     def list_courses(self) -> list[dict]:
         """구조는 SQLite 캐시에서, 상태 배지는 계산으로 (파생 상태 저장 금지 — 02)."""
+        from . import kinds as kinds_mod
+
         out = []
         for c in self.index().courses():
             if c.get("single"):
@@ -165,8 +167,13 @@ class Studio:
                 kind = doc.get("kind")
             except Exception:  # noqa: BLE001 — 색을 못 읽어도 목록은 떠야 한다
                 pass
+            # 단발 종류(홍보 등)가 1편뿐이면 그 id — 대시보드가 보드를 건너뛰고 직행한다
+            sole = None
+            if kind and not kinds_mod.get(kind)["series"] and len(episodes) == 1:
+                sole = episodes[0]["id"]
             out.append({"id": c["id"], "title": c["title"], "episodeCount": c["episodeCount"],
                         "scaffolded": len(episodes), "brand": brand, "kind": kind,
+                        "soleEpisode": sole,
                         "done": sum(1 for e in episodes if e["state"] == "done")})
         return out
 

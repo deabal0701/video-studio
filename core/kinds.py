@@ -27,7 +27,7 @@ from typing import Any
 KINDS: dict[str, dict[str, Any]] = {
     "lecture": {
         "label": "강의",
-        "desc": "여러 편으로 나뉘는 시리즈. 챕터·정리 구조가 깔린다",
+        "desc": "여러 편을 담는 프로젝트가 만들어집니다 — 영상은 안에서 편마다 추가합니다",
         "series": True,                       # 여러 영상을 묶는다
         "scenes_template": None,              # lecture/episode.scenes.json (기본)
         "length": "5분 (약 1,850자)",
@@ -35,7 +35,7 @@ KINDS: dict[str, dict[str, Any]] = {
     },
     "promo": {
         "label": "홍보",
-        "desc": "제품·서비스 소개. 짧고 선명하게",
+        "desc": "영상 1편이 바로 만들어집니다 — 제품·서비스 소개, 짧고 선명하게",
         "series": False,
         "scenes_template": "scenes.promo.json",
         "length": "30초 (약 190자)",
@@ -43,7 +43,7 @@ KINDS: dict[str, dict[str, Any]] = {
     },
     "ad": {
         "label": "광고",
-        "desc": "한 가지만 각인시키는 아주 짧은 영상",
+        "desc": "영상 1편이 바로 만들어집니다 — 한 가지만 각인시키는 아주 짧게",
         "series": False,
         "scenes_template": "scenes.promo.json",   # 골격은 홍보와 같고 길이가 다르다
         "length": "15초 (약 95자)",
@@ -51,7 +51,7 @@ KINDS: dict[str, dict[str, Any]] = {
     },
     "manual": {
         "label": "사용 매뉴얼",
-        "desc": "따라 하는 영상. 단계마다 챕터 카드가 들어간다",
+        "desc": "영상 1편이 바로 만들어집니다 — 단계마다 챕터 카드가 들어갑니다",
         "series": False,
         "scenes_template": "scenes.manual.json",
         "length": "2분 (약 760자)",
@@ -59,7 +59,7 @@ KINDS: dict[str, dict[str, Any]] = {
     },
     "general": {
         "label": "일반 영상",
-        "desc": "타이틀과 마무리만 — 나머지는 직접 채운다",
+        "desc": "영상 1편이 바로 만들어집니다 — 타이틀·마무리만 깔리고 나머지는 직접",
         "series": False,
         "scenes_template": None,
         # 강의 골격에서 이것만 남긴다 — 정해진 구성이 없는 영상이므로 (설명과 동작을 맞춘다)

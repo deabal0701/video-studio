@@ -144,10 +144,24 @@ class NewCourseDialog(QDialog):
         self._auto_colors = set(pal.values())
 
     def _create(self) -> None:
+        """단발 종류(홍보·광고·매뉴얼·일반)는 **영상 1편까지 함께** 만든다.
+
+        "새 프로젝트를 누르면 영상이 만들어지는 것인가?" (2026-08-22 사용자) — 답이
+        종류마다 달라야 직관적이다: 시리즈(강의)는 빈 프로젝트를 열어 편을 추가하고,
+        단발은 만들기 = 곧 영상 1편이라 빈 보드를 거치지 않고 영상 화면으로 직행한다.
+        """
         studio = self._make_studio()
         payload = self.body()
-        run_bg(lambda: studio.create_course(payload),
-               done=self._done, fail=self._fail)
+        single = not kinds.get(self.kind())["series"]
+
+        def create():
+            out = studio.create_course(payload)
+            if single:
+                ep = studio.create_episode(out["id"], 1, title=payload["title"])
+                out["episodeId"] = ep["id"]
+            return out
+
+        run_bg(create, done=self._done, fail=self._fail)
 
     def _done(self, out: dict) -> None:
         self.created = out

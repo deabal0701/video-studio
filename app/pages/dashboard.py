@@ -59,7 +59,12 @@ class CourseCard(QFrame):
         self.setCursor(Qt.PointingHandCursor)
 
     def mouseReleaseEvent(self, e):  # noqa: N802 — Qt 오버라이드
-        self.opened.emit(self.info["id"], bool(self.info.get("single")))
+        # 단발 프로젝트(홍보 등 1편)는 그 영상으로 직행 — 1장짜리 보드를 거치게 하지 않는다
+        sole = self.info.get("soleEpisode")
+        if sole:
+            self.opened.emit(sole, True)
+        else:
+            self.opened.emit(self.info["id"], bool(self.info.get("single")))
         super().mouseReleaseEvent(e)
 
 
@@ -120,7 +125,10 @@ class DashboardPage(QWidget):
         dlg = NewCourseDialog(self._make_studio, self)
         if dlg.exec() and dlg.created:
             self.refresh()
-            self.open_course.emit(dlg.created["id"])
+            if dlg.created.get("episodeId"):   # 단발 — 빈 보드를 거치지 않는다
+                self.open_episode.emit(dlg.created["episodeId"])
+            else:
+                self.open_course.emit(dlg.created["id"])
 
     def _fail(self, err) -> None:
         self.error.setText(error_text(err))
