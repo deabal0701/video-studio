@@ -161,11 +161,14 @@ class EpisodePage(QWidget):
         self.frames_row = QHBoxLayout()
         holder = QWidget()
         holder.setLayout(self.frames_row)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(holder)
-        scroll.setFixedHeight(theme.THUMB_H + 72)   # 캡션·여백까지 — 세로 스크롤바가 안 뜨게
-        lay.addWidget(scroll)
+        self.frames_scroll = QScrollArea()
+        self.frames_scroll.setWidgetResizable(True)
+        self.frames_scroll.setWidget(holder)
+        # 높이는 로드 때 썸네일에 맞춰 다시 잡는다 — 세로 스크롤은 존재 자체가 오산이라
+        # 끈다 (세로 바가 생기면 그 폭만큼 가로 바까지 연쇄로 생긴다)
+        self.frames_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.frames_scroll.setFixedHeight(theme.THUMB_H + 72)   # 캡션·여백까지
+        lay.addWidget(self.frames_scroll)
 
         # 직전 영상 타이틀 프레임 쌍 — "스팅어·타이틀은 영상마다 같아야 한다" 눈검수 재료
         self.pair_head = QLabel("타이틀 일관성 — 직전 영상과 나란히")
@@ -362,7 +365,7 @@ class EpisodePage(QWidget):
         if finals:
             mp4 = OUT_ROOT / self.eid / "final" / finals[0]
             self.player.setSource(QUrl.fromLocalFile(str(mp4)))
-            self.media_label.setText(finals[0])
+            self.media_label.setText(f"완성본 {finals[0]}")
             self._load_review()
 
     def _fill_inspect(self, inspect: dict) -> None:
@@ -395,7 +398,7 @@ class EpisodePage(QWidget):
             if finals:
                 mp4 = OUT_ROOT / self.eid / "final" / finals[0]
                 self.player.setSource(QUrl.fromLocalFile(str(mp4)))
-                self.media_label.setText(finals[0])
+                self.media_label.setText(f"완성본 {finals[0]}")
 
         run_bg(get, done=fill, fail=self._fail)
 
@@ -448,10 +451,17 @@ class EpisodePage(QWidget):
                 item = self.frames_row.takeAt(0)
                 if item.widget():
                     item.widget().deleteLater()
+            # 다섯 장이 한눈에 — 좁은 창이면 축소해서라도 전부 보인다 (체크리스트가
+            # "마지막 프레임"을 보라는데 스크롤 안 하면 안 보이던 결함, P6)
+            n = max(1, len(frames))
+            avail = max(300, self.frames_scroll.viewport().width() - 24)
+            thumb_h = min(theme.THUMB_H, max(80, (avail // n - 10) * 9 // 16))
+            self.frames_scroll.setFixedHeight(thumb_h + 72)
             for f in frames:
                 cell = QVBoxLayout()
+                cell.setContentsMargins(0, 0, 0, 0)   # 셀 기본 마진 9px×10 이 폭 계산을 깬다
                 img = QLabel()
-                img.setPixmap(QPixmap(f["path"]).scaledToHeight(theme.THUMB_H, Qt.SmoothTransformation))
+                img.setPixmap(QPixmap(f["path"]).scaledToHeight(thumb_h, Qt.SmoothTransformation))
                 cap = QLabel(f"{KIND_LABEL.get(f.get('kind'), '')} {f['t']}s")
                 cap.setObjectName("caption")
                 cap.setAlignment(Qt.AlignCenter)
