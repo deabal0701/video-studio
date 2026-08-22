@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-                               QMainWindow, QStackedWidget, QStatusBar, QVBoxLayout,
-                               QWidget)
+                               QMainWindow, QPushButton, QStackedWidget, QStatusBar,
+                               QVBoxLayout, QWidget)
 
 from core import env
 
@@ -49,53 +49,55 @@ class MainWindow(QMainWindow):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
 
-        # 내비 열 = 브랜드 머리 + 메뉴. **창의 좌상단은 시선이 가장 먼저 닿는 자리인데**
-        # 지금까지 거기 앉아 있던 것은 가장 약한 것(작은 회색 메뉴 글자)이었고, 바로 옆
-        # 본문에는 28px 볼드 제목이 있어 위계가 뒤집혀 있었다 (P22). 또 설치형 앱인데
-        # 클라이언트 영역 어디에도 제품 이름이 없어 "Video Studio" 를 말하는 것은 OS
-        # 제목줄의 작은 회색 글자뿐이었다 (P14·P25 — 여러 창 사이에서 자기를 못 밝힌다).
-        # (2026-08-23 사용자: "제목표시줄과 약간의 공백 — 다른 것을 채워 넣을 수 있나")
+        # 좌측 열 = **행동 하나 + 화면 목록**.
+        #
+        # 제목줄 아래 좌상단이 비어 보인다는 지적(2026-08-23)에 무엇을 채울지 정한 결과다.
+        # 워드마크("Video Studio" 로고+글자)를 먼저 넣어 봤으나 **캡처에서 기각** —
+        # Windows 제목줄이 바로 30px 위에서 같은 아이콘·같은 글자를 이미 그리고 있어
+        # 같은 로고가 두 번 쌓였다 (P12 중복). 제목줄이 정체성을 말하므로 이 자리는
+        # **기능**이 가져간다.
+        #
+        # 그 기능은 [새 영상 만들기]다 — 이 앱의 첫 목적이고, 원래 내비 **목록의 한 행**
+        # 이었다. 그런데 목록의 다른 항목은 전부 "화면"인데 이것만 "행동"이라 (a) 화면
+        # 이동으로 오해되고 (b) 선택 하이라이트가 옮겨가면 안 되어 blockSignals·QTimer
+        # 특례 코드를 달고 있었다 (P11·P15). 버튼으로 승격하면 둘 다 사라진다:
+        # 목록에는 화면만 남고, 시선이 가장 먼저 닿는 좌상단에 Primary Action 이 앉는다.
         side = QFrame()
         side.setObjectName("side")
         side.setFixedWidth(200)
         side_lay = QVBoxLayout(side)
-        side_lay.setContentsMargins(0, 0, 0, 0)
+        # 좌우 여백은 **버튼에만** 준다 — 내비 항목은 열 가장자리까지 닿아야
+        # 선택 하이라이트가 띠로 읽히고 좌측 3px 강조 막대가 잘리지 않는다
+        side_lay.setContentsMargins(0, 12, 0, 0)
         side_lay.setSpacing(0)
 
-        brand = QWidget()
-        brand_lay = QHBoxLayout(brand)
-        # 로고 왼쪽 16px = 내비 항목 아이콘의 왼쪽 여백 — 세로선이 하나로 맞는다
-        brand_lay.setContentsMargins(16, 14, 14, 12)
-        brand_lay.setSpacing(9)
-        mark = QLabel()
-        mark.setPixmap(icons.app_icon().pixmap(24, 24))
-        mark.setFixedWidth(24)
-        brand_lay.addWidget(mark)
-        word = QLabel("Video Studio")
-        word.setObjectName("brandWord")
-        brand_lay.addWidget(word, 1)
-        side_lay.addWidget(brand)
+        btn_row = QWidget()
+        btn_row_lay = QHBoxLayout(btn_row)
+        btn_row_lay.setContentsMargins(12, 0, 12, 0)
+        # 글자의 "+" 는 넣지 않는다 — 아이콘이 이미 네모난 플러스다 ("+ +" 로 읽힌다)
+        self.new_video_btn = QPushButton("  새 영상 만들기")
+        self.new_video_btn.setObjectName("primary")
+        self.new_video_btn.setIcon(icons.nav("create", "#ffffff"))
+        self.new_video_btn.setIconSize(QSize(16, 16))
+        self.new_video_btn.setCursor(Qt.PointingHandCursor)
+        self.new_video_btn.setToolTip("영상 한 편을 새로 시작합니다 — 어느 화면에서나")
+        self.new_video_btn.setFixedHeight(34)
+        self.new_video_btn.clicked.connect(self._new_video)
+        btn_row_lay.addWidget(self.new_video_btn)
+        side_lay.addWidget(btn_row)
+        side_lay.addSpacing(14)
 
         self.nav = QListWidget()
         self.nav.setObjectName("nav")
         # 이모지 금지 — OS 폰트가 제각각으로 그린다 (09 G4).
         # 아이콘이 필요하면 **코드로 그린다** (app/icons.py) — 어느 PC 에서나 같은 그림이다
-        # "새 영상 만들기"는 화면이 아니라 **행동** — 첫 목적(영상 하나 만들기)이
-        # 대시보드 안 [+ 새 프로젝트]에 숨어 있으면 못 찾는다 (2026-08-23 사용자 지적)
-        for key, label in (("dashboard", "대시보드"), ("create", "새 영상 만들기"),
-                           ("library", "라이브러리"), ("jobs", "작업 큐"),
-                           ("settings", "설정")):
-            accent = key == "create"
-            item = QListWidgetItem(
-                icons.nav(key, theme.ACCENT if accent else theme.INK_2), label, self.nav)
+        for key, label in (("dashboard", "대시보드"), ("library", "라이브러리"),
+                           ("jobs", "작업 큐"), ("settings", "설정")):
+            item = QListWidgetItem(icons.nav(key, theme.INK_2), label, self.nav)
             item.setData(Qt.UserRole, key)
-            if accent:
-                from PySide6.QtGui import QColor
-                item.setForeground(QColor(theme.ACCENT))
         self.nav.setIconSize(QSize(18, 18))
         self.nav.setCurrentRow(0)
-        self._nav_row = 0              # 마지막 "화면" 행 — 행동 항목 클릭 후 복귀 지점
-        self._new_video_open = False   # 위저드 이중 오픈 방지 (press·release 가 따로 온다)
+        self._new_video_open = False   # 위저드 이중 오픈 방지
         side_lay.addWidget(self.nav, 1)
         lay.addWidget(side)
 
@@ -145,35 +147,33 @@ class MainWindow(QMainWindow):
         self.dashboard.refresh()
 
     # ── 페이지 전환 ──────────────────────────────────────────────────────────
+    # 내비는 이제 **화면만** 담는다 (행동 [새 영상 만들기]는 위 버튼으로 승격) —
+    # 그래서 행 번호와 스택 인덱스가 다시 1:1 이고, 행동 행을 걸러내던 특례가 없다.
+    NAV_STACK = {0: 0, 1: 3, 2: 4, 3: 5}     # 대시보드·라이브러리·작업 큐·설정
+
     def _nav_to(self, row: int) -> None:
-        if row == 1:   # "새 영상 만들기" — 화면 전환이 아니라 위저드를 연다
-            self.nav.blockSignals(True)
-            self.nav.setCurrentRow(self._nav_row)
-            self.nav.blockSignals(False)
-            if not self._new_video_open:
-                # 시그널 핸들러 안에서 exec() 하면 release 이벤트가 두 번째
-                # 대화상자를 연다 — 이벤트 루프로 미룬다
-                self._new_video_open = True
-                QTimer.singleShot(0, self._new_video)
+        if row not in self.NAV_STACK:
             return
-        self._nav_row = row
-        self.stack.setCurrentIndex({0: 0, 2: 3, 3: 4, 4: 5}[row])
+        self.stack.setCurrentIndex(self.NAV_STACK[row])
         if row == 0:
             self.dashboard.refresh()
-        elif row == 2:
+        elif row == 1:
             self.library_page.refresh()
-        elif row == 3:
+        elif row == 2:
             self.jobs_page.refresh()
-        elif row == 4:
+        elif row == 3:
             self.settings_page.refresh()
 
     def _new_video(self) -> None:
-        """내비 [새 영상 만들기] — 위저드에서 만들면 곧장 작업 화면으로.
+        """좌측 열 [+ 새 영상 만들기] — 위저드에서 만들면 곧장 작업 화면으로.
 
         단발(홍보·광고·매뉴얼·일반)은 영상 화면 ② 대본으로 직행, 시리즈(강의)는
         영상 목록으로 (대시보드 [+ 새 프로젝트]와 같은 규칙)."""
         from .dialogs import NewCourseDialog
 
+        if self._new_video_open:      # 모달이 이미 떠 있으면 두 번째를 열지 않는다
+            return
+        self._new_video_open = True
         try:
             dlg = NewCourseDialog(self.make_studio, self)
             if dlg.exec() and dlg.created:

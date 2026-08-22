@@ -29,6 +29,7 @@ shutil.copytree(REPO / "fixtures" / "projects", ROOT)
 os.environ["VIDEO_STUDIO_PROJECTS"] = str(ROOT)
 
 from app import bootstrap  # noqa: E402,F401
+from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 app = QApplication(sys.argv)
@@ -152,13 +153,28 @@ pump(60, lambda: bool(ep.deploy_tab.title.text()))
 shot("10-episode-deploy")           # ④ 배포
 
 # ── 11~13. 내비 페이지 ───────────────────────────────────────────────────────
-win.nav.setCurrentRow(1)
+# 행 번호를 손으로 세지 않는다 — **화면 위젯이 실제로 바뀌었는지 확인**하고 찍는다.
+# (2026-08-23 실측: 내비에 행동 항목 [새 영상 만들기]가 1행으로 끼어든 뒤로 이 세 줄이
+# 한 칸씩 밀려 있었다 — 라이브러리 자리에 대시보드가, 설정 자리에 작업 큐가 찍히는데
+# 캡처는 오류를 내지 않는다. 탭을 이름으로 고르는 위 `tab()` 과 같은 이유다.)
+def nav_to(key: str, page) -> None:
+    for row in range(win.nav.count()):
+        if win.nav.item(row).data(Qt.UserRole) == key:
+            win.nav.setCurrentRow(row)
+            if not pump(10, lambda: win.stack.currentWidget() is page):
+                raise SystemExit(f"내비 '{key}' 로 화면이 안 바뀐다: "
+                                 f"{type(win.stack.currentWidget()).__name__}")
+            return
+    raise SystemExit(f"내비 항목을 못 찾았다: {key}")
+
+
+nav_to("library", win.library_page)
 pump(3)
 shot("11-library")
-win.nav.setCurrentRow(2)
+nav_to("jobs", win.jobs_page)
 pump(3)
 shot("12-jobs")
-win.nav.setCurrentRow(3)
+nav_to("settings", win.settings_page)
 pump(60, lambda: win.settings_page._loaded and win.settings_page.diag_table.rowCount() > 0)
 shot("13-settings")
 

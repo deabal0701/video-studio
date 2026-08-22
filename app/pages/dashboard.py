@@ -102,8 +102,10 @@ class DashboardPage(QWidget):
         t.setObjectName("pageTitle")
         head.addWidget(t)
         head.addStretch(1)
+        # 좌측 열 [새 영상 만들기]와 **같은 대화상자**를 연다 — 둘 다 강조색이면 파란
+        # 버튼 두 개가 한 화면에서 경쟁한다 (P15). 상시 노출되는 좌측 열이 Primary 를
+        # 갖고, 이 목록 안의 진입로는 보조 버튼으로 둔다 (2026-08-23)
         self.new_btn = QPushButton("+ 새 프로젝트")
-        self.new_btn.setObjectName("primary")
         self.new_btn.clicked.connect(self._new_course)
         head.addWidget(self.new_btn)
         outer.addLayout(head)

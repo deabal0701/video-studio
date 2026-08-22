@@ -118,16 +118,15 @@ QComboBox QAbstractItemView {{
    border-top 과 같은 색으로 창을 위아래 대칭으로 닫는다 (2026-08-23 실측 수정) */
 QFrame#topRule {{ background: {SEPARATOR}; border: none; }}
 
-/* 좌측 열 — 흰 표면과 세로 경계선은 **열**이 갖는다 (브랜드 머리 + 내비가 한 판).
-   내비가 갖고 있으면 브랜드 머리 옆에서 선이 끊긴다 */
+/* 좌측 열 — 흰 표면과 세로 경계선은 **열**이 갖는다 ([새 영상 만들기] 버튼 + 내비가
+   한 판). 내비가 갖고 있으면 버튼 옆에서 세로선이 끊긴다 */
 QFrame#side {{
   background: {BG_SURFACE}; border: none; border-right: 1px solid {SEPARATOR};
 }}
-QLabel#brandWord {{ font-size: 15px; font-weight: 600; color: {INK}; }}
 
 /* 좌측 내비 */
 QListWidget#nav {{
-  background: {BG_SURFACE}; border: none; padding-top: 6px; outline: none;
+  background: {BG_SURFACE}; border: none; outline: none;
 }}
 QListWidget#nav::item {{ padding: 9px 16px; border: none; color: {INK_2}; }}
 QListWidget#nav::item:selected {{ background: {ACCENT_SOFT}; color: {ACCENT};
