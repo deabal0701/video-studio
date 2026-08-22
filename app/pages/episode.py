@@ -416,8 +416,12 @@ class EpisodePage(QWidget):
             label = ctitle + (f" — {n}편" if n else "")
             if etitle and etitle != ctitle:
                 label += f" {etitle}"
-            self.title.setText(label)
-            self.title.setToolTip(f"폴더: {eid}")
+            # 긴 제목이 빌드 버튼을 밀어내면 상단 틀이 무너진다 — 말줄임 (10 지적)
+            from PySide6.QtGui import QFontMetrics
+
+            fm = QFontMetrics(self.title.font())
+            self.title.setText(fm.elidedText(label, Qt.ElideRight, 620))
+            self.title.setToolTip(f"{label}  ·  폴더: {eid}")
 
         run_bg(get, done=fill, fail=lambda _e: None)
 

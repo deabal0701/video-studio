@@ -178,6 +178,7 @@ class ClipEditorTab(QWidget):
     def _make_center(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)   # 화면은 가로 스크롤 금지 (09 G2)
         w = QWidget()
         scroll.setWidget(w)
         lay = QVBoxLayout(w)
@@ -196,8 +197,10 @@ class ClipEditorTab(QWidget):
         sp.addWidget(sp_desc)
         self._sp_head, self._sp_desc = sp_head, sp_desc
         self._sp_buttons = QWidget()
-        sp_row = QHBoxLayout(self._sp_buttons)
+        # 세로 배치 — 가로 한 줄은 좁은 창에서 잘린다 (10: "상단 틀이 안 맞는다" 재현 실측)
+        sp_row = QVBoxLayout(self._sp_buttons)
         sp_row.setContentsMargins(0, 0, 0, 0)
+        sp_row.setSpacing(8)
         ai_btn = QPushButton("AI 로 대본 쓰기")
         ai_btn.setObjectName("primary")
         ai_btn.setToolTip("주제만 알려주면 AI 가 전체 클립의 내레이션을 채웁니다")
@@ -208,8 +211,7 @@ class ClipEditorTab(QWidget):
         self_btn = QPushButton("직접 쓰기")
         self_btn.clicked.connect(self._start_manual)
         for b in (ai_btn, paste_btn, self_btn):
-            sp_row.addWidget(b)
-        sp_row.addStretch(1)
+            sp_row.addWidget(b, 0, Qt.AlignLeft)
         sp.addWidget(self._sp_buttons)
         # 진행 모드 — [시작] 뒤에 아무 일도 안 보이면 죽은 줄 안다 (10: "프로그레스바가
         # 가면서 대본이 생성되어야 하는 거 아닌가"). 같은 카드가 진행 표시로 변신한다.
@@ -225,6 +227,13 @@ class ClipEditorTab(QWidget):
         sp.addWidget(self.ai_line)
         self.start_panel.hide()
         lay.addWidget(self.start_panel)
+        # 접힌 뒤에도 AI 로 돌아올 길 — [직접 쓰기]가 편도문이면 안 된다
+        # (2026-08-22 사용자: "직접 쓰기를 클릭 후 다시 돌아가려면?")
+        self.ai_reopen = QPushButton("AI 도움받기 — 대본 쓰기 · 글 배분")
+        self.ai_reopen.setFlat(True)
+        self.ai_reopen.clicked.connect(self._reopen_ai)
+        self.ai_reopen.hide()
+        lay.addWidget(self.ai_reopen, 0, Qt.AlignLeft)
 
         self.cur_id = QLabel("")
         self.cur_id.setObjectName("sectionTitle")
@@ -375,7 +384,12 @@ class ClipEditorTab(QWidget):
         return not wrote
 
     def _sync_start_panel(self) -> None:
-        self.start_panel.setVisible(bool(self.clips) and self._script_unwritten())
+        has = bool(self.clips)
+        show_panel = (has and self._script_unwritten()
+                      and not getattr(self, "_panel_collapsed", False))
+        self.start_panel.setVisible(show_panel)
+        # 패널이 없을 때도 AI 진입로는 남긴다 (쓰던 중이든, 직접 쓰기로 접었든)
+        self.ai_reopen.setVisible(has and not show_panel)
 
     def _ai_dialog(self, title: str, prompt: str) -> tuple[str, bool, list] | None:
         """주제 입력 + 근거 문서/폴더 + [영상까지 한 번에] — "알아서 다"가 기본값이다.
@@ -474,6 +488,8 @@ class ClipEditorTab(QWidget):
     # ── AI 진행 표시 (부모 EpisodePage 가 잡 이벤트를 흘려준다) ─────────────
     def ai_progress_start(self, msg: str = "AI 가 대본을 쓰는 중입니다 — 몇 분 걸립니다."
                           ) -> None:
+        self._panel_collapsed = False
+        self.ai_reopen.hide()
         self.start_panel.show()
         self._sp_head.setText("AI 작업 중")
         self._sp_desc.setText(msg)
@@ -498,11 +514,22 @@ class ClipEditorTab(QWidget):
         self._sync_start_panel()
 
     def _start_manual(self) -> None:
-        """첫 내레이션 있는 자리로 데려간다 — 안내는 접는다."""
-        self.start_panel.hide()
+        """첫 내레이션 자리로 데려간다 — 안내는 접히고, [AI 도움받기]로 되돌아온다."""
+        self._panel_collapsed = True
+        self._sync_start_panel()
         if self.clips:
             self.clip_list.setCurrentRow(0)
         self.narration.setFocus()
+
+    def _reopen_ai(self) -> None:
+        """접힌 안내를 다시 편다 — 대본이 이미 있으면 덮어씀을 경고한다."""
+        self._panel_collapsed = False
+        if not self._script_unwritten():
+            self._sp_head.setText("AI 로 다시 쓰기")
+            self._sp_desc.setText("대본이 이미 있습니다 — AI 로 새로 쓰면 지금 내용을 "
+                                  "덮어씁니다. 글 붙여넣기도 마찬가지입니다.")
+        self.start_panel.show()
+        self.ai_reopen.hide()
 
     # ── 문맥 ────────────────────────────────────────────────────────────────
     @property
