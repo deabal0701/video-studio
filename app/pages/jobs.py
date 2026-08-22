@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView, QLabel,
                                QPushButton, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
@@ -85,9 +85,13 @@ class JobsPage(QWidget):
         for i, j in enumerate(jobs):
             label, color = STATE_LABEL.get(j["state"], (j["state"], theme.INK_2))
             state = QTableWidgetItem(label)
-            state.setForeground(Qt.red if j["state"] in ("failed", "blocked") else Qt.black)
-            for col, item in enumerate([QTableWidgetItem(j["jobId"]),
-                                        QTableWidgetItem(j["episodeId"]), state,
+            state.setForeground(QColor(color))   # 진행 주황·완료 초록·실패 빨강 (P4)
+            # 작업 이름은 사람 말로 — jobId 는 툴팁으로 강등 (P2)
+            task = QTableWidgetItem(
+                "AI 작업" if j.get("kind") == "agent"
+                else {"tts": "TTS만", "compose": "합성만"}.get(j.get("only"), "빌드"))
+            task.setToolTip(j["jobId"])
+            for col, item in enumerate([task, QTableWidgetItem(j["episodeId"]), state,
                                         QTableWidgetItem(j.get("error") or "")]):
                 self.table.setItem(i, col, item)
         cost = usage.get("totalCostUsd") or 0

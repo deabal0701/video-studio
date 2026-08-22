@@ -401,7 +401,7 @@ class Studio:
     @staticmethod
     def _job_view(job) -> dict[str, Any]:
         return {"jobId": job.id, "episodeId": job.episode_id, "state": job.state.value,
-                "error": job.error}
+                "error": job.error, "kind": job.kind, "only": job.only}
 
     def jobs(self) -> list[dict]:
         return [self._job_view(j) for j in self.queue.list()]
