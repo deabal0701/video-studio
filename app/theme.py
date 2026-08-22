@@ -141,6 +141,8 @@ QPushButton {{ background: {BG_SURFACE}; border: 1px solid {SEPARATOR};
 QPushButton:hover {{ border-color: {INK_3}; }}
 QPushButton#primary {{ background: {ACCENT}; border-color: {ACCENT}; color: white; }}
 QPushButton#primary:hover {{ background: {ACCENT_HOVER}; }}
+/* id 선택자가 :disabled 일반 규칙을 이겨 비활성 primary 가 활성처럼 보였다 (15회차) */
+QPushButton#primary:disabled {{ color: {INK_3}; border-color: {SEPARATOR}; background: {BG_PAGE}; }}
 QPushButton#danger {{ color: {DANGER}; border-color: {DANGER}; }}
 QPushButton:disabled {{ color: {INK_3}; border-color: {SEPARATOR}; background: {BG_PAGE}; }}
 
