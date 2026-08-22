@@ -133,17 +133,27 @@ class PlanTab(QWidget):
     def _save(self) -> None:
         eid, etag, studio = self.eid, self._etag, self._make_studio()
         md = self.raw.toPlainText()
+        # 처리 중 잠금 — 중복 클릭이 옛 etag 로 두 번째 저장을 보내 409 를 띄운다
+        # (24회차 P18·P20 — ② 대본 저장과 같은 처방)
+        self.save_btn.setEnabled(False)
+        self.result.setText("저장 중…")
         run_bg(lambda: studio.put_plan(eid, md, etag),
                done=lambda out: (setattr(self, "_etag", out["etag"]),
-                                 self.result.setText("저장됨 ✓")),
-               fail=lambda e: self.result.setText(error_text(e)))
+                                 self.result.setText("저장됨 ✓"),
+                                 self.save_btn.setEnabled(True)),
+               fail=lambda e: (self.result.setText(error_text(e)),
+                               self.save_btn.setEnabled(True)))
 
     def _apply(self) -> None:
         eid, studio = self.eid, self._make_studio()
+        self.apply_btn.setEnabled(False)
+        self.result.setText("반영 중…")
         run_bg(lambda: studio.plan_apply(eid), done=self._applied,
-               fail=lambda e: self.result.setText(error_text(e)))
+               fail=lambda e: (self.result.setText(error_text(e)),
+                               self.apply_btn.setEnabled(True)))
 
     def _applied(self, out: dict) -> None:
+        self.apply_btn.setEnabled(True)
         added = out.get("added") or []
         QMessageBox.information(
             self, "대본으로 반영",
