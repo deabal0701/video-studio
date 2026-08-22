@@ -125,6 +125,7 @@ QListWidget#nav::item:selected {{ background: {ACCENT_SOFT}; color: {ACCENT};
 /* 카드·패널 */
 QFrame#card {{ background: {BG_SURFACE}; border: 1px solid {SEPARATOR};
   border-radius: {RADIUS_CARD}px; }}
+QFrame#card:hover {{ border: 1px solid {ACCENT}; }}
 QFrame#panel {{ background: {BG_SURFACE}; border: 1px solid {SEPARATOR};
   border-radius: 12px; }}
 

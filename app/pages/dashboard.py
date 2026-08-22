@@ -175,10 +175,25 @@ class DashboardPage(QWidget):
             if item.widget():
                 item.widget().deleteLater()
         self.empty.setVisible(not courses)
-        for i, info in enumerate(courses):
+        self._cards = []
+        for info in courses:
             card = CourseCard(info)
             card.opened.connect(lambda cid, single:
                                 (self.open_episode.emit(cid) if single
                                  else self.open_course.emit(cid)))
             card.delete_requested.connect(self._delete_course)
-            self.grid.addWidget(card, i // 4, i % 4, Qt.AlignTop | Qt.AlignLeft)
+            self._cards.append(card)
+        self._reflow()
+
+    def _reflow(self) -> None:
+        """열 수 = 창 폭에서 계산 — 4열 고정은 좁은 창에서 가로 스크롤을 만들었다
+        (루프 1회차 P6 실측: 사용자 캡처 하단에 스크롤바). 화면은 가로 스크롤 금지."""
+        cards = getattr(self, "_cards", [])
+        cols = max(1, (self.width() - theme.PAGE_PAD * 2 + theme.GAP_CARD)
+                   // (theme.CARD_W + theme.GAP_CARD))
+        for i, card in enumerate(cards):
+            self.grid.addWidget(card, i // cols, i % cols, Qt.AlignTop | Qt.AlignLeft)
+
+    def resizeEvent(self, e):  # noqa: N802 — Qt 오버라이드
+        super().resizeEvent(e)
+        self._reflow()
