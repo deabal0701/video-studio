@@ -17,6 +17,7 @@ from .. import theme
 from ..bridge import JobEventPump, error_text, run_bg
 from .clip_editor import ClipEditorTab
 from .deploy_tab import DeployTab
+from .jobs import STATE_LABEL as JOB_STATE_LABEL   # 상태 한국어 — 작업 큐와 같은 말 (P11)
 from .plan_tab import PlanTab
 
 KIND_LABEL = {"title": "타이틀", "bright": "밝은 장면", "dark": "어두운 장면",
@@ -286,6 +287,12 @@ class EpisodePage(QWidget):
         run_bg(lambda: studio.agent_submit("draft", eid, {"episodeId": eid, **payload}),
                done=submitted, fail=lambda e: (self._fail(e), self._set_building(False)))
 
+    @staticmethod
+    def _fail_text(state: str) -> str:
+        label = JOB_STATE_LABEL.get(state, (state, None))[0]
+        return (f"AI 작업이 '{label}' 상태로 끝났습니다 — 아래 버튼으로 다시 "
+                "시작할 수 있습니다. 사유는 위 로그에 있습니다.")
+
     def _after_draft(self, auto_build: bool) -> None:
         """대본 잡이 끝났다 — 성공 + 한 번에 모드면 빌드를 잇는다."""
         self._set_building(False)
@@ -293,7 +300,10 @@ class EpisodePage(QWidget):
         self.load(eid)
         if not auto_build:
             self._ai_streaming = False
-            self.clip_tab.ai_progress_end()
+            state = getattr(self, "_last_job_state", "")
+            self.clip_tab.ai_progress_end(
+                self._fail_text(state)
+                if state in ("failed", "blocked", "canceled") else None)
             return
 
         def check():
@@ -308,7 +318,8 @@ class EpisodePage(QWidget):
             else:
                 self.log.appendPlainText(f"대본이 {state} 로 끝나 빌드를 잇지 않습니다")
                 self._ai_streaming = False
-                self.clip_tab.ai_progress_end()
+                # 실패 사유가 시작 패널에도 남아야 한다 — 로그만 보면 놓친다 (P18)
+                self.clip_tab.ai_progress_end(self._fail_text(state))
 
         run_bg(check, done=decide, fail=lambda _e: None)
 
@@ -644,7 +655,9 @@ class EpisodePage(QWidget):
         kind = ev.get("kind")
         if kind == "state":
             state = ev["state"]
-            self.state_chip.setText(state)
+            self._last_job_state = state
+            # "running"·"failed" 날것은 개발자 말 — 작업 큐와 같은 한국어 (31회차 P2·P11)
+            self.state_chip.setText(JOB_STATE_LABEL.get(state, (state, None))[0])
             self.state_chip.setProperty(
                 "chip", {"done": "ok", "failed": "err", "blocked": "err",
                          "canceled": "info"}.get(state, "run"))

@@ -418,6 +418,12 @@ class ClipEditorTab(QWidget):
         return not wrote
 
     def _sync_start_panel(self) -> None:
+        # 실패 안내가 떠 있는 동안엔 늦게 도착한 비동기 콜백이 패널을 되접으면
+        # 안 된다 — 사용자가 다시 시작하거나 접기 전까지 유지 (31회차 P18)
+        if getattr(self, "_ai_error", None):
+            self.start_panel.setVisible(True)
+            self.ai_reopen.hide()
+            return
         has = bool(self.clips)
         show_panel = (has and self._script_unwritten()
                       and not getattr(self, "_panel_collapsed", False))
@@ -525,8 +531,12 @@ class ClipEditorTab(QWidget):
             self.ai_requested.emit(payload)
 
     # ── AI 진행 표시 (부모 EpisodePage 가 잡 이벤트를 흘려준다) ─────────────
+    def _clear_ai_error(self) -> None:
+        self._ai_error = None
+
     def ai_progress_start(self, msg: str = "AI 가 대본을 쓰는 중입니다 — 몇 분 걸립니다."
                           ) -> None:
+        self._ai_error = None   # 새 시도 — 이전 실패 안내 해제
         self._panel_collapsed = False
         self.ai_reopen.hide()
         self.start_panel.show()
@@ -544,16 +554,25 @@ class ClipEditorTab(QWidget):
     def ai_progress_state(self, msg: str) -> None:
         self._sp_desc.setText(msg)
 
-    def ai_progress_end(self) -> None:
+    def ai_progress_end(self, error: str | None = None) -> None:
+        self._ai_error = error   # None 이면 해제 — _sync_start_panel 이 존중한다
         self._sp_head.setText("대본이 아직 비어 있습니다")
         self._sp_desc.setText("대본을 쓰면 위의 [빌드]가 영상으로 만듭니다. 셋 중 하나로 시작하세요:")
         self._sp_buttons.show()
         self.ai_bar.hide()
         self.ai_line.hide()
         self._sync_start_panel()
+        if error:   # 실패 사유는 시작 패널이 말한다 — 로그만 보면 놓친다 (31회차 P18)
+            self._panel_collapsed = False
+            self.start_panel.show()
+            self.ai_reopen.hide()
+            self._sp_head.setText("AI 작업이 끝나지 못했습니다")
+            self._sp_desc.setText(error)
+            self._sp_buttons.show()   # "아래 버튼으로 다시"가 말뿐이면 안 된다
 
     def _start_manual(self) -> None:
         """첫 내레이션 자리로 데려간다 — 안내는 접히고, [AI 도움받기]로 되돌아온다."""
+        self._ai_error = None   # 사용자가 다른 길을 골랐다 — 실패 안내 해제
         self._panel_collapsed = True
         self._sync_start_panel()
         if self.clips:
