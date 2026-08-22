@@ -74,3 +74,28 @@ def test_tts_sample_mocked(copy_root, studio, monkeypatch):
     monkeypatch.setattr(engine_io, "tts_sample", lambda text, **kw: fake)
     out = studio.tts_sample(text="안녕하세요")
     assert out == fake and out.read_bytes() == b"ID3fake"
+
+
+def test_single_kind_has_no_recording_scenes(tmp_path):
+    """단발 종류(홍보·광고 등)의 골격에 녹화 씬이 남으면 빌드가 localhost 를 찾다 죽는다.
+
+    2026-08-22 '한 번에 모드' E2E 실측: promo 템플릿의 scenes(웹앱 화면 녹화용)가
+    그대로 내려와 `ERR_CONNECTION_REFUSED` — 단발은 모션그래픽 단독이 기본이다.
+    """
+    import json
+
+    from core.scaffold import scaffold_course, scaffold_episode
+
+    for kind in ("promo", "ad", "manual", "general"):
+        cid = f"t-{kind}"
+        scaffold_course(tmp_path, cid, title="t", kind=kind)
+        scaffold_episode(tmp_path, cid, 1, title="t")
+        sc = json.loads((tmp_path / f"{cid}-01" / "scenes.json").read_text(encoding="utf-8"))
+        assert sc.get("scenes") == [], f"{kind}: 녹화 씬이 남아 있다"
+        assert sc["render"]["motion"]["clips"], f"{kind}: 모션 클립이 없다"
+
+    # 강의는 원래 골격 그대로 (scenes 없는 템플릿)
+    scaffold_course(tmp_path, "t-lec", title="t", kind="lecture")
+    scaffold_episode(tmp_path, "t-lec", 1, title="t")
+    sc = json.loads((tmp_path / "t-lec-01" / "scenes.json").read_text(encoding="utf-8"))
+    assert sc["render"]["motion"]["clips"]

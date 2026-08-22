@@ -128,10 +128,19 @@ def _scenes_template(kind: str | None) -> Path:
 
 
 def _trim_clips(scenes: dict[str, Any], kind: str | None) -> None:
-    """종류가 일부 클립만 쓴다면 골격에서 걸러 낸다 (일반 영상 — 정해진 구성이 없다)."""
+    """종류별 골격 손질 — 일부 클립만 남기고, 단발 종류는 **녹화 씬을 걷어낸다**.
+
+    엔진의 promo·manual 템플릿은 웹서비스 홍보용이라 `scenes`(화면 녹화 — 로컬 웹앱
+    필요)를 담고 있다. 이 앱의 단발 영상은 모션그래픽 단독이 기본이라, 남겨두면
+    빌드가 `localhost:3000 ERR_CONNECTION_REFUSED` 로 죽는다 (2026-08-22 한 번에
+    모드 E2E 실측). 녹화가 필요하면 고급 사용자가 scenes 를 직접 되살린다.
+    """
     from . import kinds as kinds_mod
 
-    keep = kinds_mod.get(kind).get("keep_clips")
+    spec = kinds_mod.get(kind)
+    if not spec["series"]:
+        scenes["scenes"] = []
+    keep = spec.get("keep_clips")
     if not keep:
         return
     motion = scenes.get("render", {}).get("motion", {})
