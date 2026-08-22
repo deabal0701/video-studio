@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView, QLabel,
                                QPushButton, QTableWidget, QTableWidgetItem,
@@ -23,6 +24,8 @@ ACTIVE = {"queued", "preflight", "running", "verifying"}
 
 
 class JobsPage(QWidget):
+    open_episode = Signal(str)   # 행 더블클릭 → 해당 영상으로 (28회차 P5·P21)
+
     def __init__(self, make_studio):
         super().__init__()
         self._make_studio = make_studio
@@ -57,7 +60,12 @@ class JobsPage(QWidget):
         self.table.setColumnWidth(2, 120)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
         self.table.itemSelectionChanged.connect(self._on_select)
+        # 실패한 작업을 보고 "어디서 다시 하지?"가 막히면 안 된다 — 행에서 바로 간다
+        self.table.cellDoubleClicked.connect(self._open_row)
         outer.addWidget(self.table, 1)
+        go_hint = QLabel("행을 더블클릭하면 해당 영상 화면으로 이동합니다 — 실패한 빌드는 거기서 다시 시도하세요.")
+        go_hint.setObjectName("caption")
+        outer.addWidget(go_hint)
 
         row = QHBoxLayout()
         self.cancel_btn = QPushButton("선택한 작업 중단")
@@ -107,16 +115,24 @@ class JobsPage(QWidget):
         ok = 0 <= row < len(self._jobs) and self._jobs[row]["state"] in ACTIVE
         self.cancel_btn.setEnabled(ok)
 
+    def _open_row(self, row: int, _col: int) -> None:
+        if 0 <= row < len(self._jobs):
+            self.open_episode.emit(self._jobs[row]["episodeId"])
+
     def _cancel(self) -> None:
         row = self.table.currentRow()
         if not (0 <= row < len(self._jobs)):
             return
         jid, studio = self._jobs[row]["jobId"], self._make_studio()
+        # 처리 중 잠금 + 즉시 피드백 (28회차 P18·P19)
+        self.cancel_btn.setEnabled(False)
+        self.result.setText("중단 요청 중…")
         run_bg(lambda: studio.cancel_job(jid),
                done=lambda out: (self.result.setText(
                    f"{jid} 중단 요청됨" if out.get("canceled") else f"{jid} 는 중단할 수 없는 상태입니다"),
                    self.refresh()),
-               fail=lambda e: self.result.setText(error_text(e)))
+               fail=lambda e: (self.result.setText(error_text(e)),
+                               self._on_select()))
 
     def on_job_event(self, _job_id: str, _episode_id: str, ev: dict) -> None:
         """상태 변화만 반영 — 로그 줄마다 새로고침하면 표가 떨린다."""

@@ -129,6 +129,8 @@ class MainWindow(QMainWindow):
                          self.stack.setCurrentWidget(self.episode_page),
                          self._mark_nav_home()))
         self.episode_page.back.connect(self._back_to_course)
+        # 작업 큐 행 더블클릭 → 해당 영상 (28회차 P5·P21 — 실패한 빌드의 재시도 길)
+        self.jobs_page.open_episode.connect(self.show_episode)
         self.course_page.deleted.connect(
             lambda: (self._nav_to(0), self.nav.setCurrentRow(0)))
 
