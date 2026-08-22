@@ -147,6 +147,11 @@ QPushButton:disabled {{ color: {INK_3}; border-color: {SEPARATOR}; background: {
    info 중립 · run 진행 중(파랑) · warn 주의(주황) · ok 성공 · err 실패
    run 은 2026-08-22 에 주황→파랑으로 옮겼다: warn 이 생기며 주황이 "주의" 로 갔고,
    진행 중을 주의색으로 칠하면 정상 빌드가 경고처럼 보였다. */
+/* 카드 구석 삭제 — 평소엔 옅게, 올리면 위험색 (10: "삭제가 보이지 않는다") */
+QPushButton#cardDelete {{ border: none; background: transparent; color: {INK_3};
+  padding: 2px 8px; font-size: 12px; }}
+QPushButton#cardDelete:hover {{ color: {DANGER}; font-weight: 700; }}
+
 /* 팔레트 프리셋 — 선택된 것이 한눈에 (10: "선택한 내용이 선택이 안 된다") */
 QPushButton#palettePreset {{ padding: 8px 14px; border: 2px solid {SEPARATOR};
   border-radius: 10px; background: {BG_SURFACE}; }}

@@ -61,6 +61,10 @@ class MainWindow(QMainWindow):
 
         # 내비 ↔ 스택 (프로젝트/영상 페이지는 내비 밖 — 카드 열기로 진입)
         self.nav.currentRowChanged.connect(self._nav_to)
+        # **이미 선택된 항목을 다시 클릭**해도 이동해야 한다 — 프로젝트/영상 화면에선
+        # 내비가 '대시보드'에 하이라이트돼 있어 currentRowChanged 가 안 울린다
+        # (2026-08-22 사용자: "대시보드 메뉴를 클릭해도 돌아가지 않는다")
+        self.nav.itemClicked.connect(lambda item: self._nav_to(self.nav.row(item)))
         self.dashboard.open_course.connect(self.show_course)
         self.dashboard.open_episode.connect(self.show_episode)
         self.course_page.open_episode.connect(self.show_episode)

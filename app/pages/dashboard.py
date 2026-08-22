@@ -37,6 +37,14 @@ class CourseCard(QFrame):
         title.setWordWrap(True)
         title.setStyleSheet("font-size: 16px; font-weight: 600;")
         head.addWidget(title, 1)
+        # 삭제를 카드에서 바로 — 우클릭·설정 탭은 발견이 안 됐다 (10: "보이지 않는다")
+        del_btn = QPushButton("삭제")
+        del_btn.setObjectName("cardDelete")
+        del_btn.setCursor(Qt.ArrowCursor)
+        del_btn.setToolTip("이 프로젝트를 삭제합니다 (확인을 거칩니다)")
+        del_btn.clicked.connect(lambda: self.delete_requested.emit(
+            self.info["id"], self.info.get("title", self.info["id"])))
+        head.addWidget(del_btn, 0, Qt.AlignTop)
         lay.addLayout(head)
         if info.get("single"):
             sub = QLabel("단발 영상")
