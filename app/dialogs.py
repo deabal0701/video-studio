@@ -31,7 +31,7 @@ from .widgets import ColorButton
 
 # 표준 길이 — 편집 가능한 콤보라 "3분" 같은 직접 입력도 된다.
 # 글자 예산(약 6.3자/초 실측)은 **계산해서 보여준다** — 고르게 하지 않는다 (10 지적).
-LENGTH_CHOICES = ["15초", "30초", "1분", "5분", "10분", "15분"]
+LENGTH_CHOICES = ["1분", "2분", "5분", "10분", "15분"]
 
 
 def _length_to_chars(text: str) -> int | None:
@@ -72,13 +72,20 @@ class NewCourseDialog(QDialog):
         self.created: dict | None = None
         self._custom_palette = False   # 직접 고르기를 쓰면 프리셋 추종을 멈춘다
         self.setWindowTitle("새 프로젝트 만들기")
-        self.setMinimumWidth(720)
+        # 고급 설정을 펼친 크기로 **처음부터** 잡는다 — 펼칠 때 창이 널뛰지 않고,
+        # 접힌 상태에선 내용이 위에 붙고 버튼이 바닥에 고정된다 (10: "이 크기로, 배치도")
+        self.setMinimumSize(980, 760)
 
-        form = QFormLayout(self)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(30, 26, 30, 22)
+        formw = QWidget()
+        form = QFormLayout(formw)
+        form.setContentsMargins(0, 0, 0, 0)
         # 숨 쉴 간격 — 좁으면 폼이 벽처럼 읽힌다 (10: "위/아래 간격도 좀 넓게")
-        form.setContentsMargins(28, 26, 28, 22)
         form.setVerticalSpacing(22)
         form.setHorizontalSpacing(18)
+        outer.addWidget(formw)
+        outer.addStretch(1)   # 남는 높이는 여기 — 폼 행간이 벌어지지 않게 (08 §4-1)
 
         # ── 종류 — 골격·길이·색이 여기서 갈린다 ────────────────────────────
         kind_box = QVBoxLayout()
@@ -202,7 +209,7 @@ class NewCourseDialog(QDialog):
         self.error.setProperty("chip", "err")
         self.error.setWordWrap(True)
         self.error.hide()
-        form.addRow("", self.error)
+        outer.addWidget(self.error)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Ok).setText("만들기")
@@ -210,7 +217,7 @@ class NewCourseDialog(QDialog):
         buttons.button(QDialogButtonBox.Cancel).setText("취소")
         buttons.accepted.connect(self._create)
         buttons.rejected.connect(self.reject)
-        form.addRow(buttons)
+        outer.addWidget(buttons)
 
         self._on_kind()   # 기본 종류의 설명·길이·프리셋을 처음부터 보여준다
 
@@ -227,7 +234,6 @@ class NewCourseDialog(QDialog):
     def _toggle_adv(self, on: bool) -> None:
         self.adv.setVisible(on)
         self.adv_btn.setArrowType(Qt.DownArrow if on else Qt.RightArrow)
-        self.adjustSize()
 
     def _on_kind(self, *_a) -> None:
         """종류를 바꾸면 설명·길이·프리셋이 따라온다 (직접 고른 색은 안 건드린다)."""

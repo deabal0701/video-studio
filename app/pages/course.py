@@ -195,8 +195,13 @@ class CoursePage(QWidget):
 
     def _ai_draft(self, n: int) -> None:
         """[✨ AI 초안] — 미생성 영상면 스캐폴딩 후 제출 (05 사람↔에이전트 동선)."""
-        brief, ok = QInputDialog.getMultiLineText(
-            self, "AI 초안", f"{n}강의 주제·방향 (brief)", "")
+        dlg = QInputDialog(self)
+        dlg.setWindowTitle("AI 초안")
+        dlg.setLabelText(f"{n}편의 주제·방향")
+        dlg.setOption(QInputDialog.UsePlainTextEditForTextInput, True)
+        dlg.setMinimumSize(640, 360)
+        ok = bool(dlg.exec())
+        brief = dlg.textValue()
         if not ok or not brief.strip():
             return
         cid, studio = self.cid, self._make_studio()
@@ -230,7 +235,14 @@ class CoursePage(QWidget):
     def _add_episode(self) -> None:
         ns = [e.get("n", 0) for e in self._course.get("episodes", [])]
         n = max(ns, default=0) + 1
-        title, ok = QInputDialog.getText(self, "영상 추가", f"{n}강 제목")
+        # 정적 getText 는 창이 좁다 — 인스턴스로 만들어 폭을 준다 (10: "폭을 좀 크게")
+        dlg = QInputDialog(self)
+        dlg.setWindowTitle("영상 추가")
+        dlg.setLabelText(f"{n}편 제목")
+        dlg.setMinimumWidth(560)
+        dlg.resize(560, dlg.sizeHint().height())
+        ok = bool(dlg.exec())
+        title = dlg.textValue()
         if not ok or not title.strip():
             return
         cid, studio = self.cid, self._make_studio()
