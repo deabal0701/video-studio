@@ -543,14 +543,43 @@ class EpisodePage(QWidget):
             self.check_note.setStyleSheet("")
 
     def _on_check(self, key: str, on: bool) -> None:
+        """체크 즉시 로컬 반영 + 저장 코얼레싱.
+
+        연달아 빠르게 체크하면 이전 저장이 돌아오기 전의 낡은 스냅샷으로 다음
+        저장이 나가 먼저 한 체크가 서버에서 사라졌다 (25회차 P0 경합). 로컬이
+        정본, 저장은 한 번에 하나 — 진행 중이면 끝난 뒤 최신 상태로 다시 민다.
+        """
+        self._checklist.setdefault("items", {})[key] = on
+        self._sync_check_note()   # 피드백은 저장을 기다리지 않는다 (P19)
+        self._push_review()
+
+    def _push_review(self) -> None:
+        if getattr(self, "_review_saving", False):
+            self._review_dirty = True
+            return
+        self._review_saving = True
         items = dict(self._checklist.get("items", {}))
-        items[key] = on
+        note = self._checklist.get("note", "")
         eid, studio = self.eid, self._studio
-        run_bg(lambda: studio.put_review(eid, {"items": items,
-                                               "note": self._checklist.get("note", "")}),
-               done=lambda out: (self._checklist.update(out),
-                                 self._sync_check_note()),
-               fail=self._fail)
+
+        def done(out: dict) -> None:
+            self._review_saving = False
+            # 서버 항목으로 되덮지 않는다 — 저장 중 새 체크가 더 있었을 수 있다
+            if out.get("updatedAt"):
+                self._checklist["updatedAt"] = out["updatedAt"]
+            if getattr(self, "_review_dirty", False):
+                self._review_dirty = False
+                self._push_review()
+            else:
+                self._sync_check_note()
+
+        def fail(err) -> None:
+            self._review_saving = False
+            self._review_dirty = False
+            self._fail(err)
+
+        run_bg(lambda: studio.put_review(eid, {"items": items, "note": note}),
+               done=done, fail=fail)
 
     # ── 재생 ────────────────────────────────────────────────────────────────
     def _toggle_play(self) -> None:
