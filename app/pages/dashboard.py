@@ -11,7 +11,8 @@ from ..bridge import error_text, run_bg
 
 
 class CourseCard(QFrame):
-    opened = Signal(str, bool)  # course_id, is_single
+    opened = Signal(str, bool)
+    delete_requested = Signal(str, str)   # (cid, title)  # course_id, is_single
 
     def __init__(self, info: dict):
         super().__init__()
@@ -57,6 +58,16 @@ class CourseCard(QFrame):
             prog.setStyleSheet(f"color: {theme.SUCCESS};" if done and done >= total else "")
             lay.addWidget(prog)
         self.setCursor(Qt.PointingHandCursor)
+
+    def contextMenuEvent(self, e):  # noqa: N802 — Qt 오버라이드
+        """우클릭 — 삭제 (설정 탭 위험 구역과 같은 동작의 지름길)."""
+        from PySide6.QtWidgets import QMenu
+
+        menu = QMenu(self)
+        act = menu.addAction("프로젝트 삭제…")
+        act.triggered.connect(lambda: self.delete_requested.emit(
+            self.info["id"], self.info.get("title", self.info["id"])))
+        menu.exec(e.globalPos())
 
     def mouseReleaseEvent(self, e):  # noqa: N802 — Qt 오버라이드
         # 단발 프로젝트(홍보 등 1편)는 그 영상으로 직행 — 1장짜리 보드를 거치게 하지 않는다
@@ -119,6 +130,21 @@ class DashboardPage(QWidget):
         studio = self._make_studio()
         run_bg(studio.list_courses, done=self._fill, fail=self._fail)
 
+    def _delete_course(self, cid: str, title: str) -> None:
+        from PySide6.QtWidgets import QMessageBox
+
+        if QMessageBox.warning(
+                self, "프로젝트 삭제",
+                f'"{title}" 프로젝트를 삭제할까요?' + chr(10) + chr(10) +
+                "영상·대본·설정·완성본(mp4)까지 전부 지워지고 되돌릴 수 없습니다.",
+                QMessageBox.Yes | QMessageBox.Cancel,
+                QMessageBox.Cancel) != QMessageBox.Yes:
+            return
+        studio = self._make_studio()
+        run_bg(lambda: studio.delete_course(cid),
+               done=lambda _out: self.refresh(),
+               fail=lambda e: (self.error.setText(error_text(e)), self.error.show()))
+
     def _new_course(self) -> None:
         from ..dialogs import NewCourseDialog
 
@@ -146,4 +172,5 @@ class DashboardPage(QWidget):
             card.opened.connect(lambda cid, single:
                                 (self.open_episode.emit(cid) if single
                                  else self.open_course.emit(cid)))
+            card.delete_requested.connect(self._delete_course)
             self.grid.addWidget(card, i // 4, i % 4, Qt.AlignTop | Qt.AlignLeft)

@@ -99,3 +99,56 @@ def test_single_kind_has_no_recording_scenes(tmp_path):
     scaffold_episode(tmp_path, "t-lec", 1, title="t")
     sc = json.loads((tmp_path / "t-lec-01" / "scenes.json").read_text(encoding="utf-8"))
     assert sc["render"]["motion"]["clips"]
+
+
+def test_delete_course_removes_everything(tmp_path, monkeypatch):
+    """프로젝트 삭제 = 원본(프로젝트·영상 폴더)과 파생물(out) 전부 (2026-08-22 신설)."""
+    import json
+
+    from core import facade, status
+
+    out_root = tmp_path / "out"
+    monkeypatch.setattr(status, "OUT_ROOT", out_root)
+    monkeypatch.setattr(facade, "OUT_ROOT", out_root)
+    s = facade.Studio(root=tmp_path)
+    s.create_course({"course": "del-x", "title": "삭제 확인", "kind": "promo"})
+    s.create_episode("del-x", 1, title="삭제 확인")
+    (out_root / "del-x-01").mkdir(parents=True)
+    (out_root / "del-x-01" / "x.mp4").write_bytes(b"x")
+
+    r = s.delete_course("del-x")
+    assert r["episodes"] == ["del-x-01"]
+    assert not (tmp_path / "del-x").exists()
+    assert not (tmp_path / "del-x-01").exists()
+    assert not (out_root / "del-x-01").exists()
+    assert all(c["id"] != "del-x" for c in s.list_courses())
+
+
+def test_delete_course_rejects_bad_id(tmp_path):
+    """경로 탈출 금지 — id 형식이 아니면 거부한다."""
+    import pytest as _pytest
+
+    from core import facade
+
+    s = facade.Studio(root=tmp_path)
+    for bad in ("..", "a/b", "A..B", ""):
+        with _pytest.raises((facade.Invalid, facade.NotFound)):
+            s.delete_course(bad)
+
+
+def test_delete_episode_keeps_project_slot(tmp_path, monkeypatch):
+    """영상 삭제는 폴더만 — 프로젝트 목록의 자리는 남아 다시 만들 수 있다."""
+    from core import facade, status
+
+    out_root = tmp_path / "out"
+    monkeypatch.setattr(status, "OUT_ROOT", out_root)
+    monkeypatch.setattr(facade, "OUT_ROOT", out_root)
+    s = facade.Studio(root=tmp_path)
+    s.create_course({"course": "del-y", "title": "y", "kind": "lecture",
+                     "episodes": [{"n": 1, "id": "del-y-01", "title": "y1"}]})
+    s.create_episode("del-y", 1)
+    s.delete_episode("del-y-01")
+    assert not (tmp_path / "del-y-01").exists()
+    board = s.course_board("del-y")
+    assert any(b["id"] == "del-y-01" and b["state"] == "empty" for b in board)
+    s.create_episode("del-y", 1)   # 자리가 남았으니 다시 만들 수 있다

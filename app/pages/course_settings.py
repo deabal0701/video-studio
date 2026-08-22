@@ -6,7 +6,7 @@ palette 는 render(brand·brandText·background)와 동기화해 저장한다 (�
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QComboBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
                                QMessageBox, QPlainTextEdit, QPushButton, QRadioButton,
                                QWidget)
@@ -27,6 +27,7 @@ VOICE_PRESETS = {
 _P = kinds.get(kinds.DEFAULT_KIND)["palette"]   # 색 폴백 (종류가 정본)
 
 class CourseSettingsTab(QWidget):
+    deleted = Signal()   # 삭제 완료 → 대시보드로
     def __init__(self, make_studio):
         super().__init__()
         self._make_studio = make_studio
@@ -136,6 +137,18 @@ class CourseSettingsTab(QWidget):
         save_row.addWidget(self.result)
         save_row.addStretch(1)
         form.addRow("", save_row)
+
+        # ── 위험 구역 — 삭제는 가장 아래, 저장과 섞이지 않게 (10: "삭제는 어디에") ──
+        del_row = QHBoxLayout()
+        self.delete_btn = QPushButton("프로젝트 삭제…")
+        self.delete_btn.setObjectName("danger")
+        self.delete_btn.clicked.connect(self._delete)
+        del_note = QLabel("영상·설정·완성본까지 전부 지워집니다 — 되돌릴 수 없습니다")
+        del_note.setObjectName("caption")
+        del_row.addWidget(self.delete_btn)
+        del_row.addWidget(del_note)
+        del_row.addStretch(1)
+        form.addRow("", del_row)
 
     # ── 로드 ────────────────────────────────────────────────────────────────
     def load(self, cid: str) -> None:
@@ -259,6 +272,22 @@ class CourseSettingsTab(QWidget):
         name = ref.split("/")[-1]
         run_bg(lambda: studio.asset_path("bgm", name),
                done=lambda path: self.audio.start(self.bgm_play, path),
+               fail=lambda e: self.result.setText(error_text(e)))
+
+    # ── 삭제 ────────────────────────────────────────────────────────────────
+    def _delete(self) -> None:
+        title = self.title.text().strip() or self.cid
+        if QMessageBox.warning(
+                self, "프로젝트 삭제",
+                f'"{title}" 프로젝트를 삭제할까요?\n\n'
+                "영상·대본·설정·완성본(mp4)까지 전부 지워지고 되돌릴 수 없습니다.\n"
+                "완성본이 필요하면 먼저 ④ 배포에서 저장해 두세요.",
+                QMessageBox.Yes | QMessageBox.Cancel,
+                QMessageBox.Cancel) != QMessageBox.Yes:
+            return
+        cid, studio = self.cid, self._make_studio()
+        run_bg(lambda: studio.delete_course(cid),
+               done=lambda _out: self.deleted.emit(),
                fail=lambda e: self.result.setText(error_text(e)))
 
     # ── 저장 (etag) ──────────────────────────────────────────────────────────

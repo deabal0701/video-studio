@@ -291,6 +291,48 @@ class Studio:
         self.index().rescan()
         return {"id": d.name, "etag": _etag(d / "course.json")}
 
+    def delete_course(self, cid: str) -> dict:
+        """프로젝트 전부 삭제 — 원본(projects/<cid>·<cid>-NN)과 파생물(out) 까지.
+
+        지금까지 삭제가 아예 없어 파일 탐색기로 지워야 했다 (2026-08-22 사용자:
+        "프로젝트 삭제는 어디 있는가?"). 파일이 SSOT 라 삭제 = 폴더 제거다.
+        경로 검증: cid 는 루트 바로 아래의 실존 폴더 이름이어야 한다 (탈출 금지).
+        """
+        import re
+        import shutil
+
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", str(cid)):
+            raise Invalid("bad_id", cid)
+        course_dir = self.root / cid
+        if not (course_dir / "course.json").exists():
+            raise NotFound("course_not_found", cid)
+        # 영상 폴더 — course.json 의 목록 + 관례(<cid>-NN) 스캔의 합집합
+        eids = {e.get("id") for e in schema.load_json(course_dir / "course.json")
+                .get("episodes", []) if e.get("id")}
+        eids |= {d.name for d in self.root.glob(f"{cid}-*") if (d / "scenes.json").exists()}
+        removed = []
+        for eid in sorted(eids):
+            for target in (self.root / eid, OUT_ROOT / eid):
+                if target.exists():
+                    shutil.rmtree(target)
+            removed.append(eid)
+        shutil.rmtree(course_dir)
+        self.index().rescan()
+        return {"id": cid, "episodes": removed}
+
+    def delete_episode(self, eid: str) -> dict:
+        """영상 하나 삭제 — 폴더와 파생물(out). 프로젝트 목록의 자리는 남는다
+        (빈 슬롯이 되어 [영상 만들기]로 다시 만들 수 있다)."""
+        import shutil
+
+        d = self.episode_dir(eid)     # 실존·경로 검증은 여기서
+        shutil.rmtree(d)
+        out = OUT_ROOT / eid
+        if out.exists():
+            shutil.rmtree(out)
+        self.index().rescan()
+        return {"id": eid}
+
     def create_episode(self, cid: str, n: int, *, title: str | None = None,
                        subtitle: str | None = None) -> dict:
         from .scaffold import scaffold_episode

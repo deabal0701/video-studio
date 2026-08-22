@@ -65,6 +65,8 @@ class MainWindow(QMainWindow):
         self.dashboard.open_episode.connect(self.show_episode)
         self.course_page.open_episode.connect(self.show_episode)
         self.episode_page.back.connect(self._back_to_course)
+        self.course_page.deleted.connect(
+            lambda: (self._nav_to(0), self.nav.setCurrentRow(0)))
 
         # 하단 상태바 — 빌드 잡 칩 (전 페이지 공통, 07 재편 결정)
         bar = QStatusBar()

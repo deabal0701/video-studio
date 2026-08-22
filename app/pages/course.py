@@ -70,6 +70,7 @@ class EpisodeCard(QFrame):
 
 class CoursePage(QWidget):
     open_episode = Signal(str)
+    deleted = Signal()   # 프로젝트 삭제됨 → 대시보드로
 
     def __init__(self, make_studio):
         super().__init__()
@@ -94,6 +95,7 @@ class CoursePage(QWidget):
 
         self.tabs = QTabWidget()
         self.settings = CourseSettingsTab(make_studio)
+        self.settings.deleted.connect(self.deleted.emit)
         self.board_scroll = QScrollArea()
         self.board_scroll.setWidgetResizable(True)
         self.brandkit = BrandKitTab(make_studio)
