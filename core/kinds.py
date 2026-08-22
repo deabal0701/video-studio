@@ -144,7 +144,7 @@ def role_label(clip_id: str | None) -> str:
 PARAM_LABELS = {
     "title": "제목", "subtitle": "부제", "kicker": "상단 소제목", "num": "번호",
     "src": "이미지", "progress": "진행 표시", "shade": "어둡기", "wipe": "와이프 전환",
-    "caption": "캡션", "label": "라벨", "text": "본문",
+    "caption": "캡션", "label": "라벨", "text": "본문", "videoStart": "시작 지점(초)",
 }
 
 

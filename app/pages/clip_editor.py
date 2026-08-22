@@ -17,9 +17,9 @@ import hashlib
 import re
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl, Signal
-from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QFormLayout,
-                               QHBoxLayout, QLabel, QLineEdit, QListWidget,
+from PySide6.QtCore import Qt, QTimer, QUrl, Signal
+from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QDoubleSpinBox,
+                               QFormLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget,
                                QListWidgetItem, QMessageBox, QPlainTextEdit,
                                QProgressBar, QPushButton, QScrollArea, QSplitter,
                                QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
@@ -256,15 +256,21 @@ class ClipEditorTab(QWidget):
         self.broll_row = QWidget()
         br = QHBoxLayout(self.broll_row)
         br.setContentsMargins(0, 0, 0, 0)
-        self.video_start = QLineEdit()
-        self.video_start.setFixedWidth(70)
-        self.video_start.textEdited.connect(self._on_field_edit)
-        self.shade = QLineEdit()
-        self.shade.setFixedWidth(70)
-        self.shade.textEdited.connect(self._on_field_edit)
-        br.addWidget(QLabel("videoStart"))
+        self.video_start = QDoubleSpinBox()
+        self.video_start.setRange(0, 3600)
+        self.video_start.setDecimals(1)
+        self.video_start.setSingleStep(0.5)
+        self.video_start.setFixedWidth(90)
+        self.video_start.valueChanged.connect(self._on_field_edit)
+        self.shade = QDoubleSpinBox()
+        self.shade.setRange(0, 1)
+        self.shade.setDecimals(2)
+        self.shade.setSingleStep(0.05)
+        self.shade.setFixedWidth(90)
+        self.shade.valueChanged.connect(self._on_field_edit)
+        br.addWidget(QLabel(kinds.param_label("videoStart")))
         br.addWidget(self.video_start)
-        br.addWidget(QLabel("shade"))
+        br.addWidget(QLabel(kinds.param_label("shade")))
         br.addWidget(self.shade)
         br.addStretch(1)
         lay.addWidget(self.broll_row)
@@ -293,7 +299,7 @@ class ClipEditorTab(QWidget):
         self.params_head = QHBoxLayout()
         self.params_title = QLabel("")
         self.params_title.setObjectName("sectionTitle")
-        self.extract_btn = QPushButton("B롤 프레임 추출 → src 기입")
+        self.extract_btn = QPushButton("B롤 프레임을 이미지(src)로 가져오기")
         self.extract_btn.clicked.connect(self._extract_frame)
         self.params_head.addWidget(self.params_title)
         self.params_head.addStretch(1)
@@ -349,7 +355,8 @@ class ClipEditorTab(QWidget):
         self.broll_player.setVideoOutput(self.broll_video)
         lay.insertWidget(0, self.broll_video)
         self.broll_play_btn = QPushButton("▶ B롤 재생")
-        self.broll_play_btn.clicked.connect(self.broll_player.play)
+        self.broll_play_btn.clicked.connect(self._toggle_broll)
+        self.broll_player.playbackStateChanged.connect(self._sync_broll_btn)
         self.broll_play_btn.hide()
         lay.addWidget(self.broll_play_btn)
 
@@ -689,8 +696,8 @@ class ClipEditorTab(QWidget):
         self.broll_btn.setVisible(is_broll)
         self.broll_row.setVisible(is_broll)
         if is_broll:
-            self.video_start.setText(str(c.get("videoStart", 0)))
-            self.shade.setText(str(c.get("shade", "")))
+            self.video_start.setValue(float(c.get("videoStart") or 0))
+            self.shade.setValue(float(c.get("shade", 0.35) or 0))
         self.narration.setPlainText(c.get("narration", ""))
         self._render_narr_info()
         self._render_params_form()
@@ -836,14 +843,8 @@ class ClipEditorTab(QWidget):
         if self._loading or self.cur is None:
             return
         c = self.cur
-        try:
-            c["videoStart"] = float(self.video_start.text() or 0)
-        except ValueError:
-            pass
-        try:
-            c["shade"] = float(self.shade.text() or 0)
-        except ValueError:
-            pass
+        c["videoStart"] = self.video_start.value()
+        c["shade"] = self.shade.value()
         self._render_broll_check()
 
     # ── B롤 길이 즉시 검사 (결함 차단 ④) ────────────────────────────────────
@@ -884,11 +885,26 @@ class ClipEditorTab(QWidget):
         run_bg(lambda: studio.bg_frame(eid, video=video, video_start=vs, clip_file=cf),
                done=lambda out: (self._set_param("src", out["src"]),
                                  self._render_params_form(),
-                                 self.issues.setText(f"bg/{out['file']} 추출 — src 기입됨 "
-                                                     f"(B롤 {vs}s 프레임)"),
+                                 self.issues.setText(f"배경 프레임 가져옴 — 이미지(src)에 "
+                                                     f"기입됨 (B롤 {vs}s 지점)"),
                                  self.issues.setProperty("chip", "ok"),
                                  self._repolish(self.issues), self.issues.show()),
                fail=lambda e: self._show_issue(error_text(e)))
+
+    # ── B롤 재생 토글 (음성 미리듣기와 같은 문법 — 재생 중엔 "중지") ─────────
+    def _toggle_broll(self) -> None:
+        from PySide6.QtMultimedia import QMediaPlayer
+
+        if self.broll_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.broll_player.pause()
+        else:
+            self.broll_player.play()
+
+    def _sync_broll_btn(self, state) -> None:
+        from PySide6.QtMultimedia import QMediaPlayer
+
+        playing = state == QMediaPlayer.PlaybackState.PlayingState
+        self.broll_play_btn.setText("중지" if playing else "▶ B롤 재생")
 
     # ── 프리뷰 (QWebEngineView — preview.js 문서 + 질의 params) ──────────────
     def _refresh_preview(self) -> None:
@@ -896,6 +912,8 @@ class ClipEditorTab(QWidget):
         is_broll = bool(c and "video" in c)
         self.preview.setVisible(not is_broll)
         self.scrub.setVisible(not is_broll)
+        self.scrub_label.setVisible(not is_broll)   # 템플릿 프리뷰 전용 컨트롤 —
+        self.replay_btn.setVisible(not is_broll)    # B롤에선 죽은 버튼이라 숨긴다
         self.broll_video.setVisible(is_broll)
         self.broll_play_btn.setVisible(is_broll)
         if c is None:
@@ -905,6 +923,11 @@ class ClipEditorTab(QWidget):
                 p = paths.invert(paths.RefKind.BROLL, c["video"])
                 if p.exists():
                     self.broll_player.setSource(QUrl.fromLocalFile(str(p)))
+                    # 재생 전에도 소재가 보이게 — 시작 지점 프레임에서 멈춰 둔다
+                    self.broll_player.play()
+                    self.broll_player.setPosition(
+                        int(float(c.get("videoStart") or 0) * 1000))
+                    QTimer.singleShot(150, self.broll_player.pause)
             return
         f = c.get("file")
         if not f:
