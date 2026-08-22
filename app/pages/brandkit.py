@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QFormLayout, QFrame, QHBoxLayout, QLabel, QMessageBox,
                                QPushButton, QVBoxLayout, QWidget)
 
@@ -20,6 +20,7 @@ from ..bridge import error_text, run_bg
 _P = kinds.get(kinds.DEFAULT_KIND)["palette"]   # 색 폴백 (종류가 정본)
 
 class BrandKitTab(QWidget):
+    go_settings = Signal()   # [설정 탭에서 색 바꾸기] (루프 5회차 P1)
     def __init__(self, make_studio):
         super().__init__()
         self._make_studio = make_studio
@@ -28,7 +29,7 @@ class BrandKitTab(QWidget):
         lay.setContentsMargins(8, 16, 8, 8)
 
         note = QLabel("타이틀 카드·스팅어는 프로젝트 정체성 — 영상마다 동일해야 합니다. "
-                      "색은 ① 설정의 브랜드 팔레트가 정본입니다.")
+                      "색은 [설정] 탭의 브랜드 팔레트가 정본입니다.")
         note.setObjectName("caption")
         lay.addWidget(note)
 
@@ -81,10 +82,17 @@ class BrandKitTab(QWidget):
         self.font_label.setObjectName("caption")
         self.font_label.setWordWrap(True)
         self.kit_form.addRow("글꼴", self.font_label)
-        edit_hint = QLabel("값은 ① 설정 탭에서 고칩니다 — 여기는 결과를 보는 곳입니다.")
+        # 말로만 안내하지 않는다 — 가는 버튼을 준다 (루프 5회차 P1)
+        edit_row = QHBoxLayout()
+        self.edit_btn = QPushButton("설정 탭에서 색 바꾸기 →")
+        self.edit_btn.setFlat(True)
+        self.edit_btn.clicked.connect(self.go_settings.emit)
+        edit_hint = QLabel("여기는 결과를 보는 곳입니다.")
         edit_hint.setObjectName("caption")
-        edit_hint.setWordWrap(True)
-        kit_col.addWidget(edit_hint)
+        edit_row.addWidget(self.edit_btn)
+        edit_row.addWidget(edit_hint)
+        edit_row.addStretch(1)
+        kit_col.addLayout(edit_row)
         kit_col.addStretch(1)
 
         body = QHBoxLayout()

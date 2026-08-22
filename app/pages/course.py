@@ -108,6 +108,7 @@ class CoursePage(QWidget):
         self.board_scroll = QScrollArea()
         self.board_scroll.setWidgetResizable(True)
         self.brandkit = BrandKitTab(make_studio)
+        self.brandkit.go_settings.connect(lambda: self.tabs.setCurrentIndex(1))
         # 번호를 붙이지 않는다 — 이 셋은 **순서가 아니다** (10 #6: 번호가 순서를
         # 사칭해 "①부터 해야 하나"로 읽혔다). 순서인 것은 영상 안의 4단계뿐.
         self.tabs.addTab(self.board_scroll, "영상 목록")
