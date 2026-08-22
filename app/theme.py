@@ -154,7 +154,7 @@ QPushButton#cardDelete {{ border: none; background: transparent; color: {INK_3};
 QPushButton#cardDelete:hover {{ color: {DANGER}; font-weight: 700; }}
 
 /* 팔레트 프리셋 — 선택된 것이 한눈에 (10: "선택한 내용이 선택이 안 된다") */
-QPushButton#palettePreset {{ padding: 8px 14px; border: 2px solid {SEPARATOR};
+QPushButton#palettePreset {{ padding: 7px 10px; border: 2px solid {SEPARATOR};
   border-radius: 10px; background: {BG_SURFACE}; }}
 QPushButton#palettePreset:checked {{ border: 2px solid {ACCENT};
   background: {ACCENT_SOFT}; font-weight: 700; }}

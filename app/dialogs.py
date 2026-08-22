@@ -44,7 +44,7 @@ def _length_to_chars(text: str) -> int | None:
     return round(sec * 6.3 / 5) * 5 if sec else None
 
 
-def _palette_icon(pal: dict, size: int = 30) -> QIcon:
+def _palette_icon(pal: dict, size: int = 22) -> QIcon:
     """프리셋 견본 — 배경 위에 브랜드·보조 점. 말로 설명하지 않고 보여준다."""
     px = QPixmap(size * 2, size)
     px.setDevicePixelRatio(1.0)
@@ -78,14 +78,22 @@ class NewCourseDialog(QDialog):
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(30, 26, 30, 22)
+        body = QHBoxLayout()
+        body.setSpacing(28)
+        left = QVBoxLayout()
         formw = QWidget()
         form = QFormLayout(formw)
         form.setContentsMargins(0, 0, 0, 0)
         # 숨 쉴 간격 — 좁으면 폼이 벽처럼 읽힌다 (10: "위/아래 간격도 좀 넓게")
         form.setVerticalSpacing(22)
         form.setHorizontalSpacing(18)
-        outer.addWidget(formw)
-        outer.addStretch(1)   # 남는 높이는 여기 — 폼 행간이 벌어지지 않게 (08 §4-1)
+        left.addWidget(formw)
+        left.addStretch(1)   # 남는 높이는 여기 — 폼 행간이 벌어지지 않게 (08 §4-1)
+        body.addLayout(left, 1)
+        # 우측 — **실시간 미리보기**: 빈 공간을 의미로 채운다 (루프 2회차 P13 —
+        # "화면 사이즈에 비해 배치가 안 맞는다"). 고른 색·이름이 타이틀 카드에 앉는 모습
+        body.addWidget(self._make_preview_column(), 0)
+        outer.addLayout(body, 1)
 
         # ── 종류 — 골격·길이·색이 여기서 갈린다 ────────────────────────────
         kind_box = QVBoxLayout()
@@ -110,6 +118,7 @@ class NewCourseDialog(QDialog):
         # ── 이름 — 유일한 필수 입력 ─────────────────────────────────────────
         self.title = QLineEdit()
         self.title.setPlaceholderText("예: 여름 신제품 소개")
+        self.title.textChanged.connect(self._update_preview)   # 미리보기에 실시간 반영
         form.addRow("프로젝트 이름", self.title)
 
         # ── 색 — 프리셋 4종 원클릭 ──────────────────────────────────────────
@@ -131,6 +140,7 @@ class NewCourseDialog(QDialog):
         pal_box.addLayout(pal_row)
         pal_note = QLabel("영상의 바탕·강조 색입니다 — 다른 색은 아래 [고급 설정]에서 직접 고릅니다.")
         pal_note.setObjectName("caption")
+        pal_note.setWordWrap(True)
         pal_box.addWidget(pal_note)
         form.addRow("색", pal_box)
         self.preset_group.buttonToggled.connect(self._on_preset)
@@ -150,7 +160,7 @@ class NewCourseDialog(QDialog):
 
         # ── 자세한 설정 (접기 — 펼치지 않으면 전부 기본값) ──────────────────
         self.adv_btn = QToolButton()
-        self.adv_btn.setText("고급 설정 — 태그라인·대상·목소리·폴더 이름·색 직접 고르기")
+        self.adv_btn.setText("고급 설정 — 태그라인·목소리·폴더·색 직접 고르기")
         self.adv_btn.setCheckable(True)
         self.adv_btn.setArrowType(Qt.RightArrow)
         self.adv_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
@@ -220,6 +230,49 @@ class NewCourseDialog(QDialog):
         outer.addWidget(buttons)
 
         self._on_kind()   # 기본 종류의 설명·길이·프리셋을 처음부터 보여준다
+        self._update_preview()
+
+    # ── 미리보기 (P13 — 남는 폭의 쓸모) ─────────────────────────────────────
+    def _make_preview_column(self) -> QWidget:
+        col = QWidget()
+        col.setFixedWidth(400)
+        lay = QVBoxLayout(col)
+        lay.setContentsMargins(0, 0, 0, 0)
+        head = QLabel("미리보기")
+        head.setObjectName("sectionTitle")
+        lay.addWidget(head)
+        self.pv = QWidget()
+        self.pv.setObjectName("wizPreview")
+        self.pv.setFixedSize(384, 216)
+        pv_lay = QVBoxLayout(self.pv)
+        pv_lay.setAlignment(Qt.AlignCenter)
+        self.pv_kicker = QLabel("")
+        self.pv_kicker.setAlignment(Qt.AlignCenter)
+        self.pv_title = QLabel("")
+        self.pv_title.setAlignment(Qt.AlignCenter)
+        self.pv_title.setWordWrap(True)
+        pv_lay.addWidget(self.pv_kicker)
+        pv_lay.addWidget(self.pv_title)
+        lay.addWidget(self.pv)
+        note = QLabel("고른 색과 이름이 타이틀 카드에 이렇게 앉습니다 — 만든 뒤에도 바꿀 수 있습니다.")
+        note.setObjectName("caption")
+        note.setWordWrap(True)
+        lay.addWidget(note)
+        lay.addStretch(1)
+        return col
+
+    def _update_preview(self, *_a) -> None:
+        """색 버튼 값 + 이름을 카드 구도로 — 선택자 필수 (자식 오염 방지, 08 §5)."""
+        brand, soft, bg = self.c_brand.value, self.c_soft.value, self.c_bg.value
+        self.pv.setStyleSheet(f"#wizPreview {{ background: {bg}; border-radius: 12px; }}")
+        name = self.title.text().strip() or "프로젝트 이름"
+        self.pv_kicker.setText(kinds.label(self.kind()))
+        self.pv_kicker.setStyleSheet(
+            f"color: {soft}; font-size: 12px; letter-spacing: 2px; background: transparent;")
+        self.pv_title.setText(name)
+        self.pv_title.setStyleSheet(
+            f"color: white; font-size: 22px; font-weight: 700; background: transparent;"
+            f" border-bottom: 2px solid {brand}; padding-bottom: 6px;")
 
     # ── 상태 ────────────────────────────────────────────────────────────────
     def kind(self) -> str:
@@ -239,6 +292,8 @@ class NewCourseDialog(QDialog):
         """종류를 바꾸면 설명·길이·프리셋이 따라온다 (직접 고른 색은 안 건드린다)."""
         spec = kinds.get(self.kind())
         self.kind_note.setText(spec["desc"])
+        if hasattr(self, "pv"):
+            self._update_preview()
         plain = spec["length"].split(" (")[0]   # "15초 (약 95자)" → "15초"
         if self.length.currentText().strip() in ("", *LENGTH_CHOICES):
             self.length.setCurrentText(plain)
@@ -260,9 +315,11 @@ class NewCourseDialog(QDialog):
             cb.blockSignals(True)   # 프리셋 반영이지 사용자 직접 선택이 아니다 (08 §7)
             cb.set_value(pal[key])
             cb.blockSignals(False)
+        self._update_preview()
 
     def _on_custom_color(self, *_a) -> None:
         """직접 고르면 프리셋 추종을 멈추고 선택 표시를 푼다."""
+        self._update_preview()
         self._custom_palette = True
         self.preset_group.setExclusive(False)
         for b in self._preset_buttons.values():
