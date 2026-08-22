@@ -357,9 +357,9 @@ class ClipEditorTab(QWidget):
         voice_head.setObjectName("sectionTitle")
         lay.addWidget(voice_head)
         voice_row = QHBoxLayout()
-        self.voice_btn = QPushButton("▶ 캐시 재생")
+        self.voice_btn = QPushButton("▶ 음성 듣기")
         self.voice_btn.clicked.connect(self._play_voice)
-        self.audio.bind(self.voice_btn, "▶ 캐시 재생")
+        self.audio.bind(self.voice_btn, "▶ 음성 듣기")
         self.tts_btn = QPushButton("음성 다시 만들기")
         self.tts_btn.clicked.connect(self.tts_requested.emit)
         voice_row.addWidget(self.voice_btn)
@@ -723,14 +723,14 @@ class ClipEditorTab(QWidget):
             field = QLineEdit(str(params.get(k, "")))
             field.setMaximumWidth(420)
             field.textEdited.connect(lambda v, key=k: self._set_param(key, v))
-            self.params_form.addRow(k, field)
+            self.params_form.addRow(kinds.param_label(k), field)
         wipe = QComboBox()
         wipe.addItem("off (모션 전용 기본)", "off")
         wipe.addItem("on (밝은 앱 화면 전환 시)", "on")
         wipe.setCurrentIndex(1 if params.get("wipe") == "on" else 0)
         wipe.currentIndexChanged.connect(
             lambda i, w=wipe: self._set_param("wipe", w.currentData()))
-        self.params_form.addRow("wipe", wipe)
+        self.params_form.addRow(kinds.param_label("wipe"), wipe)
         inherited = [k for k in AUTO_KEYS if params.get(k)]
         self.inherit_label.setText(
             "프로젝트 상속 중 (수동 입력 불가): " + " · ".join(f"{k} ✓" for k in inherited)
@@ -960,8 +960,8 @@ class ClipEditorTab(QWidget):
         c = self.cur
         cached = c is not None and self.audio_cache.get(c.get("id"))
         self.voice_btn.setEnabled(bool(cached))
-        self.voice_note.setText(f"TTS 캐시 {cached:.1f}s" if cached
-                                else "TTS 캐시 없음 — [TTS 실측 갱신]으로 만드세요")
+        self.voice_note.setText(f"음성 {cached:.1f}초 준비됨" if cached
+                                else "음성이 아직 없습니다 — [음성 다시 만들기]를 누르세요")
 
     def _play_voice(self) -> None:
         if self.audio.stop_if_playing(self.voice_btn):   # 두 번째 클릭 = 중지

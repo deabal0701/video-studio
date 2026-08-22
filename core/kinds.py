@@ -139,6 +139,21 @@ def role_label(clip_id: str | None) -> str:
     return cid
 
 
+# 템플릿 파라미터 키 → 한국어 라벨 (루프 6회차 P2 — "progress·wipe 가 뭔가").
+# 키 이름은 엔진 계약이라 못 바꾼다 — 화면이 뜻을 함께 말한다. 모르는 키는 그대로.
+PARAM_LABELS = {
+    "title": "제목", "subtitle": "부제", "kicker": "상단 소제목", "num": "번호",
+    "src": "이미지", "progress": "진행 표시", "shade": "어둡기", "wipe": "와이프 전환",
+    "caption": "캡션", "label": "라벨", "text": "본문",
+}
+
+
+def param_label(key: str) -> str:
+    """"제목 (title)" — 아는 키는 뜻을 앞세우고, 모르는 키는 그대로."""
+    k = str(key or "")
+    return f"{PARAM_LABELS[k]} ({k})" if k in PARAM_LABELS else k
+
+
 # 공용 템플릿 html → 표시명 (10: "사용자가 intro.html 을 어떻게 알 수 있는가").
 # 파일명은 구현이고, 화면에는 무엇이 그려지는지가 보여야 한다.
 TEMPLATE_LABELS = {
