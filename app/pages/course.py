@@ -54,8 +54,9 @@ class EpisodeCard(QFrame):
         row.setSpacing(6)
         finals = badge.get("final") or []
         if finals:
-            info = QLabel(f"{finals[0].rsplit('-', 1)[-1].replace('.mp4', '')} · 완성본 {len(finals)}개"
-                          if len(finals) > 1 else finals[0].rsplit("-", 1)[-1].replace(".mp4", ""))
+            variant = finals[0].rsplit("-", 1)[-1].replace(".mp4", "")
+            info = QLabel(f"완성본 {len(finals)}개 · {variant}" if len(finals) > 1
+                          else f"완성본 {variant}")   # "16x9" 날것 캡션은 뜻이 없다 (P2)
             info.setObjectName("caption")
             row.addWidget(info)
         if badge.get("stale"):
