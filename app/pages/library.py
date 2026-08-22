@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import re
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QHBoxLayout, QHeaderView,
                                QLabel, QLineEdit, QPushButton, QTableWidget,
@@ -40,8 +42,8 @@ class LibraryPage(QWidget):
         self.kind.currentIndexChanged.connect(self.refresh)
         head.addWidget(self.kind)
         outer.addLayout(head)
-        desc = QLabel("영상에 쓸 소재입니다. 출처와 라이선스는 받을 때 CATALOG.md 에 함께 "
-                      "기록됩니다 — 라이선스를 모르는 소재는 받지 않습니다.")
+        desc = QLabel("영상에 쓸 소재입니다. 출처와 라이선스는 받을 때 출처 대장(CATALOG.md)에 "
+                      "함께 기록됩니다 — 라이선스를 모르는 소재는 받지 않습니다.")
         desc.setObjectName("pageDesc")
         desc.setWordWrap(True)
         outer.addWidget(desc)
@@ -96,6 +98,11 @@ class LibraryPage(QWidget):
     def refresh(self) -> None:
         kind = self.kind.currentData()
         studio = self._make_studio()
+        # 종류를 바꾸면 이전 선택의 흔적(경로 캡션·미리듣기 활성)이 남으면 안 된다 (P8)
+        self.table.clearSelection()
+        self.ref_label.setText("")
+        self.play_btn.setEnabled(False)
+        self.audio.stop_if_playing(self.play_btn)
         self.result.setText("불러오는 중…")
         run_bg(lambda: studio.assets(kind), done=self._fill,
                fail=lambda e: self.result.setText(error_text(e)))
@@ -115,13 +122,15 @@ class LibraryPage(QWidget):
             if not a.get("license"):
                 lic.setForeground(Qt.red)
                 unlicensed += 1
+            # 출처 대장은 마크다운 파일 — 백틱·별표가 날것으로 보이면 안 된다 (09 G7)
+            source = re.sub(r"[`*]", "", a.get("source", ""))
+            note = re.sub(r"[`*]", "", a.get("note", ""))
             for col, item in enumerate([QTableWidgetItem(a["name"]), QTableWidgetItem(size), lic,
-                                        QTableWidgetItem(a.get("source", "")),
-                                        QTableWidgetItem(a.get("note", ""))]):
+                                        QTableWidgetItem(source), QTableWidgetItem(note)]):
                 self.table.setItem(i, col, item)
         self.result.setText(
-            f"{len(rows)}개" + (f" · 라이선스 미기재 {unlicensed}개 — CATALOG.md 를 채우세요"
-                                if unlicensed else "")
+            f"{len(rows)}개" + (f" · 라이선스 미기재 {unlicensed}개 — 출처 대장(CATALOG.md)에 "
+                                "라이선스를 적으세요" if unlicensed else "")
             if rows else "아직 받은 소재가 없습니다 — 아래에서 URL 과 라이선스를 넣어 받으세요.")
 
     def _on_select(self) -> None:
@@ -129,7 +138,7 @@ class LibraryPage(QWidget):
         ok = 0 <= row < len(self._rows)
         kind = self.kind.currentData()
         self.play_btn.setEnabled(ok and kind in ("bgm", "broll"))
-        self.ref_label.setText(f"대본 기입값: {self._rows[row]['ref']}" if ok else "")
+        self.ref_label.setText(f"대본에 적는 경로: {self._rows[row]['ref']}" if ok else "")
 
     def _play(self) -> None:
         if self.audio.stop_if_playing(self.play_btn):   # 두 번째 클릭 = 중지
@@ -165,5 +174,5 @@ class LibraryPage(QWidget):
         self.add_btn.setEnabled(True)
         self.url.clear()
         self.name.clear()
-        self.result.setText(f"{out['name']} 받음 — CATALOG.md 에 기록됨")
+        self.result.setText(f"{out['name']} 받음 — 출처 대장(CATALOG.md)에 기록됨")
         self.refresh()
