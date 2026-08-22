@@ -66,10 +66,19 @@ class EpisodeCard(QFrame):
             btn = QPushButton("열기")
             btn.clicked.connect(lambda: self.opened.emit(self.eid))
             lay.addWidget(btn, alignment=Qt.AlignLeft)
+            # 카드 전체 클릭도 연다 — 대시보드 카드와 같은 문법 (루프 3회차 P11)
+            self.setCursor(Qt.PointingHandCursor)
+            self._clickable = True
+
+    def mouseReleaseEvent(self, e):  # noqa: N802 — Qt 오버라이드
+        if getattr(self, "_clickable", False):
+            self.opened.emit(self.eid)
+        super().mouseReleaseEvent(e)
 
 
 class CoursePage(QWidget):
     open_episode = Signal(str)
+    open_episode_ai = Signal(str)   # 영상 화면을 열고 AI 대화상자까지 (진입점 단일화 — 루프 3회차 P11)
     deleted = Signal()   # 프로젝트 삭제됨 → 대시보드로
 
     def __init__(self, make_studio):
@@ -194,36 +203,23 @@ class CoursePage(QWidget):
                               f"{gate.get('models', {}).get('draft')})")
 
     def _ai_draft(self, n: int) -> None:
-        """[✨ AI 초안] — 미생성 영상면 스캐폴딩 후 제출 (05 사람↔에이전트 동선)."""
-        dlg = QInputDialog(self)
-        dlg.setWindowTitle("AI 초안")
-        dlg.setLabelText(f"{n}편의 주제·방향")
-        dlg.setOption(QInputDialog.UsePlainTextEditForTextInput, True)
-        dlg.setMinimumSize(640, 360)
-        ok = bool(dlg.exec())
-        brief = dlg.textValue()
-        if not ok or not brief.strip():
-            return
+        """[AI 초안] — 영상을 만들고(필요시) 영상 화면의 **완전판 AI 대화상자**로 간다.
+
+        예전엔 여기서 자체 입력창으로 바로 제출했는데, ② 대본의 대화상자(근거 문서·
+        영상까지 한 번에)와 경험이 갈라졌다 (루프 3회차 P11). 진입점을 하나로 합친다.
+        """
         cid, studio = self.cid, self._make_studio()
 
-        def submit():
+        def ensure():
             board = {b["id"]: b for b in studio.course_board(cid)}
             entry = next((e for e in studio.get_course(cid)["course"].get("episodes", [])
                           if e.get("n") == n), None)
             eid = (entry or {}).get("id") or f"{cid}-{n:02d}"
             if board.get(eid, {}).get("state", "empty") == "empty":
                 eid = studio.create_episode(cid, n)["id"]
-            return studio.agent_submit("draft", eid, {"episodeId": eid,
-                                                      "brief": brief.strip()})
+            return eid
 
-        run_bg(submit,
-               done=lambda out: (self.error.setText(
-                   f"AI 초안 잡 {out['jobId']} 시작 — 하단 상태바에서 진행을 보세요"),
-                   self.error.setProperty("chip", "ok"),
-                   self.error.style().unpolish(self.error),
-                   self.error.style().polish(self.error),
-                   self.error.show(), self.load(cid)),
-               fail=self._fail)
+        run_bg(ensure, done=self.open_episode_ai.emit, fail=self._fail)
 
     # ── 스캐폴딩 (03 ② — 지금 수동으로 하는 것 전부) ─────────────────────────
     def _create_episode(self, n: int) -> None:

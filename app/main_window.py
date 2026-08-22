@@ -68,6 +68,10 @@ class MainWindow(QMainWindow):
         self.dashboard.open_course.connect(self.show_course)
         self.dashboard.open_episode.connect(self.show_episode)
         self.course_page.open_episode.connect(self.show_episode)
+        self.course_page.open_episode_ai.connect(
+            lambda eid: (self.episode_page.open_with_ai(eid),
+                         self.stack.setCurrentWidget(self.episode_page),
+                         self._mark_nav_home()))
         self.episode_page.back.connect(self._back_to_course)
         self.course_page.deleted.connect(
             lambda: (self._nav_to(0), self.nav.setCurrentRow(0)))

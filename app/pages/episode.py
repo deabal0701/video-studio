@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtCore import QTimer, QUrl, Qt, Signal
 from PySide6.QtGui import QPixmap
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
@@ -214,6 +214,11 @@ class EpisodePage(QWidget):
         return outer
 
     # ── 로드 ────────────────────────────────────────────────────────────────
+    def open_with_ai(self, eid: str) -> None:
+        """보드 [AI 초안] — 열리면 곧장 AI 대화상자를 띄운다 (진입점 단일화)."""
+        self._open_ai_pending = True
+        self.load(eid)
+
     def load(self, eid: str) -> None:
         self.eid = eid
         self.title.setText(eid)          # 즉시 표시 — 아래에서 사람 이름으로 바꾼다
@@ -344,6 +349,10 @@ class EpisodePage(QWidget):
         self._title_pair = cons.get("titlePair")
 
         self.clip_tab.load(self.eid, body["scenes"], body["etag"], {}, budget_text)
+        if getattr(self, "_open_ai_pending", False):
+            self._open_ai_pending = False
+            self.tabs.setCurrentIndex(1)          # ② 대본
+            QTimer.singleShot(200, self.clip_tab._start_ai)
         self.plan_tab.load(self.eid, budget_text)
         finals = body.get("final") or []
         self.not_built.setVisible(not finals)
