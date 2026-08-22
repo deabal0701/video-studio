@@ -142,12 +142,20 @@ class BrandKitTab(QWidget):
         self.font_label.setText(font.rsplit("/", 1)[-1] if font else "프로젝트 기본 글꼴")
 
     def _apply(self) -> None:
-        if QMessageBox.question(
+        # 덮어쓰기는 파괴적 — 기본 버튼은 [취소] (16회차 소형 대화상자와 같은 문법)
+        if QMessageBox.warning(
                 self, "프리셋 적용",
                 "이 프로젝트의 타이틀 카드와 스팅어를 기본 디자인으로 덮어씁니다.\n"
-                "직접 고친 내용이 있으면 사라집니다 — 계속할까요?") != QMessageBox.Yes:
+                "직접 고친 내용이 있으면 사라집니다 — 계속할까요?",
+                QMessageBox.Yes | QMessageBox.Cancel,
+                QMessageBox.Cancel) != QMessageBox.Yes:
             return
         cid, studio = self.cid, self._make_studio()
+        # 처리 중 상태 — 안 잠그면 중복 클릭이 두 번 실행된다 (P18·P20)
+        self.apply_btn.setEnabled(False)
+        self.result.setText("적용 중…")
         run_bg(lambda: studio.apply_brand_kit(cid),
-               done=lambda out: self.result.setText(f"적용됨 ✓ — {', '.join(out['copied'])}"),
-               fail=lambda e: self.result.setText(error_text(e)))
+               done=lambda out: (self.result.setText(f"적용됨 ✓ — {', '.join(out['copied'])}"),
+                                 self.apply_btn.setEnabled(True)),
+               fail=lambda e: (self.result.setText(error_text(e)),
+                               self.apply_btn.setEnabled(True)))
