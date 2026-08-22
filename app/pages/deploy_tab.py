@@ -79,11 +79,14 @@ class DeployTab(QWidget):
         self.thumbs_row = QHBoxLayout()
         holder = QWidget()
         holder.setLayout(self.thumbs_row)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(holder)
-        scroll.setFixedHeight(theme.THUMB_H + 52)
-        lay.addWidget(scroll)
+        self.thumbs_scroll = QScrollArea()
+        self.thumbs_scroll.setWidgetResizable(True)
+        self.thumbs_scroll.setWidget(holder)
+        # 후보 전부가 한눈에 — 좁은 창이면 로드 때 축소한다 (③ 검수와 같은 처방, P6).
+        # 세로 바는 생기면 가로 바까지 연쇄라 끈다
+        self.thumbs_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.thumbs_scroll.setFixedHeight(theme.THUMB_H + 52)
+        lay.addWidget(self.thumbs_scroll)
 
     def load(self, eid: str) -> None:
         self.eid = eid
@@ -105,12 +108,17 @@ class DeployTab(QWidget):
             item = self.thumbs_row.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-        for name in data.get("thumbnails", []):
+        names = data.get("thumbnails", [])
+        n = max(1, len(names))
+        avail = max(300, self.thumbs_scroll.viewport().width() - 24)
+        thumb_h = min(theme.THUMB_H, max(80, (avail // n - 16) * 9 // 16))
+        self.thumbs_scroll.setFixedHeight(thumb_h + 52)
+        for name in names:
             p = OUT_ROOT / self.eid / "frames" / name
             btn = QToolButton()
             btn.setIcon(QIcon(QPixmap(str(p))))
             btn.setIconSize(QPixmap(str(p)).scaledToHeight(
-                theme.THUMB_H, Qt.SmoothTransformation).size())
+                thumb_h, Qt.SmoothTransformation).size())
             btn.setAutoRaise(True)
             btn.setToolTip(f"{name} — 눌러서 저장")
             btn.clicked.connect(lambda _=False, path=p: self._save_thumb(path))
