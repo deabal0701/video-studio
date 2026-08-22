@@ -50,9 +50,11 @@ class SettingsPage(QWidget):
         form.setHorizontalSpacing(theme.GAP_STACK)
         form.setVerticalSpacing(theme.GAP_STACK)
         self.provider = QComboBox()
+        # 저장값은 원시 id(claude·openai) 그대로 — 화면 표기만 사람 말 (P2)
+        provider_labels = {"claude": "Claude — 기본 (Anthropic)", "openai": "OpenAI"}
         for p in PROVIDERS:
-            self.provider.addItem(p, p)
-        self.provider.setMaximumWidth(theme.RD_FIELD)
+            self.provider.addItem(provider_labels.get(p, p), p)
+        self.provider.setMaximumWidth(260)   # 두 항목짜리 콤보가 키 칸 폭을 흉내낼 이유가 없다
         self.provider.currentIndexChanged.connect(self._sync_provider_rows)
         form.addRow("제공자", self.provider)
         self.test_mode = QCheckBox("테스트 모드 — 제공자 불문 최저가 모델 강제")
@@ -225,7 +227,7 @@ class SettingsPage(QWidget):
         i = self.diag_table.rowCount()
         self.diag_table.insertRow(i)
         self.diag_table.setItem(i, 0, QTableWidgetItem(c["name"]))
-        state = QTableWidgetItem("OK" if c["ok"] else "없음")
+        state = QTableWidgetItem("정상" if c["ok"] else "없음")
         state.setForeground(Qt.darkGreen if c["ok"] else Qt.red)
         self.diag_table.setItem(i, 1, state)
         detail = c["detail"] + ("" if c["ok"] or not c["hint"] else f"  → {c['hint']}")
