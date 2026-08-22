@@ -64,6 +64,8 @@ class MainWindow(QMainWindow):
         self.dashboard.open_course.connect(self.show_course)
         self.dashboard.open_episode.connect(self.show_episode)
         self.course_page.open_episode.connect(self.show_episode)
+        self.episode_page.back.connect(self._back_to_course)
+        self.course_page.back_btn.clicked.connect(lambda: self._nav_to(0) or self.nav.setCurrentRow(0))
 
         # 하단 상태바 — 빌드 잡 칩 (전 페이지 공통, 07 재편 결정)
         bar = QStatusBar()
@@ -106,6 +108,15 @@ class MainWindow(QMainWindow):
         self.course_page.load(cid)
         self.stack.setCurrentWidget(self.course_page)
         self._mark_nav_home()
+
+    def _back_to_course(self, cid: str) -> None:
+        """[← 프로젝트] — 부모 프로젝트가 없으면(단일 영상) 대시보드로."""
+        from core import env
+
+        if (env.projects_root() / cid / "course.json").exists():
+            self.show_course(cid)
+        else:
+            self.nav.setCurrentRow(0)
 
     def show_episode(self, eid: str) -> None:
         self.episode_page.load(eid)

@@ -23,8 +23,17 @@ function Need($name, $hint) {
 }
 Need conda "miniconda/anaconda 설치 후 $CondaEnv 환경이 필요하다."
 
+# env 파이썬을 **직접 호출**한다 — `conda run` 은 conda 가 활성화된 Git Bash 에서 뜬
+# powershell 에서는 PATH 재계산이 꼬여 base(3.9) 파이썬을 잡는다(2026-08-22 실측 —
+# 그 상태로 pip 이 돌면 claude-agent-sdk >=3.10 불충족으로 설치 실패). 직접 호출은 면역이고,
+# 이 env 는 전부 pip 휠이라 활성화 없이도 임포트 정상(같은 날 실측: Qt 3종·sqlite3·ssl).
+$envPrefix = (conda env list --json | ConvertFrom-Json).envs |
+  Where-Object { (Split-Path $_ -Leaf) -eq $CondaEnv } | Select-Object -First 1
+if (-not $envPrefix) { throw "conda env '$CondaEnv' 가 없다. conda create -n $CondaEnv python=3.13" }
+$Py = Join-Path $envPrefix "python.exe"
+
 if ($Test) {
-  conda run -n $CondaEnv python -m pytest -q
+  & $Py -m pytest -q
   exit $LASTEXITCODE
 }
 
@@ -35,13 +44,13 @@ if ($Test) {
 # (2026-08-21 실측: 실패 임포트 → THREW NativeCommandError / 아래 패턴 → bad=1 good=0 무예외)
 $prev = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
-conda run -n $CondaEnv python -c "import PySide6.QtCore, PySide6.QtWebEngineWidgets, PySide6.QtMultimedia, pydantic, pytest, edge_tts" 2>$null
+& $Py -c "import PySide6.QtCore, PySide6.QtWebEngineWidgets, PySide6.QtMultimedia, pydantic, pytest, edge_tts" 2>$null
 $qtReady = ($LASTEXITCODE -eq 0)
 $ErrorActionPreference = $prev
 if (-not $qtReady) {
   Write-Host "[1/2] 의존성 설치 중 (pip — 최초 1회, 수 분)..." -ForegroundColor Cyan
   $ErrorActionPreference = "Continue"
-  conda run -n $CondaEnv python -m pip install --quiet PySide6 pydantic pytest pytest-timeout claude-agent-sdk openai edge-tts pyinstaller
+  & $Py -m pip install --quiet PySide6 pydantic pytest pytest-timeout claude-agent-sdk openai edge-tts pyinstaller
   $pipCode = $LASTEXITCODE
   $ErrorActionPreference = $prev
   if ($pipCode -ne 0) { throw "pip 설치 실패 (exit $pipCode) — env 확인: conda create -n $CondaEnv python=3.13" }
@@ -62,5 +71,5 @@ if ($Setup) { Write-Host "준비 완료. .\run.ps1 로 실행한다." -Foregroun
 # ── 실행 ─────────────────────────────────────────────────────────────────────
 if ($Fixtures) { $env:VIDEO_STUDIO_PROJECTS = Join-Path $repo "fixtures\projects" }
 Set-Location $repo
-conda run --no-capture-output -n $CondaEnv python -m app
+& $Py -m app
 exit $LASTEXITCODE

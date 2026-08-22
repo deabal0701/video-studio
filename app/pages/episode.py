@@ -27,6 +27,7 @@ CHECK_ITEMS = ["밝은 프레임 워터마크", "어두운 프레임 자막", "�
 
 class EpisodePage(QWidget):
     job_started = Signal(str)
+    back = Signal(str)   # cid — [← 프로젝트] (①②③ 탭으로 되돌아간다)
 
     def __init__(self, make_studio):
         super().__init__()
@@ -42,6 +43,13 @@ class EpisodePage(QWidget):
         outer.setContentsMargins(theme.PAGE_PAD, 24, theme.PAGE_PAD, 24)
 
         head = QHBoxLayout()
+        # 이 화면의 탭이 ④부터 시작한다 — ①②③(프로젝트 설정·영상 목록·브랜드 킷)으로
+        # 돌아갈 길이 화면에 있어야 한다 (09 G8: 내가 어디 있는지·어디로 가는지)
+        self.back_btn = QPushButton("← 프로젝트")
+        self.back_btn.setFlat(True)
+        self.back_btn.clicked.connect(
+            lambda: self.eid and self.back.emit(self.eid.rsplit("-", 1)[0]))
+        head.addWidget(self.back_btn)
         self.title = QLabel("")
         self.title.setObjectName("pageTitle")
         head.addWidget(self.title)
