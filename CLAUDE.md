@@ -12,7 +12,7 @@
 | 모든 세션 공통 | [00_overview.md](docs/design/00_overview.md) — 원칙·확정 결정 D1~D16 |
 | 구조·스택·디렉토리 | [01_architecture.md](docs/design/01_architecture.md) |
 | course/scenes 스키마·경로 규칙 | [02_data-model.md](docs/design/02_data-model.md) — ★ 경로 함정 5종 표 |
-| 화면 개발 | [03_screens.md](docs/design/03_screens.md) + **★ [08_qt-style.md](docs/design/08_qt-style.md)** — Qt 화면 구성·스타일 규칙 (팔레트·QSS 함정·레이아웃) |
+| 화면 개발 | [03_screens.md](docs/design/03_screens.md) + **★ [08_qt-style.md](docs/design/08_qt-style.md)**(스타일 규칙) + [09_ui-review.md](docs/design/09_ui-review.md)(점검 대장) + [10_ux-plan.md](docs/design/10_ux-plan.md)(UX 재설계 계획) |
 | 유스케이스(구 API)·잡 큐·엔진 호출 | [04_api.md](docs/design/04_api.md) |
 | 에이전트 기능 | [05_agent.md](docs/design/05_agent.md) |
 | 단계·수용 기준·리스크 | [06_roadmap.md](docs/design/06_roadmap.md) |

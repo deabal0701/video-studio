@@ -239,7 +239,8 @@
           "narration": "왼쪽 작업 큐로 가면 굽고 있는 일이 줄을 서 있습니다. 한 번에 두 편까지 동시에 굽고, 같은 영상은 순서대로 하나씩 처리합니다. 시작하기 전에 미리 점검해서 치명적인 문제가 보이면 굽지 않고 멈춥니다. 몇십 분을 버리지 않게 하려는 것입니다.",
           "params": {
             "src": "../../ui-shots/12-jobs.png", "step": "작업 큐",
-            "hx": "13.8", "hy": "8", "hw": "85", "hh": "6", "ht": "6",
+            "cx": "13", "cy": "2", "cw": "62",
+            "hx": "13.8", "hy": "7.4", "hw": "48", "hh": "3.6", "ht": "6",
             "brand": "#3b9dff", "brandSoft": "#9ecbff", "bg": "#0d1117",
             "fontUrl": "../../../engine/fonts/PretendardVariable.woff2", "wipe": "off"
           }
@@ -314,7 +315,7 @@
           "narration": "라이브러리는 영상에 쓸 소재를 모아 두는 곳입니다. 배경음악과 실사 영상, 사진, 글꼴입니다. 표에 길이와 해상도뿐 아니라 라이선스와 출처가 함께 적혀 있습니다. 새로 받을 때 라이선스를 반드시 적게 되어 있어서, 출처를 모르는 소재는 애초에 들어오지 못합니다.",
           "params": {
             "src": "../../ui-shots/11-library.png", "step": "라이브러리",
-            "cx": "13", "cy": "8", "cw": "80",
+            "cx": "5", "cy": "2", "cw": "93",
             "hx": "14", "hy": "14.3", "hw": "84", "hh": "4.2", "ht": "12",
             "brand": "#3b9dff", "brandSoft": "#9ecbff", "bg": "#0d1117",
             "fontUrl": "../../../engine/fonts/PretendardVariable.woff2", "wipe": "off"
@@ -327,7 +328,7 @@
           "narration": "설정에는 AI 기능에 쓸 키와 자가진단이 있습니다. 아래 표가 이 컴퓨터에 필요한 것이 다 갖춰졌는지 항목별로 보여 줍니다. 하나 알아 두실 것은, 키가 하나도 없어도 앱은 그대로 다 돌아간다는 점입니다. 키는 AI가 초안을 써 주는 기능에만 씁니다.",
           "params": {
             "src": "../../ui-shots/13-settings.png", "step": "설정",
-            "cx": "13", "cy": "8", "cw": "70",
+            "cx": "13", "cy": "10", "cw": "82",
             "hx": "14.3", "hy": "59", "hw": "70", "hh": "4.5", "ht": "16",
             "brand": "#3b9dff", "brandSoft": "#9ecbff", "bg": "#0d1117",
             "fontUrl": "../../../engine/fonts/PretendardVariable.woff2", "wipe": "off"
