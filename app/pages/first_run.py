@@ -168,11 +168,20 @@ class _KeysPage(QWizardPage):
         self.note.setText(f"저장 위치: {cfg['homeFile']} — 나중에 설정 화면에서 바꿀 수 있습니다.")
 
     def save(self) -> None:
+        """동기 저장 — 위저드가 닫히는 시점이라 백그라운드로 보내면 앱 종료와
+        경주가 되고, 실패를 삼키면 입력한 키가 조용히 사라진다 (30회차 P21).
+        파일 한 줄 쓰기라 즉시 끝난다."""
         if not self._fields:
             return
         updates = {k: f.text().strip() for k, f in self._fields.items()}
-        studio = self._make_studio()
-        run_bg(lambda: studio.save_settings(updates), fail=lambda _e: None)
+        try:
+            self._make_studio().save_settings(updates)
+        except Exception as err:  # noqa: BLE001 — 어떤 실패든 사용자에게 알린다
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(
+                self, "키 저장 실패",
+                f"{error_text(err)}\n\n[설정] 화면에서 다시 저장할 수 있습니다.")
 
 
 class _AssetsPage(QWizardPage):
