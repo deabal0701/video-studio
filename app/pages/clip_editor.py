@@ -52,9 +52,16 @@ def clip_seconds(clip: dict, audio_cache: dict) -> tuple[float, bool]:
 
 
 class PickerDialog(QDialog):
-    """피커 공용 — 행 클릭으로 선택 (경로 문자열을 만지지 않는다, 결함 차단 ②)."""
+    """피커 공용 — 행 클릭으로 선택 (경로 문자열을 만지지 않는다, 결함 차단 ②).
 
-    def __init__(self, title: str, headers: list[str], rows: list[list[str]], parent=None):
+    더블클릭은 지름길이고 정식 경로는 행 선택 → [선택] 버튼 — 더블클릭을 모르는
+    초보자가 막히지 않게 (23회차 P15·P24). 빈 목록이면 표 대신 안내문을 보인다 (P9).
+    """
+
+    def __init__(self, title: str, headers: list[str], rows: list[list[str]],
+                 parent=None, empty_text: str = "항목이 없습니다"):
+        from PySide6.QtWidgets import QDialogButtonBox
+
         super().__init__(parent)
         self.setWindowTitle(title)
         self.resize(680, 440)
@@ -70,11 +77,31 @@ class PickerDialog(QDialog):
         self.table.resizeColumnsToContents()
         self.table.cellDoubleClicked.connect(self._pick)
         lay.addWidget(self.table)
-        hint = QLabel("더블클릭으로 선택")
+        if not rows:
+            self.table.hide()
+            empty = QLabel(empty_text)
+            empty.setWordWrap(True)
+            lay.addWidget(empty, 1, Qt.AlignCenter)
+        hint = QLabel("행을 고르고 [선택] — 더블클릭해도 됩니다")
         hint.setObjectName("caption")
+        if not rows:
+            hint.hide()   # 고를 행이 없는데 고르라는 안내는 어색하다
         lay.addWidget(hint)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        ok = buttons.button(QDialogButtonBox.Ok)
+        ok.setText("선택")
+        ok.setObjectName("primary")
+        ok.setEnabled(False)   # 고른 행이 있어야 눌린다 (P20)
+        buttons.button(QDialogButtonBox.Cancel).setText("취소")
+        self.table.itemSelectionChanged.connect(
+            lambda: ok.setEnabled(self.table.currentRow() >= 0))
+        buttons.accepted.connect(lambda: self._pick(self.table.currentRow(), 0))
+        buttons.rejected.connect(self.reject)
+        lay.addWidget(buttons)
 
     def _pick(self, row: int, _col: int) -> None:
+        if row < 0:
+            return
         self.picked = row
         self.accept()
 
@@ -838,7 +865,9 @@ class ClipEditorTab(QWidget):
         rows = [[a["name"], f"{a.get('duration', 0)}s · {a.get('width', 0)}×{a.get('height', 0)}",
                  a.get("license") or "없음"] for a in self._brolls]
         dlg = PickerDialog("B롤 선택 — 길이·라이선스를 보고 고른다", ["파일", "길이·해상도", "라이선스"],
-                           rows, self)
+                           rows, self,
+                           empty_text="받아 둔 B롤이 없습니다 — 왼쪽 내비 [라이브러리]에서 "
+                                      "URL 로 받아 온 뒤 다시 고르세요.")
         if dlg.exec() and dlg.picked is not None:
             a = self._brolls[dlg.picked]
             c = self.cur
@@ -877,6 +906,11 @@ class ClipEditorTab(QWidget):
             return
         need = clip_seconds(c, self.audio_cache)[0]
         avail = duration - float(c.get("videoStart") or 0)
+        if avail <= 0:   # "쓸 수 있는 소스 -1.1s" 음수 표기는 말이 안 된다 (23회차 P25)
+            self.broll_check.setText(
+                f"시작 지점이 소재 끝({duration:.1f}s)을 지났습니다 — 줄이세요")
+            self.broll_check.setStyleSheet(f"color: {theme.DANGER}; font-weight: 600;")
+            return
         if need > avail + 0.05:
             self.broll_check.setText(
                 f"구간 {need:.1f}s > 쓸 수 있는 소스 {avail:.1f}s — 마지막 {need - avail:.1f}s 정지 프레임")
