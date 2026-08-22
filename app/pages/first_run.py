@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QFileDialog, QFormLayout,
                                QHBoxLayout, QLabel, QLineEdit, QPushButton,
                                QTableWidget, QTableWidgetItem, QVBoxLayout,
@@ -100,20 +100,35 @@ class _DiagnosePage(QWizardPage):
                                self.again.setEnabled(True)))
 
     def _fill(self, checks: list[dict]) -> None:
+        """한 줄씩 차례로 찍는다 — 설정 화면과 같은 문법 (10 #3b: 점검하는 동작이 보여야
+        "점검했다"가 전달된다)."""
         self.again.setEnabled(True)
-        self.table.setRowCount(len(checks))
-        bad = []
-        for i, c in enumerate(checks):
-            self.table.setItem(i, 0, QTableWidgetItem(c["name"]))
-            state = QTableWidgetItem("OK" if c["ok"] else "없음")
-            state.setForeground(Qt.darkGreen if c["ok"] else Qt.red)
-            self.table.setItem(i, 1, state)
-            self.table.setItem(i, 2, QTableWidgetItem(
-                c["detail"] + ("" if c["ok"] or not c["hint"] else f"  → {c['hint']}")))
-            if not c["ok"] and "키" not in c["name"]:
-                bad.append(c["name"])
-        self.summary.setText("전부 준비됨 ✓" if not bad
-                             else f"빠진 것: {', '.join(bad)} — 없어도 계속 진행할 수 있습니다")
+        self.table.setRowCount(0)
+        self._queue = list(checks)
+        self._bad: list[str] = []
+        self._timer = QTimer(self)
+        self._timer.setInterval(140)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start()
+
+    def _tick(self) -> None:
+        if not self._queue:
+            self._timer.stop()
+            self.summary.setText(
+                "전부 준비됨 ✓" if not self._bad
+                else f"빠진 것: {', '.join(self._bad)} — 없어도 계속 진행할 수 있습니다")
+            return
+        c = self._queue.pop(0)
+        i = self.table.rowCount()
+        self.table.insertRow(i)
+        self.table.setItem(i, 0, QTableWidgetItem(c["name"]))
+        state = QTableWidgetItem("정상" if c["ok"] else "없음")
+        state.setForeground(Qt.darkGreen if c["ok"] else Qt.red)
+        self.table.setItem(i, 1, state)
+        self.table.setItem(i, 2, QTableWidgetItem(
+            c["detail"] + ("" if c["ok"] or not c["hint"] else f"  → {c['hint']}")))
+        if not c["ok"] and "키" not in c["name"]:
+            self._bad.append(c["name"])
 
 
 class _KeysPage(QWizardPage):
@@ -255,4 +270,25 @@ class FirstRunWizard(QWizard):
     def _done(self, result: int) -> None:
         if result:  # 완료 — 건너뛰기(Cancel)면 표시하지 않아 다음 실행에 다시 뜬다
             self.keys_page.save()
+            self._save_data_dir()
             mark_done()
+
+    def _save_data_dir(self) -> None:
+        """[변경…]으로 고른 폴더를 포인터(.data-dir)에 적는다 — 다음 실행부터 적용.
+
+        안 적으면 화면의 "바꾸면 다음 실행부터 적용됩니다"가 말뿐이 된다 (P1).
+        새 폴더에도 완료 표시를 함께 둬 위저드가 다시 뜨지 않는다.
+        """
+        from pathlib import Path
+
+        chosen = Path(self.data_page.path.text().strip())
+        if not str(chosen) or chosen == env.DATA_DIR:
+            return
+        base = env._default_data_dir()
+        try:
+            base.mkdir(parents=True, exist_ok=True)
+            (base / ".data-dir").write_text(str(chosen), encoding="utf-8", newline="\n")
+            chosen.mkdir(parents=True, exist_ok=True)
+            (chosen / DONE_MARK).write_text("ok\n", encoding="utf-8", newline="\n")
+        except OSError:
+            pass   # 폴더를 못 쓰면 기본값 그대로 — 다음 실행에 위저드가 다시 안내한다

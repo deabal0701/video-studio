@@ -39,7 +39,31 @@ def _default_data_dir() -> Path:
     return Path(base) / "VideoStudio"
 
 
-DATA_DIR = Path(os.environ.get("VIDEO_STUDIO_DATA", str(_default_data_dir()))).resolve()
+def _pointer_target(base: Path) -> Path | None:
+    """`<기본 폴더>/.data-dir` 포인터 — 첫 실행 위저드의 [변경…]이 적는 리다이렉트.
+
+    환경변수(VIDEO_STUDIO_DATA)가 항상 우선이고, 포인터가 깨져 있으면 기본값으로 후퇴한다.
+    """
+    try:
+        ptr = base / ".data-dir"
+        if ptr.exists():
+            text = ptr.read_text(encoding="utf-8").strip()
+            if text:
+                return Path(text).resolve()
+    except OSError:
+        pass
+    return None
+
+
+def _resolve_data_dir() -> Path:
+    override = os.environ.get("VIDEO_STUDIO_DATA")
+    if override:
+        return Path(override).resolve()
+    base = _default_data_dir()
+    return _pointer_target(base) or base.resolve()
+
+
+DATA_DIR = _resolve_data_dir()
 
 
 def projects_root() -> Path:

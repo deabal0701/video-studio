@@ -127,3 +127,22 @@ def test_ass_filter_probe_failure_is_not_a_pass(monkeypatch):
 
     monkeypatch.setattr(subprocess, "run", boom)
     assert cfg._has_ass_filter()[0] is False
+
+
+# ── 데이터 폴더 포인터 (.data-dir — 첫 실행 위저드 [변경…] 배선) ──────────────
+def test_pointer_target_absent(tmp_path):
+    from core import env
+    assert env._pointer_target(tmp_path) is None
+
+
+def test_pointer_target_reads_path(tmp_path):
+    from core import env
+    target = tmp_path / "custom-data"
+    (tmp_path / ".data-dir").write_text(str(target), encoding="utf-8")
+    assert env._pointer_target(tmp_path) == target.resolve()
+
+
+def test_pointer_target_blank_falls_back(tmp_path):
+    from core import env
+    (tmp_path / ".data-dir").write_text("  \n", encoding="utf-8")
+    assert env._pointer_target(tmp_path) is None
