@@ -66,3 +66,64 @@ def test_facade_settings_roundtrip(tmp_path, monkeypatch):
     out = st.save_settings({"OPENAI_API_KEY": "sk-new"})
     assert out["values"]["OPENAI_API_KEY"] == "sk-new"
     assert f.read_text(encoding="utf-8").count("OPENAI_API_KEY=sk-new") == 1
+
+
+# ── ffmpeg 자막(libass) ──────────────────────────────────────────────────────
+# ffmpeg 가 PATH 에 있다는 것만으로는 부족하다. 2026-08-22 실측: conda-forge ffmpeg
+# 9.0.1 에 `ass` 필터가 없어 존재 검사는 OK 인데 빌드가 [3] 합성에서 죽었다.
+# 자가진단이 "OK" 라고 말하면서 빌드가 깨지는 것이 이 검사가 막으려는 상태다.
+_FILTERS_WITH_ASS = (
+    " ... amix             AA->A      Audio mixing.\n"
+    " T.. ass              V->V       Render ASS subtitles onto input video.\n"
+    " ... scale            V->V       Scale the input video size.\n"
+)
+_FILTERS_WITHOUT_ASS = (
+    " ... amix             AA->A      Audio mixing.\n"
+    " ... scale            V->V       Scale the input video size.\n"
+    " ... aselect          A->N       Select audio frames to pass in output.\n"
+)
+
+
+def _fake_filters(monkeypatch, stdout: str):
+    import subprocess
+
+    from core import config as cfg
+
+    class _P:
+        def __init__(self):
+            self.stdout, self.returncode = stdout, 0
+
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _P())
+    return cfg
+
+
+def test_ass_filter_detected(monkeypatch):
+    cfg = _fake_filters(monkeypatch, _FILTERS_WITH_ASS)
+    ok, detail = cfg._has_ass_filter()
+    assert ok and "있음" in detail
+
+
+def test_ass_filter_missing_is_reported(monkeypatch):
+    cfg = _fake_filters(monkeypatch, _FILTERS_WITHOUT_ASS)
+    ok, detail = cfg._has_ass_filter()
+    assert not ok
+    assert "합성" in detail, "왜 문제인지(빌드가 어디서 죽는지)를 말해야 한다"
+
+
+def test_ass_filter_does_not_match_substrings(monkeypatch):
+    """'aselect'·'assrender' 같은 이름에 걸리면 안 된다 — 필터 이름 열만 본다."""
+    cfg = _fake_filters(monkeypatch, _FILTERS_WITHOUT_ASS)
+    assert cfg._has_ass_filter()[0] is False
+
+
+def test_ass_filter_probe_failure_is_not_a_pass(monkeypatch):
+    """ffmpeg 를 못 부르면 '있다'고 하면 안 된다 — 모르면 NG 다."""
+    import subprocess
+
+    from core import config as cfg
+
+    def boom(*a, **k):
+        raise OSError("ffmpeg 없음")
+
+    monkeypatch.setattr(subprocess, "run", boom)
+    assert cfg._has_ass_filter()[0] is False

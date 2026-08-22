@@ -100,6 +100,22 @@ def _run(args: list[str], timeout: int = 20) -> tuple[bool, str]:
         return False, str(err)[:120]
 
 
+def _has_ass_filter() -> tuple[bool, str]:
+    """ffmpeg 에 `ass` 필터(libass)가 있는가 — 자막을 굽는 필터다."""
+    try:
+        p = subprocess.run(["ffmpeg", "-hide_banner", "-filters"],
+                           capture_output=True, env=env.child_env(),
+                           encoding="utf-8", errors="replace",
+                           creationflags=env.CREATE_NO_WINDOW, timeout=20)
+    except Exception as err:  # noqa: BLE001 — 진단은 실패 사유가 결과다
+        return False, str(err)[:120]
+    for line in (p.stdout or "").splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[1] == "ass":
+            return True, "ass 필터 있음 — 자막을 입힐 수 있습니다"
+    return False, "ass 필터 없음 — 빌드가 합성 단계에서 실패합니다"
+
+
 def diagnose() -> list[dict[str, Any]]:
     """설치·실행 전제 점검 — 화면이 표로 보여 준다 (07 첫 실행 위저드 2단계와 공용)."""
     checks: list[dict[str, Any]] = []
@@ -112,6 +128,15 @@ def diagnose() -> list[dict[str, Any]]:
         path = shutil.which(tool, path=env.child_env().get("PATH"))
         checks.append({"name": tool, "ok": bool(path), "detail": path or "PATH 에 없음",
                        "hint": "ffmpeg 설치 후 PATH 등록 (설치본은 runtime\\ffmpeg 동봉)"})
+
+    # ffmpeg 가 **있는 것만으로는 부족하다** — 자막(libass) 없는 빌드가 흔하다.
+    # 2026-08-22 실측: conda-forge ffmpeg 9.0.1 에 `ass` 필터가 없어, 존재 검사는 OK 인데
+    # 빌드가 [3] 합성에서 "No option name near '<회차>.ass'" 로 죽었다. 번들(7.1 full)엔 있다.
+    # 존재만 보고 OK 라고 말하면 자가진단이 거짓말을 하는 셈이라 따로 본다.
+    ok, detail = _has_ass_filter()
+    checks.append({"name": "ffmpeg 자막", "ok": ok, "detail": detail,
+                   "hint": "자막을 입히는 ass 필터가 없습니다 — libass 포함 빌드"
+                           "(gyan.dev full 등)로 바꾸세요. 설치본 동봉본에는 있습니다"})
 
     pw = env.ENGINE_DIR / "node_modules" / "playwright"
     checks.append({"name": "Playwright", "ok": pw.exists(),
