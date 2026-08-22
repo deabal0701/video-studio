@@ -22,7 +22,9 @@ EPISODE_TEMPLATE = LECTURE_TEMPLATES / "episode.scenes.json"
 COURSE_TEMPLATE = LECTURE_TEMPLATES / "course.json"
 PLAN_TEMPLATE = ENGINE_DIR / "templates" / "plan.md"
 
-DEFAULT_PALETTE = {"brand": "#3E63DD", "brandSoft": "#93A4F5", "bg": "#070b14"}
+# 폴백 팔레트 — 종류가 정한 값이 이 위를 덮는다 (core/kinds.py). 옛 파랑 기본값은
+# 브랜드/배경 대비 3.8:1 로 WCAG 미달이었다 (2026-08-22 실측).
+DEFAULT_PALETTE = {"brand": "#5B8DEF", "brandSoft": "#A9C6FF", "bg": "#0B1220"}
 
 
 def scaffold_course(root: Path, course_id: str, *, title: str, tagline: str = "",
@@ -30,8 +32,13 @@ def scaffold_course(root: Path, course_id: str, *, title: str, tagline: str = ""
                     voice: dict[str, Any] | None = None,
                     palette: dict[str, Any] | None = None,
                     bgm: str | None = None,
+                    kind: str | None = None,
                     episodes: list[dict[str, Any]] | None = None) -> Path:
-    """강좌 개설 (04: 폴더 + course.json + intro/stinger 템플릿 카피).
+    """프로젝트 개설 (04: 폴더 + course.json + intro/stinger 템플릿 카피).
+
+    kind = 영상 종류 (core/kinds.py — 강의·홍보·광고·매뉴얼·일반). 종류에 따라 회차
+    골격과 기본 팔레트가 달라진다. **엔진은 course.json 을 읽지 않으므로**(앱 전용 SSOT)
+    새 필드를 더해도 렌더에 영향이 없다.
 
     intro/stinger html 의 공용 `_base.css`·`_params.js` 참조는 목적지 기준으로 재계산한다 —
     템플릿은 엔진 안(templates/lecture/)에 있어 `../../motion/` 이지만, projects/ 위치는
@@ -41,9 +48,17 @@ def scaffold_course(root: Path, course_id: str, *, title: str, tagline: str = ""
     if (course_dir / "course.json").exists():
         raise FileExistsError(f"이미 있다: {course_id}")
 
+    from . import kinds as kinds_mod
+
+    spec = kinds_mod.get(kind)
     course = load_json(COURSE_TEMPLATE)
-    palette = {**DEFAULT_PALETTE, **(palette or {})}
-    course.update({"course": course_id, "title": title})
+    # 기본 팔레트는 **종류가 정한다** — 옛 기본값(파랑)은 브랜드/배경 대비 3.8:1 이라
+    # 렌더한 프레임에서 강조가 배경에 묻혔다 (2026-08-22 실측)
+    palette = {**DEFAULT_PALETTE, **spec["palette"], **(palette or {})}
+    course.update({"course": course_id, "title": title,
+                   "kind": kind or kinds_mod.DEFAULT_KIND})
+    if not episode_length:
+        episode_length = spec["length"]
     if tagline:
         course["tagline"] = tagline
     if audience:
@@ -104,9 +119,28 @@ def _inject_params(clip: dict[str, Any], palette: dict[str, Any],
     params["wipe"] = params.get("wipe", "off")
 
 
+def _scenes_template(kind: str | None) -> Path:
+    """종류별 골격 파일 — 엔진이 이미 갖고 있던 것을 쓴다(무수정)."""
+    from . import kinds as kinds_mod
+
+    name = kinds_mod.get(kind)["scenes_template"]
+    return EPISODE_TEMPLATE if name is None else (ENGINE_DIR / "templates" / name)
+
+
+def _trim_clips(scenes: dict[str, Any], kind: str | None) -> None:
+    """종류가 일부 클립만 쓴다면 골격에서 걸러 낸다 (일반 영상 — 정해진 구성이 없다)."""
+    from . import kinds as kinds_mod
+
+    keep = kinds_mod.get(kind).get("keep_clips")
+    if not keep:
+        return
+    motion = scenes.get("render", {}).get("motion", {})
+    motion["clips"] = [c for c in motion.get("clips", []) if c.get("id") in keep]
+
+
 def scaffold_episode(root: Path, course_id: str, n: int,
                      title: str | None = None, subtitle: str | None = None) -> Path:
-    """회차 폴더를 만들고 scenes.json·plan.md 골격을 깐다. 반환: 회차 폴더 경로."""
+    """영상 폴더를 만들고 scenes.json·plan.md 골격을 깐다. 반환: 영상 폴더 경로."""
     course_dir = root / course_id
     course = load_json(course_dir / "course.json")
     entry = next((e for e in course.get("episodes", []) if e.get("n") == n), None)
@@ -115,7 +149,8 @@ def scaffold_episode(root: Path, course_id: str, n: int,
     if (ep_dir / "scenes.json").exists():
         raise FileExistsError(f"이미 있다: {eid}")
 
-    scenes = load_json(EPISODE_TEMPLATE)
+    scenes = load_json(_scenes_template(course.get("kind")))
+    _trim_clips(scenes, course.get("kind"))
     ep_title = title or (entry or {}).get("title", "")
     ep_subtitle = subtitle or (entry or {}).get("subtitle", "")
 

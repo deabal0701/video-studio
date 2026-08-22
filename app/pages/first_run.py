@@ -38,7 +38,7 @@ class _DataFolderPage(QWizardPage):
         self.setSubTitle("네 단계면 첫 영상까지 갑니다. 어느 단계든 건너뛸 수 있고, "
                          "나중에 설정 화면에서 이어서 할 수 있습니다.")
         lay = QVBoxLayout(self)
-        lead = QLabel("강좌·회차 파일과 빌드 산출물이 저장될 곳입니다. "
+        lead = QLabel("프로젝트·영상 파일과 빌드 산출물이 저장될 곳입니다. "
                       "이 폴더가 정본이니 백업 대상으로 잡으세요.")
         lead.setWordWrap(True)
         lay.addWidget(lead)
@@ -164,7 +164,7 @@ class _AssetsPage(QWizardPage):
     """4. 준비물 — 스톡 소재는 재배포 금지라 설치본에 없다 (R3). 목소리 샘플도 여기서 만든다.
 
     목소리 미리듣기는 **한 번 만들어 두면 이후 공짜·즉시**다(core/voices.py). 첫 실행에서
-    무료 3종을 미리 만들어 두면 담당자가 강좌를 개설할 때 바로 골라 들을 수 있다.
+    무료 3종을 미리 만들어 두면 담당자가 프로젝트를 개설할 때 바로 골라 들을 수 있다.
     """
 
     def __init__(self, make_studio):
@@ -189,7 +189,7 @@ class _AssetsPage(QWizardPage):
         voice_head = QLabel("목소리 미리듣기")
         voice_head.setObjectName("sectionTitle")
         lay.addWidget(voice_head)
-        voice_note = QLabel("무료 목소리 3종을 미리 만들어 두면, 강좌를 만들 때 바로 골라 "
+        voice_note = QLabel("무료 목소리 3종을 미리 만들어 두면, 프로젝트를 만들 때 바로 골라 "
                             "들어볼 수 있습니다 (10초쯤 걸리고 비용은 없습니다).")
         voice_note.setObjectName("caption")
         voice_note.setWordWrap(True)

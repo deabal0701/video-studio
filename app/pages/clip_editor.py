@@ -3,7 +3,7 @@
 결함 차단 4종 (이 앱의 1원칙):
   ① 오타 params → 템플릿이 받는 키만 폼 생성 (자유 키 입력 없음, 안 받는 키는 빨간 목록+[제거])
   ② 상대경로 오류 → 피커로만 선택, 저장 시 경로 실존 검사(pathIssues)
-  ③ 브랜드 색·폰트 누락 → 자동 주입 키는 "강좌 상속 중" 뱃지만 (폼 비노출)
+  ③ 브랜드 색·폰트 누락 → 자동 주입 키는 "프로젝트 상속 중" 뱃지만 (폼 비노출)
   ④ B롤 길이 초과 → duration > 소스−videoStart 즉시 빨강
 
 저장 응답의 etag 를 항상 채택한다 — 경로 문제가 있어도 다음 저장이 409 로 교착하지 않게
@@ -34,7 +34,7 @@ from ..bridge import error_text, run_bg
 from ..widgets import AudioPreview
 
 SKELETON = ["broll", "title", "hook", "stinger", "promise"]
-# 강좌가 자동 주입하는 키 — 폼 비노출, "상속 중" 뱃지만 (03 ⑤ 표 · 결함 차단 ③)
+# 프로젝트가 자동 주입하는 키 — 폼 비노출, "상속 중" 뱃지만 (03 ⑤ 표 · 결함 차단 ③)
 AUTO_KEYS = ("brand", "brandSoft", "bg", "fg", "font", "fontUrl",
              "wipeAt", "wipeColor")
 TIME_KEY_RE = re.compile(r"^t\d|^tterm|At$|Time$", re.I)
@@ -385,7 +385,7 @@ class ClipEditorTab(QWidget):
             f"color: {theme.DANGER}; font-weight: 700;" if over else "")
         note = f"{'실측' if measured_all else '추정'} {int(secs // 60)}:{int(secs % 60):02d}"
         if over:
-            note += " — 넘치면 압축이 아니라 회차 분할"
+            note += " — 넘치면 압축이 아니라 영상 분할"
         self.budget_note.setText(note)
 
     def _render_skeleton_warn(self) -> None:
@@ -514,7 +514,7 @@ class ClipEditorTab(QWidget):
         self.params_form.addRow("wipe", wipe)
         inherited = [k for k in AUTO_KEYS if params.get(k)]
         self.inherit_label.setText(
-            "강좌 상속 중 (수동 입력 불가): " + " · ".join(f"{k} ✓" for k in inherited)
+            "프로젝트 상속 중 (수동 입력 불가): " + " · ".join(f"{k} ✓" for k in inherited)
             if inherited else "")
         for k in sorted(set(params) - set(accepted)):  # ① 안 받는 키 → 빨간 목록 + [제거]
             row = QHBoxLayout()
@@ -766,7 +766,7 @@ class ClipEditorTab(QWidget):
         if issues:
             self._show_issue("저장됨 — 경로 문제:\n" + "\n".join(issues))
         else:
-            msg = "저장됨 ✓" + (f" — 강좌 일관성 {len(cons)}건 어긋남" if cons else "")
+            msg = "저장됨 ✓" + (f" — 프로젝트 일관성 {len(cons)}건 어긋남" if cons else "")
             self.issues.setText(msg)
             self.issues.setProperty("chip", "ok" if not cons else "warn")
             self._repolish(self.issues)

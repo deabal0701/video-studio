@@ -1,4 +1,4 @@
-"""회차 화면 — 탭 ④⑤⑥⑦ (5-5 완성. 탭 순서 = 제작 순서, 빌드 버튼은 탭 밖 머리에 상주)."""
+"""영상 화면 — 탭 ④⑤⑥⑦ (5-5 완성. 탭 순서 = 제작 순서, 빌드 버튼은 탭 밖 머리에 상주)."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ class EpisodePage(QWidget):
         self.consistency_chip.setProperty("chip", "warn")
         self.consistency_chip.hide()
         head.addWidget(self.consistency_chip)
-        self.sync_btn = QPushButton("강좌 값으로 맞추기")
+        self.sync_btn = QPushButton("프로젝트 값으로 맞추기")
         self.sync_btn.clicked.connect(self._sync_course)
         self.sync_btn.hide()
         head.addWidget(self.sync_btn)
@@ -158,8 +158,8 @@ class EpisodePage(QWidget):
         scroll.setFixedHeight(theme.THUMB_H + 72)   # 캡션·여백까지 — 세로 스크롤바가 안 뜨게
         lay.addWidget(scroll)
 
-        # 직전 회차 타이틀 프레임 쌍 — "스팅어·타이틀은 회차마다 같아야 한다" 눈검수 재료
-        self.pair_head = QLabel("타이틀 일관성 — 직전 회차와 나란히")
+        # 직전 영상 타이틀 프레임 쌍 — "스팅어·타이틀은 영상마다 같아야 한다" 눈검수 재료
+        self.pair_head = QLabel("타이틀 일관성 — 직전 영상과 나란히")
         self.pair_head.setObjectName("sectionTitle")
         self.pair_head.hide()
         lay.addWidget(self.pair_head)
@@ -270,7 +270,7 @@ class EpisodePage(QWidget):
         self._etag = body["etag"]
         self.stale.setVisible(bool(body.get("stale")))
         problems = cons.get("problems") or []
-        self.consistency_chip.setText(f"강좌 일관성 {len(problems)}건 어긋남: "
+        self.consistency_chip.setText(f"프로젝트 일관성 {len(problems)}건 어긋남: "
                                       + " · ".join(problems[:2]))
         self.consistency_chip.setVisible(bool(problems))
         self.sync_btn.setVisible(bool(problems))
@@ -281,7 +281,7 @@ class EpisodePage(QWidget):
         finals = body.get("final") or []
         self.not_built.setVisible(not finals)
         self.review_body.setVisible(bool(finals))
-        self.video.hide()          # 회차를 바꾸면 영상은 다시 접는다
+        self.video.hide()          # 영상을 바꾸면 영상은 다시 접는다
         self.play_btn.setText("▶ 재생")
         if finals:
             mp4 = OUT_ROOT / self.eid / "final" / finals[0]
@@ -308,7 +308,7 @@ class EpisodePage(QWidget):
             self._etag = body["etag"]  # 저장·빌드 후 최신 etag 유지 (sync-course 용)
             self.stale.setVisible(bool(body.get("stale")))
             problems = cons.get("problems") or []
-            self.consistency_chip.setText(f"강좌 일관성 {len(problems)}건 어긋남: "
+            self.consistency_chip.setText(f"프로젝트 일관성 {len(problems)}건 어긋남: "
                                           + " · ".join(problems[:2]))
             self.consistency_chip.setVisible(bool(problems))
             self.sync_btn.setVisible(bool(problems))
@@ -400,7 +400,7 @@ class EpisodePage(QWidget):
         self.pair_head.setVisible(has)
         if not has:
             return
-        for path, caption in ((pair["prev"], pair["prevId"]), (pair["current"], "이번 회차")):
+        for path, caption in ((pair["prev"], pair["prevId"]), (pair["current"], "이번 영상")):
             cell = QVBoxLayout()
             img = QLabel()
             img.setPixmap(QPixmap(path).scaledToHeight(120, Qt.SmoothTransformation))

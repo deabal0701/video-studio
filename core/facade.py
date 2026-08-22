@@ -269,7 +269,8 @@ class Studio:
                                 audience=body.get("audience", ""),
                                 episode_length=body.get("episodeLength"),
                                 voice=body.get("voice"), palette=body.get("palette"),
-                                bgm=body.get("bgm"), episodes=body.get("episodes"))
+                                bgm=body.get("bgm"), kind=body.get("kind"),
+                                episodes=body.get("episodes"))
         except FileExistsError as err:
             raise Conflict("already_exists", str(err)) from err
         self.index().rescan()
@@ -533,6 +534,12 @@ class Studio:
         except Exception as err:  # noqa: BLE001 — 네트워크·엔진 사정을 그대로 알린다
             raise UpstreamError("tts_failed", str(err)[-500:],
                                 hint="네트워크와 edge-tts 를 확인하세요") from err
+
+    # ── 영상 종류 (강의·홍보·광고·매뉴얼·일반) ──────────────────────────────
+    def video_kinds(self) -> list[dict[str, Any]]:
+        from . import kinds
+
+        return [{"id": k, **v} for k, v in kinds.KINDS.items()]
 
     # ── 목소리 (카탈로그 + 로컬 샘플 캐시) ───────────────────────────────────
     def voice_catalog(self, provider: str = "edge") -> dict:

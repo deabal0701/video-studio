@@ -102,7 +102,7 @@ class PlanTab(QWidget):
                 self.table.setItem(i, j, QTableWidgetItem(v))
         pct = round(total / self._budget * 100) if self._budget else 0
         self.budget_label.setText(f"예산 {total:,} / {self._budget:,}자 · {pct}%"
-                                  + (" — 넘치면 압축이 아니라 회차 분할" if pct > 100 else ""))
+                                  + (" — 넘치면 압축이 아니라 영상 분할" if pct > 100 else ""))
         self.budget_label.setStyleSheet(
             f"color: {theme.DANGER}; font-weight: 700;" if pct > 100 else "")
         self.budget_bar.setValue(min(100, pct))

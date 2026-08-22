@@ -1,4 +1,4 @@
-"""① 강좌 설정 — course.json 편집 폼 (03 ①. etag 저장 → 일관성 재검사 배지).
+"""① 프로젝트 설정 — course.json 편집 폼 (03 ①. etag 저장 → 일관성 재검사 배지).
 
 목소리·BGM 은 "사람이 귀로 고른다" 규약 그대로: 실제 TTS 합성 미리듣기 + BGM 재생 버튼.
 palette 는 render(brand·brandText·background)와 동기화해 저장한다 (개설 로직과 동일 규약).
@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (QComboBox, QFormLayout, QHBoxLayout, QLabel, QLin
                                QMessageBox, QPlainTextEdit, QPushButton, QRadioButton,
                                QWidget)
 
-from core import voices
+from core import kinds, voices
 
 from ..bridge import error_text, run_bg
 from ..widgets import AudioPreview, ColorButton
@@ -23,6 +23,8 @@ VOICE_PRESETS = {
              "인준 (남) · 말 속도 +19%"),
 }
 
+
+_P = kinds.get(kinds.DEFAULT_KIND)["palette"]   # 색 폴백 (종류가 정본)
 
 class CourseSettingsTab(QWidget):
     def __init__(self, make_studio):
@@ -54,7 +56,7 @@ class CourseSettingsTab(QWidget):
         self.audience.setFixedHeight(110)
         for w in (self.title, self.tagline, self.audience):
             w.setMaximumWidth(theme.RD_FIELD)
-        form.addRow("강좌명", self.title)
+        form.addRow("프로젝트 이름", self.title)
         form.addRow("태그라인", self.tagline)
         form.addRow("대상", self.audience)
 
@@ -120,7 +122,7 @@ class CourseSettingsTab(QWidget):
         self.length = QLineEdit()
         self.length.setMaximumWidth(theme.RD_FIELD)
         self.length.setPlaceholderText("예: 5분 (≈1,850자)")
-        form.addRow("편당 분량", self.length)
+        form.addRow("영상 길이", self.length)
 
         save_row = QHBoxLayout()
         self.save_btn = QPushButton("저장")
@@ -157,9 +159,9 @@ class CourseSettingsTab(QWidget):
         self.provider.blockSignals(False)
         self._reload_voices(select=v.get("voice"))
         pal = d.get("palette", {})
-        self.c_brand.set_value(pal.get("brand", "#3E63DD"))
-        self.c_soft.set_value(pal.get("brandSoft", "#93A4F5"))
-        self.c_bg.set_value(pal.get("bg", "#070b14"))
+        self.c_brand.set_value(pal.get("brand", _P["brand"]))
+        self.c_soft.set_value(pal.get("brandSoft", _P["brandSoft"]))
+        self.c_bg.set_value(pal.get("bg", _P["bg"]))
         self.bgm.clear()
         for a in bgms:
             self.bgm.addItem(a["name"], a["ref"])
@@ -285,6 +287,6 @@ class CourseSettingsTab(QWidget):
         self._etag = out["etag"]
         problems = out.get("consistency", {})
         self.result.setText("저장됨 ✓" if not problems
-                            else f"저장됨 — 일관성 어긋난 회차 {len(problems)}개: "
+                            else f"저장됨 — 일관성 어긋난 영상 {len(problems)}개: "
                                  f"{', '.join(problems)}")
         self.load(self.cid)

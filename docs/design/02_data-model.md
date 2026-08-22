@@ -41,6 +41,8 @@ projects/
 | `tagline` | str | 스팅어 한 줄 — 개설 때 정하고 불변 | ① |
 | `episodeLength` | str | 분량 규약 (예: "5분 — 약 1,850자") | ① (예산 계산 원천) |
 | `episodes[]` | `{n, id, title, subtitle, 근거}` | 커리큘럼. `id` = 회차 폴더명 | ② 커리큘럼 보드 |
+| `kind` | `lecture`(강의) · `promo`(홍보) · `ad`(광고) · `manual`(매뉴얼) · `general`(일반) | **엔진은 course.json 을 읽지 않는다** — 앱 전용 필드라 렌더에 영향 없음. 없으면 강의로 본다(옛 프로젝트) | 만들 때 고른다 (`core/kinds.py`) |
+| ↳ 종류가 정하는 것 | 회차 골격(엔진 템플릿) · 기본 길이 · **기본 팔레트** | 강의만 `series: True` — 나머지는 단발 | — |
 | `voice` | `{provider, lang, gender, rate, voice?}` | 시리즈 내내 고정 | ① (제공자·목소리·미리듣기) |
 | ↳ `provider` | `edge`(무료·기본) · `azure` · `eleven` · `sapi` | 키 없으면 화면에서 비활성 | — |
 | ↳ `voice` | 목소리 id — **있으면 `gender` 표보다 이것이 이긴다** (engine/lib/tts.js `resolveVoiceFor`). 카탈로그 실측(2026-08-22): edge 3종 · azure 10종 · eleven 계정별 | 미지정이면 `lang×gender` 기본값 | — |

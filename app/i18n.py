@@ -1,7 +1,7 @@
 """Qt 표준 문구를 한국어로 (09 G6).
 
 Qt 가 스스로 그리는 버튼·메뉴는 우리 문자열이 아니다 — `QDialogButtonBox.Cancel` 은
-"Cancel", `QMessageBox.question` 은 "Yes"/"No" 로 나온다 (2026-08-22 실측: 새 강좌
+"Cancel", `QMessageBox.question` 은 "Yes"/"No" 로 나온다 (2026-08-22 실측: 새 프로젝트
 위저드에 영문 "Cancel" 이 그대로 보였다). Qt 가 함께 배포하는 `qtbase_ko.qm` 을 얹으면
 표준 문구 전체가 한 번에 한국어가 된다.
 

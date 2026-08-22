@@ -13,7 +13,7 @@ class ColorButton(QPushButton):
 
     changed = Signal(str)
 
-    def __init__(self, value: str = "#3E63DD"):
+    def __init__(self, value: str = "#5B8DEF"):
         super().__init__()
         self.setFixedSize(44, 28)
         self.set_value(value)

@@ -1,12 +1,15 @@
-"""모달 다이얼로그 — 새 강좌 위저드 (03 ①: 스킬의 "강좌 개설 질문 4개"가 그대로 폼)."""
+"""모달 다이얼로그 — 새 프로젝트 위저드 (03 ①: 스킬의 "프로젝트 만들기 질문 4개"가 그대로 폼)."""
 
 from __future__ import annotations
 
-from PySide6.QtWidgets import (QComboBox, QDialog, QDialogButtonBox, QFormLayout,
-                               QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
-                               QRadioButton)
+from PySide6.QtWidgets import (QButtonGroup, QComboBox, QDialog, QDialogButtonBox,
+                               QFormLayout, QHBoxLayout, QLabel, QLineEdit,
+                               QPlainTextEdit, QRadioButton, QVBoxLayout)
+
+from core import kinds
 
 from .bridge import error_text, run_bg
+
 from .pages.course_settings import VOICE_PRESETS
 from .widgets import ColorButton
 
@@ -18,20 +21,45 @@ class NewCourseDialog(QDialog):
         super().__init__(parent)
         self._make_studio = make_studio
         self.created: dict | None = None
-        self.setWindowTitle("새 강좌 개설 — 한 번 정하면 시리즈 내내 고정됩니다")
+        # 종류를 바꿀 때 **사람이 고친 값은 덮지 않는다** — 자동으로 넣었던 값만 기억한다
+        self._auto_lengths: set[str] = {k["length"] for k in kinds.KINDS.values()}
+        self._auto_colors: set[str] = {c for k in kinds.KINDS.values()
+                                       for c in k["palette"].values()}
+        self.setWindowTitle("새 프로젝트 만들기 — 한 번 정하면 시리즈 내내 고정됩니다")
         self.setMinimumWidth(520)
 
         form = QFormLayout(self)
+
+        # 종류가 먼저다 — 골격·길이·색이 여기서 갈린다 (core/kinds.py)
+        kind_box = QVBoxLayout()
+        kind_row = QHBoxLayout()
+        self.kind_group = QButtonGroup(self)
+        for value, label_text, _desc in kinds.choices():
+            rb = QRadioButton(label_text)
+            rb.setProperty("kindId", value)
+            self.kind_group.addButton(rb)
+            kind_row.addWidget(rb)
+            if value == kinds.DEFAULT_KIND:
+                rb.setChecked(True)
+        kind_row.addStretch(1)
+        kind_box.addLayout(kind_row)
+        self.kind_note = QLabel("")
+        self.kind_note.setObjectName("caption")
+        self.kind_note.setWordWrap(True)
+        kind_box.addWidget(self.kind_note)
+        form.addRow("종류", kind_box)
+        self.kind_group.buttonToggled.connect(self._on_kind)
+
         self.course_id = QLineEdit()
         self.course_id.setPlaceholderText("영문 소문자와 붙임표로 (예: hr-basics) — 폴더 이름이 됩니다")
         self.title = QLineEdit()
         self.tagline = QLineEdit()
         self.tagline.setPlaceholderText("예: 개념 하나를, 5분에")
         self.audience = QPlainTextEdit()
-        self.audience.setPlaceholderText("누가 보는 강좌인지 — 대본의 눈높이가 여기서 정해집니다")
+        self.audience.setPlaceholderText("누가 보는 프로젝트인지 — 대본의 눈높이가 여기서 정해집니다")
         self.audience.setFixedHeight(72)
-        form.addRow("강좌 id", self.course_id)
-        form.addRow("강좌명", self.title)
+        form.addRow("프로젝트 id", self.course_id)
+        form.addRow("프로젝트 이름", self.title)
         form.addRow("태그라인", self.tagline)
         form.addRow("대상", self.audience)
 
@@ -45,9 +73,10 @@ class NewCourseDialog(QDialog):
         form.addRow("목소리", voice_row)
 
         pal_row = QHBoxLayout()
-        self.c_brand = ColorButton("#3E63DD")
-        self.c_soft = ColorButton("#93A4F5")
-        self.c_bg = ColorButton("#070b14")
+        _pal = kinds.get(kinds.DEFAULT_KIND)["palette"]
+        self.c_brand = ColorButton(_pal["brand"])
+        self.c_soft = ColorButton(_pal["brandSoft"])
+        self.c_bg = ColorButton(_pal["bg"])
         for label, btn in (("브랜드", self.c_brand), ("보조", self.c_soft),
                            ("배경", self.c_bg)):
             cap = QLabel(label)
@@ -58,6 +87,8 @@ class NewCourseDialog(QDialog):
         pal_row.addStretch(1)
         form.addRow("색", pal_row)
 
+        self.length = QLineEdit()
+        form.addRow("영상 길이", self.length)
         self.bgm = QComboBox()
         form.addRow("BGM", self.bgm)
         self.error = QLabel("")
@@ -66,12 +97,14 @@ class NewCourseDialog(QDialog):
         form.addRow("", self.error)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.button(QDialogButtonBox.Ok).setText("개설")
+        buttons.button(QDialogButtonBox.Ok).setText("만들기")
         buttons.button(QDialogButtonBox.Ok).setObjectName("primary")
         buttons.button(QDialogButtonBox.Cancel).setText("취소")
         buttons.accepted.connect(self._create)
         buttons.rejected.connect(self.reject)
         form.addRow(buttons)
+
+        self._on_kind()   # 기본 종류의 설명·길이·색을 처음부터 보여준다
 
         studio = self._make_studio()
         run_bg(lambda: studio.assets("bgm"),
@@ -80,6 +113,8 @@ class NewCourseDialog(QDialog):
 
     def body(self) -> dict:
         return {
+            "kind": self.kind(),
+            "episodeLength": self.length.text().strip() or None,
             "course": self.course_id.text().strip(),
             "title": self.title.text().strip(),
             "tagline": self.tagline.text().strip(),
@@ -89,6 +124,24 @@ class NewCourseDialog(QDialog):
                         "bg": self.c_bg.value},
             "bgm": self.bgm.currentData(),
         }
+
+    def kind(self) -> str:
+        btn = self.kind_group.checkedButton()
+        return btn.property("kindId") if btn else kinds.DEFAULT_KIND
+
+    def _on_kind(self, *_a) -> None:
+        """종류를 바꾸면 그 종류의 기본 길이·색을 넣는다 (사람이 고친 값은 안 건드린다)."""
+        spec = kinds.get(self.kind())
+        self.kind_note.setText(spec["desc"])
+        if not self.length.text().strip() or self.length.text().strip() in self._auto_lengths:
+            self.length.setText(spec["length"])
+        pal = spec["palette"]
+        for btn, key in ((self.c_brand, "brand"), (self.c_soft, "brandSoft"),
+                         (self.c_bg, "bg")):
+            if btn.value in self._auto_colors:
+                btn.set_value(pal[key])
+        self._auto_lengths = {spec["length"]}
+        self._auto_colors = set(pal.values())
 
     def _create(self) -> None:
         studio = self._make_studio()

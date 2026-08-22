@@ -121,6 +121,35 @@ def usage_summary() -> dict[str, Any]:
             "count": len(runs)}
 
 
+def _claude_cli() -> str | None:
+    """Claude CLI 의 **네이티브 실행 파일** 경로 (없으면 None → SDK 기본 탐색).
+
+    2026-08-22 실측: npm 전역 설치는 `claude.cmd` 셰임을 PATH 에 놓는데,
+    **파이썬 3.13 은 .cmd/.bat 실행을 거부한다**(cmd.exe 인자 인젝션 방지):
+
+        Refusing to execute batch script 'claude.CMD' ...
+
+    담당자 PC 가 곧 Windows 라 이 경로가 기본값이다. 셰임 옆의 실제 exe 를 찾아 넘긴다.
+    `CLAUDE_CLI_PATH` 로 직접 지정할 수도 있다.
+    """
+    import shutil
+
+    explicit = os.environ.get("CLAUDE_CLI_PATH")
+    if explicit and Path(explicit).exists():
+        return explicit
+    found = shutil.which("claude")
+    if not found:
+        return None
+    p = Path(found)
+    if p.suffix.lower() not in (".cmd", ".bat", ".ps1"):
+        return str(p)          # 이미 실행 가능한 형태 (POSIX·exe)
+    for cand in (p.parent / "node_modules" / "@anthropic-ai" / "claude-code" / "bin"
+                 / ("claude.exe" if os.name == "nt" else "claude"),):
+        if cand.exists():
+            return str(cand)
+    return None                # 못 찾으면 SDK 기본 탐색에 맡긴다
+
+
 def make_agent_work(kind: str, episode_id: str, payload: dict[str, Any],
                     projects_root: Path,
                     query_fn: Callable | None = None) -> Callable[[], Iterator[dict]]:
@@ -155,6 +184,7 @@ def make_agent_work(kind: str, episode_id: str, payload: dict[str, Any],
 
             options = ClaudeAgentOptions(
                 cwd=str(REPO_ROOT),
+                cli_path=_claude_cli(),            # .cmd 셰임 회피 (아래 참조)
                 setting_sources=["project"],       # .claude/skills 네이티브 로드
                 system_prompt={"type": "preset", "preset": "claude_code",
                                "append": TASK_RULES[kind]},

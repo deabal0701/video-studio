@@ -3,7 +3,7 @@
 여기 프리뷰는 palette 가 타이틀 카드에 어떻게 앉는지 보여주는 축소판이다.
 실물(엔진이 실제로 그리는 화면)은 ⑤ 대본 탭의 프리뷰가 정본 — 같은 문서·같은 시킹이라
 그쪽이 곧 완성본이다 (D10).
-"일관성 규약 노출: 스팅어는 회차마다 동일" — 회차별 편집 진입점을 두지 않는다.
+"일관성 규약 노출: 스팅어는 영상마다 동일" — 영상별 편집 진입점을 두지 않는다.
 """
 
 from __future__ import annotations
@@ -12,8 +12,12 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QFormLayout, QFrame, QHBoxLayout, QLabel, QMessageBox,
                                QPushButton, QVBoxLayout, QWidget)
 
+from core import kinds
+
 from ..bridge import error_text, run_bg
 
+
+_P = kinds.get(kinds.DEFAULT_KIND)["palette"]   # 색 폴백 (종류가 정본)
 
 class BrandKitTab(QWidget):
     def __init__(self, make_studio):
@@ -23,7 +27,7 @@ class BrandKitTab(QWidget):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(8, 16, 8, 8)
 
-        note = QLabel("타이틀 카드·스팅어는 강좌 정체성 — 회차마다 동일해야 합니다. "
+        note = QLabel("타이틀 카드·스팅어는 프로젝트 정체성 — 영상마다 동일해야 합니다. "
                       "색은 ① 설정의 브랜드 팔레트가 정본입니다.")
         note.setObjectName("caption")
         lay.addWidget(note)
@@ -41,7 +45,7 @@ class BrandKitTab(QWidget):
         pv.addWidget(self.pv_title)
         pv_col = QVBoxLayout()
         pv_col.addWidget(self.preview)
-        cap = QLabel("축소판입니다 — 엔진이 실제로 그리는 화면은 회차의 ⑤ 대본 탭 프리뷰에서 봅니다.")
+        cap = QLabel("축소판입니다 — 엔진이 실제로 그리는 화면은 영상의 ⑤ 대본 탭 프리뷰에서 봅니다.")
         cap.setObjectName("caption")
         cap.setWordWrap(True)
         cap.setFixedWidth(480)
@@ -50,7 +54,7 @@ class BrandKitTab(QWidget):
 
         # '브랜드 킷' 인데 정작 킷(색·글꼴)이 안 보였다 — 프리뷰 옆에 편다 (09 G1·G3)
         kit_col = QVBoxLayout()
-        kit_head = QLabel("이 강좌의 색과 글꼴")
+        kit_head = QLabel("이 프로젝트의 색과 글꼴")
         kit_head.setObjectName("sectionTitle")
         kit_col.addWidget(kit_head)
         self.kit_form = QFormLayout()
@@ -107,13 +111,13 @@ class BrandKitTab(QWidget):
     def _fill(self, body: dict) -> None:
         d = body["course"]
         pal = d.get("palette", {})
-        bg = pal.get("bg", "#070b14")
-        brand = pal.get("brand", "#3E63DD")
-        soft = pal.get("brandSoft", "#93A4F5")
+        bg = pal.get("bg", _P["bg"])
+        brand = pal.get("brand", _P["brand"])
+        soft = pal.get("brandSoft", _P["brandSoft"])
         self.preview.setStyleSheet(f"background: {bg}; border-radius: 12px;")
         self.pv_kicker.setText(d.get("title", ""))
         self.pv_kicker.setStyleSheet(f"color: {soft}; font-size: 12px; letter-spacing: 2px;")
-        self.pv_title.setText("1강 — 회차 제목 자리")
+        self.pv_title.setText("1강 — 영상 제목 자리")
         self.pv_title.setStyleSheet(
             f"color: white; font-size: 24px; font-weight: 700;"
             f"border-bottom: 2px solid {brand}; padding-bottom: 6px;")
@@ -123,12 +127,12 @@ class BrandKitTab(QWidget):
                                " border-radius: 4px;")
             code.setText(value)
         font = d.get("fontUrl") or d.get("font") or ""
-        self.font_label.setText(font.rsplit("/", 1)[-1] if font else "강좌 기본 글꼴")
+        self.font_label.setText(font.rsplit("/", 1)[-1] if font else "프로젝트 기본 글꼴")
 
     def _apply(self) -> None:
         if QMessageBox.question(
                 self, "프리셋 적용",
-                "이 강좌의 타이틀 카드와 스팅어를 기본 디자인으로 덮어씁니다.\n"
+                "이 프로젝트의 타이틀 카드와 스팅어를 기본 디자인으로 덮어씁니다.\n"
                 "직접 고친 내용이 있으면 사라집니다 — 계속할까요?") != QMessageBox.Yes:
             return
         cid, studio = self.cid, self._make_studio()

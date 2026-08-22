@@ -4,7 +4,7 @@
 남긴다 (packaging/smoke-frozen.py 가 그 파일을 읽는다). 검사 항목은 동결이 깨지는 순서:
 
   1. 앱 기동 — Qt 플랫폼 플러그인 로드 (conda 동결이 죽던 지점)
-  2. core → 엔진 경로 — 강좌 목록·템플릿 갤러리가 설치 배치에서 읽히는가
+  2. core → 엔진 경로 — 프로젝트 목록·템플릿 갤러리가 설치 배치에서 읽히는가
   3. **프리뷰 로드** — QtWebEngineProcess·pak·icudtl + bootstrap 플래그가 동결본에 살아 있는가
   4. 프리뷰 픽셀 — offscreen grab 으로 고유색 수 (08 §6: 로드 실패면 1색)
 """

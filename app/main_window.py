@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
         lay.addWidget(self.stack, 1)
         self.setCentralWidget(central)
 
-        # 내비 ↔ 스택 (강좌/회차 페이지는 내비 밖 — 카드 열기로 진입)
+        # 내비 ↔ 스택 (프로젝트/영상 페이지는 내비 밖 — 카드 열기로 진입)
         self.nav.currentRowChanged.connect(self._nav_to)
         self.dashboard.open_course.connect(self.show_course)
         self.dashboard.open_episode.connect(self.show_episode)
@@ -86,9 +86,9 @@ class MainWindow(QMainWindow):
             self.settings_page.refresh()
 
     def _mark_nav_home(self) -> None:
-        """강좌·회차는 대시보드에서 파고든 화면이다 — 내비도 그렇게 말해야 한다.
+        """프로젝트·영상은 대시보드에서 파고든 화면이다 — 내비도 그렇게 말해야 한다.
 
-        (2026-08-22 실측: 설정에 들렀다가 회차를 열면 내비는 "설정"에 남아 있어
+        (2026-08-22 실측: 설정에 들렀다가 영상을 열면 내비는 "설정"에 남아 있어
         지금 보는 화면과 어긋났다. 09 G8 — 내가 어디 있는지가 틀리면 안 된다.)
         `currentRowChanged` 를 막지 않으면 `_nav_to` 가 대시보드로 되돌린다.
         """

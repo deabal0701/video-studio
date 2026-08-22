@@ -1,4 +1,4 @@
-"""대시보드 — 강좌 카드 (03 화면 지도. 5-3: 읽기 + 열기. [새 강좌]는 5-4)."""
+"""대시보드 — 프로젝트 카드 (03 화면 지도. 5-3: 읽기 + 열기. [새 프로젝트]는 5-4)."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ class CourseCard(QFrame):
             lay.addWidget(sub)
         else:
             total, done = info["episodeCount"], info["done"]
-            sub = QLabel(f"{total}부작 · 만든 회차 {info['scaffolded']}")
+            sub = QLabel(f"영상 {total}개 · 만든 것 {info['scaffolded']}")
             sub.setObjectName("caption")
             lay.addWidget(sub)
             bar = QProgressBar()
@@ -63,16 +63,16 @@ class DashboardPage(QWidget):
         outer.setContentsMargins(theme.PAGE_PAD, 24, theme.PAGE_PAD, 24)
 
         head = QHBoxLayout()
-        t = QLabel("강좌")
+        t = QLabel("프로젝트")
         t.setObjectName("pageTitle")
         head.addWidget(t)
         head.addStretch(1)
-        self.new_btn = QPushButton("+ 새 강좌")
+        self.new_btn = QPushButton("+ 새 프로젝트")
         self.new_btn.setObjectName("primary")
         self.new_btn.clicked.connect(self._new_course)
         head.addWidget(self.new_btn)
         outer.addLayout(head)
-        desc = QLabel("시리즈와 단발 영상을 한 곳에서 — 카드를 열어 회차를 만들고 빌드하세요")
+        desc = QLabel("시리즈와 단발 영상을 한 곳에서 — 카드를 열어 영상을 만들고 빌드하세요")
         desc.setObjectName("pageDesc")
         outer.addWidget(desc)
 
@@ -81,8 +81,8 @@ class DashboardPage(QWidget):
         self.error.hide()
         outer.addWidget(self.error)
 
-        self.empty = QLabel("아직 강좌가 없습니다 — 오른쪽 위 [+ 새 강좌] 로 시작하세요.\n"
-                            "강좌를 만들면 목소리·색·BGM 이 모든 회차에 그대로 물려집니다.")
+        self.empty = QLabel("아직 프로젝트가 없습니다 — 오른쪽 위 [+ 새 프로젝트] 로 시작하세요.\n"
+                            "프로젝트를 만들면 목소리·색·BGM 이 모든 영상에 그대로 물려집니다.")
         self.empty.setObjectName("caption")
         self.empty.setAlignment(Qt.AlignCenter)
         self.empty.hide()

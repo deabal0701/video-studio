@@ -1,0 +1,101 @@
+"""영상 종류 — 이 앱은 강의만 만들지 않는다.
+
+엔진은 처음부터 여러 골격을 갖고 있었는데(`engine/templates/`) **앱이 강의 하나만 쓰고
+있었다**(2026-08-22 사용자 지적). 종류를 고르면 골격·길이·색이 함께 따라온다.
+
+## 왜 종류마다 색이 다른가
+
+기본 팔레트가 `#3E63DD/#93A4F5/#070b14`(파랑) 하나였는데, **브랜드 색과 배경의 대비가
+3.8:1** 로 WCAG 본문 기준(4.5:1)에 미달했다. 실제로 렌더한 프레임에서 밑줄·강조가 배경에
+묻히고, "밝은 장면" 검수 프레임조차 어두웠다. 아래 값은 전부 **대비를 먼저 맞추고**
+성격을 입힌 것이다 — `tests/test_kinds.py` 가 4.5:1 을 지킨다.
+
+| 종류 | 브랜드/배경 | 보조/배경 |
+|---|---|---|
+| 강의 | 5.8:1 | 10.9:1 |
+| 홍보 | 6.9:1 | 11.5:1 |
+| 광고 | 6.2:1 | 10.9:1 |
+| 매뉴얼 | 5.8:1 | 10.9:1 |
+| 일반 | 8.2:1 | 13.3:1 |
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+# 엔진 템플릿 (engine/templates/) 기준 상대 경로. 강의만 폴더 구조를 쓴다.
+KINDS: dict[str, dict[str, Any]] = {
+    "lecture": {
+        "label": "강의",
+        "desc": "여러 편으로 나뉘는 시리즈. 챕터·정리 구조가 깔린다",
+        "series": True,                       # 여러 영상을 묶는다
+        "scenes_template": None,              # lecture/episode.scenes.json (기본)
+        "length": "5분 (약 1,850자)",
+        "palette": {"brand": "#5B8DEF", "brandSoft": "#A9C6FF", "bg": "#0B1220"},
+    },
+    "promo": {
+        "label": "홍보",
+        "desc": "제품·서비스 소개. 짧고 선명하게",
+        "series": False,
+        "scenes_template": "scenes.promo.json",
+        "length": "30초 (약 190자)",
+        "palette": {"brand": "#F97316", "brandSoft": "#FDBA74", "bg": "#140B05"},
+    },
+    "ad": {
+        "label": "광고",
+        "desc": "한 가지만 각인시키는 아주 짧은 영상",
+        "series": False,
+        "scenes_template": "scenes.promo.json",   # 골격은 홍보와 같고 길이가 다르다
+        "length": "15초 (약 95자)",
+        "palette": {"brand": "#FF4D6D", "brandSoft": "#FFA8B8", "bg": "#12060A"},
+    },
+    "manual": {
+        "label": "사용 매뉴얼",
+        "desc": "따라 하는 영상. 단계마다 챕터 카드가 들어간다",
+        "series": False,
+        "scenes_template": "scenes.manual.json",
+        "length": "2분 (약 760자)",
+        "palette": {"brand": "#5B8DEF", "brandSoft": "#A9C6FF", "bg": "#0B1220"},
+    },
+    "general": {
+        "label": "일반 영상",
+        "desc": "타이틀과 마무리만 — 나머지는 직접 채운다",
+        "series": False,
+        "scenes_template": None,
+        # 강의 골격에서 이것만 남긴다 — 정해진 구성이 없는 영상이므로 (설명과 동작을 맞춘다)
+        "keep_clips": ("title", "stinger", "outro"),
+        "length": "1분 (약 380자)",
+        "palette": {"brand": "#22C55E", "brandSoft": "#86EFAC", "bg": "#0A1410"},
+    },
+}
+
+DEFAULT_KIND = "lecture"
+
+
+def get(kind: str | None) -> dict[str, Any]:
+    """모르는 값이 와도 죽지 않는다 — 옛 프로젝트에는 kind 가 없다."""
+    return KINDS.get(kind or DEFAULT_KIND, KINDS[DEFAULT_KIND])
+
+
+def label(kind: str | None) -> str:
+    return get(kind)["label"]
+
+
+def choices() -> list[tuple[str, str, str]]:
+    """(값, 라벨, 설명) — 화면 콤보/라디오가 그대로 쓴다."""
+    return [(k, v["label"], v["desc"]) for k, v in KINDS.items()]
+
+
+# ── 대비 (팔레트를 고칠 때 이 함수로 먼저 재 본다) ───────────────────────────
+def _luminance(hex_color: str) -> float:
+    h = hex_color.lstrip("#")
+    channels = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    linear = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+              for c in channels]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def contrast(a: str, b: str) -> float:
+    """WCAG 대비비 — 1(같은 색) ~ 21(검정↔흰색)."""
+    la, lb = _luminance(a), _luminance(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)

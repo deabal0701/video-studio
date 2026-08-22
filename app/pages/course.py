@@ -1,4 +1,4 @@
-"""강좌 화면 — 탭 ①②③ (5-4: ① 설정 편집·② 보드+[회차 생성]·③ 브랜드 킷)."""
+"""프로젝트 화면 — 탭 ①②③ (5-4: ① 설정 편집·② 보드+[영상 만들기]·③ 브랜드 킷)."""
 
 from __future__ import annotations
 
@@ -13,14 +13,14 @@ from .course_settings import CourseSettingsTab
 
 # 이모지 금지 — OS 폰트가 다른 그림으로 그린다 (09 G4). 색 점 + 한국어 라벨로 말한다
 STATE = {"empty": "대기", "wip": "제작 중", "done": "완료"}
-EMPTY_LANE = {"empty": "남은 회차가 없습니다", "wip": "제작 중인 회차가 없습니다",
-              "done": "아직 완료된 회차가 없습니다"}
+EMPTY_LANE = {"empty": "남은 영상이 없습니다", "wip": "제작 중인 영상이 없습니다",
+              "done": "아직 완료된 영상이 없습니다"}
 
 
 class EpisodeCard(QFrame):
     opened = Signal(str)
-    create = Signal(int)    # n — [회차 생성] (03 ②)
-    ai_draft = Signal(int)  # n — [✨ AI 초안] (05: 미생성 회차는 스캐폴딩 후 제출)
+    create = Signal(int)    # n — [영상 만들기] (03 ②)
+    ai_draft = Signal(int)  # n — [✨ AI 초안] (05: 미생성 영상은 스캐폴딩 후 제출)
 
     def __init__(self, entry: dict, badge: dict):
         super().__init__()
@@ -53,7 +53,7 @@ class EpisodeCard(QFrame):
             lay.addLayout(row)
         if badge["state"] == "empty":
             row2 = QHBoxLayout()
-            btn = QPushButton("회차 생성")
+            btn = QPushButton("영상 만들기")
             btn.clicked.connect(lambda: self.create.emit(entry.get("n", 0)))
             self.ai_btn = QPushButton("AI 초안")
             self.ai_btn.setEnabled(False)
@@ -83,7 +83,7 @@ class CoursePage(QWidget):
         self.title.setObjectName("pageTitle")
         head.addWidget(self.title)
         head.addStretch(1)
-        self.add_btn = QPushButton("+ 회차 추가")
+        self.add_btn = QPushButton("+ 영상 추가")
         self.add_btn.clicked.connect(self._add_episode)
         head.addWidget(self.add_btn)
         outer.addLayout(head)
@@ -98,7 +98,7 @@ class CoursePage(QWidget):
         self.board_scroll.setWidgetResizable(True)
         self.brandkit = BrandKitTab(make_studio)
         self.tabs.addTab(self.settings, "① 설정")
-        self.tabs.addTab(self.board_scroll, "② 커리큘럼")
+        self.tabs.addTab(self.board_scroll, "② 영상 목록")
         self.tabs.addTab(self.brandkit, "③ 브랜드 킷")
         self.tabs.setCurrentIndex(1)  # 보드가 기본 탭 (07 재편)
         self.tabs.currentChanged.connect(self._tab_changed)
@@ -191,7 +191,7 @@ class CoursePage(QWidget):
                               f"{gate.get('models', {}).get('draft')})")
 
     def _ai_draft(self, n: int) -> None:
-        """[✨ AI 초안] — 미생성 회차면 스캐폴딩 후 제출 (05 사람↔에이전트 동선)."""
+        """[✨ AI 초안] — 미생성 영상면 스캐폴딩 후 제출 (05 사람↔에이전트 동선)."""
         brief, ok = QInputDialog.getMultiLineText(
             self, "AI 초안", f"{n}강의 주제·방향 (brief)", "")
         if not ok or not brief.strip():
@@ -227,7 +227,7 @@ class CoursePage(QWidget):
     def _add_episode(self) -> None:
         ns = [e.get("n", 0) for e in self._course.get("episodes", [])]
         n = max(ns, default=0) + 1
-        title, ok = QInputDialog.getText(self, "회차 추가", f"{n}강 제목")
+        title, ok = QInputDialog.getText(self, "영상 추가", f"{n}강 제목")
         if not ok or not title.strip():
             return
         cid, studio = self.cid, self._make_studio()

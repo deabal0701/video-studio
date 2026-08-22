@@ -1,6 +1,6 @@
 """작업 큐 (03_screens "작업 큐" 행) — 전역 잡 목록·취소·AI 사용량 미터.
 
-동시성 정책을 화면에 적어 둔다 (04_api 표): 같은 회차 직렬 · 전역 동시 2 ·
+동시성 정책을 화면에 적어 둔다 (04_api 표): 같은 영상 직렬 · 전역 동시 2 ·
 사전점검 치명이면 굽지 않음. "왜 내 빌드가 기다리는가"를 사람이 읽고 이해하게.
 잡 상태 변화는 하단 상태바와 같은 신호(Bridge.job_event)로 받아 자동 갱신한다.
 """
@@ -42,14 +42,14 @@ class JobsPage(QWidget):
         self.refresh_btn.clicked.connect(self.refresh)
         head.addWidget(self.refresh_btn)
         outer.addLayout(head)
-        desc = QLabel("빌드는 동시에 2편까지 돕니다. 같은 회차는 순서대로 하나씩 굽고, "
+        desc = QLabel("빌드는 동시에 2편까지 돕니다. 같은 영상은 순서대로 하나씩 굽고, "
                       "사전점검에서 치명 결함이 나오면 굽지 않고 멈춥니다.")
         desc.setObjectName("pageDesc")
         desc.setWordWrap(True)
         outer.addWidget(desc)
 
         self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["작업", "회차", "상태", "메모"])
+        self.table.setHorizontalHeaderLabels(["작업", "영상", "상태", "메모"])
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setColumnWidth(0, 90)
@@ -96,7 +96,7 @@ class JobsPage(QWidget):
         active = sum(1 for j in jobs if j["state"] in ACTIVE)
         self.result.setText(
             f"진행 중 {active}건 · 전체 {len(jobs)}건" if jobs
-            else "아직 실행한 작업이 없습니다 — 회차 화면에서 [빌드] 를 누르면 여기에 쌓입니다.")
+            else "아직 실행한 작업이 없습니다 — 영상 화면에서 [빌드] 를 누르면 여기에 쌓입니다.")
 
     def _on_select(self) -> None:
         row = self.table.currentRow()
