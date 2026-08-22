@@ -85,6 +85,35 @@ KIND_PRESET = {"lecture": "파랑", "promo": "주황", "ad": "주황",
                "manual": "파랑", "general": "초록"}
 
 
+# 영상 길이 — 화면 공용 (위저드·프로젝트 설정이 같은 UX 를 쓴다. 루프 4회차 P11).
+# 글자 예산은 약 6.3자/초 실측 페이스로 **계산해서 보여준다** — 고르게 하지 않는다.
+LENGTH_CHOICES = ["1분", "2분", "5분", "10분", "15분"]
+
+
+def length_to_chars(text: str) -> int | None:
+    """"15초"·"5분"·"1분 30초" → 글자 예산. 못 읽으면 None."""
+    import re
+
+    sec = 0
+    for num, unit in re.findall(r"(\d+)\s*(분|초)", str(text or "")):
+        sec += int(num) * (60 if unit == "분" else 1)
+    return round(sec * 6.3 / 5) * 5 if sec else None
+
+
+def length_value(text: str) -> str | None:
+    """저장값 "5분 (약 1,890자)" — 예산 게이지가 "N자" 를 파싱한다 (plan_tab)."""
+    t = str(text or "").strip()
+    if not t:
+        return None
+    chars = length_to_chars(t)
+    return f"{t} (약 {chars:,}자)" if chars else t
+
+
+def length_display(stored: str) -> str:
+    """저장값에서 표시부만 — "5분 (약 1,850자 — 초당 6.4자)" → "5분"."""
+    return str(stored or "").split(" (")[0].strip()
+
+
 # 클립 id → 역할 한국어 (10 #8: "broll·hook·ch2 가 뭔지 모르겠다").
 # id 는 엔진·대본 규약이라 못 바꾼다 — 화면이 역할을 함께 말해준다.
 ROLE_LABELS = {

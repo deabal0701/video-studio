@@ -29,19 +29,9 @@ from .bridge import error_text, run_bg
 from .pages.course_settings import VOICE_PRESETS
 from .widgets import ColorButton
 
-# 표준 길이 — 편집 가능한 콤보라 "3분" 같은 직접 입력도 된다.
-# 글자 예산(약 6.3자/초 실측)은 **계산해서 보여준다** — 고르게 하지 않는다 (10 지적).
-LENGTH_CHOICES = ["1분", "2분", "5분", "10분", "15분"]
-
-
-def _length_to_chars(text: str) -> int | None:
-    """"15초"·"5분"·"1분 30초" → 글자 예산. 못 읽으면 None."""
-    import re
-
-    sec = 0
-    for num, unit in re.findall(r"(\d+)\s*(분|초)", text):
-        sec += int(num) * (60 if unit == "분" else 1)
-    return round(sec * 6.3 / 5) * 5 if sec else None
+# 길이 도우미는 core.kinds 공용 — 프로젝트 설정 탭과 같은 UX (루프 4회차 P11)
+LENGTH_CHOICES = kinds.LENGTH_CHOICES
+_length_to_chars = kinds.length_to_chars
 
 
 def _palette_icon(pal: dict, size: int = 22) -> QIcon:
@@ -343,11 +333,7 @@ class NewCourseDialog(QDialog):
 
     def _length_value(self) -> str | None:
         """저장값은 "15초 (약 95자)" — 예산 게이지가 "N자" 를 파싱한다 (plan_tab)."""
-        text = self.length.currentText().strip()
-        if not text:
-            return None
-        chars = _length_to_chars(text)
-        return f"{text} (약 {chars:,}자)" if chars else text
+        return kinds.length_value(self.length.currentText())
 
     def _create(self) -> None:
         """이름만 있으면 만든다. id 는 자동, 단발 종류는 영상 1편까지 함께.

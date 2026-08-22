@@ -122,10 +122,19 @@ class CourseSettingsTab(QWidget):
         bgm_row.addStretch(1)
         form.addRow("BGM", bgm_row)
 
-        self.length = QLineEdit()
-        self.length.setMaximumWidth(theme.RD_FIELD)
-        self.length.setPlaceholderText("예: 5분 (≈1,850자)")
-        form.addRow("영상 길이", self.length)
+        # 길이 = 콤보 + 자동 글자수 — 위저드와 같은 UX (루프 4회차 P10·P11:
+        # "글자수 지정은 너무 어렵다"가 이 탭에는 남아 있었다)
+        len_box = QVBoxLayout()
+        self.length = QComboBox()
+        self.length.setEditable(True)
+        self.length.addItems(kinds.LENGTH_CHOICES)
+        self.length.setFixedWidth(200)
+        self.length.currentTextChanged.connect(self._sync_length_note)
+        len_box.addWidget(self.length)
+        self.length_note = QLabel("")
+        self.length_note.setObjectName("caption")
+        len_box.addWidget(self.length_note)
+        form.addRow("영상 길이", len_box)
 
         save_row = QHBoxLayout()
         self.save_btn = QPushButton("저장")
@@ -165,7 +174,7 @@ class CourseSettingsTab(QWidget):
         self.title.setText(d.get("title", ""))
         self.tagline.setText(d.get("tagline", ""))
         self.audience.setPlainText(d.get("audience", ""))
-        self.length.setText(d.get("episodeLength", ""))
+        self.length.setCurrentText(kinds.length_display(d.get("episodeLength", "")))
         v = d.get("voice") or {}
         (self.v_male if v.get("gender") == "male" else self.v_female).setChecked(True)
         idx = self.provider.findData(v.get("provider") or "edge")
@@ -184,6 +193,11 @@ class CourseSettingsTab(QWidget):
         idx = self.bgm.findData(current)
         if idx >= 0:
             self.bgm.setCurrentIndex(idx)
+
+    def _sync_length_note(self, *_a) -> None:
+        chars = kinds.length_to_chars(self.length.currentText())
+        self.length_note.setText(f"내레이션 약 {chars:,}자 분량입니다" if chars
+                                 else '"3분"처럼 분·초로 적어주세요')
 
     # ── 미리듣기 ─────────────────────────────────────────────────────────────
     # ── 목소리 목록 ─────────────────────────────────────────────────────────
@@ -296,8 +310,9 @@ class CourseSettingsTab(QWidget):
         body["title"] = self.title.text().strip()
         body["tagline"] = self.tagline.text().strip()
         body["audience"] = self.audience.toPlainText().strip()
-        if self.length.text().strip():
-            body["episodeLength"] = self.length.text().strip()
+        length = kinds.length_value(self.length.currentText())
+        if length:
+            body["episodeLength"] = length
         # 엔진 스키마 그대로 (engine/lib/tts.js resolveVoiceFor):
         # provider + lang/gender/rate, 그리고 voice 가 있으면 그 id 가 이긴다
         voice_cfg = dict(VOICE_PRESETS["male" if self.v_male.isChecked()
