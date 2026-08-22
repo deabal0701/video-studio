@@ -53,6 +53,21 @@ def build(episode_dir: Path, projects_root: Path) -> dict[str, Any]:
         course.get("tagline", ""),
     ]))
 
+    # 파일이 SSOT — 담당자가 고쳐 저장한 youtube.md 가 있으면 그것이 정본이다.
+    # 안 읽으면 화면이 매번 생성 초안으로 되돌아가 저장한 문안 위에 초안을
+    # 다시 저장하는 사고가 난다 (루프 26회차 P21)
+    saved = False
+    md = episode_dir / "youtube.md"
+    if md.exists():
+        lines = md.read_text(encoding="utf-8").splitlines()
+        if lines and lines[0].startswith("# "):
+            title = lines[0][2:].strip()
+            rest = lines[1:]
+            while rest and not rest[0].strip():
+                rest.pop(0)
+            description = "\n".join(rest).rstrip()
+            saved = True
+
     final_dir = OUT_ROOT / eid / "final"
     srt = sorted(final_dir.glob("*.srt")) if final_dir.exists() else []
     frames_dir = OUT_ROOT / eid / "frames"
@@ -66,6 +81,7 @@ def build(episode_dir: Path, projects_root: Path) -> dict[str, Any]:
         "srt": [f.name for f in srt],
         "thumbnails": [f.name for f in thumbs],
         "subtitle": ep_subtitle,
+        "saved": saved,
     }
 
 

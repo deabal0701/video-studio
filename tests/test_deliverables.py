@@ -49,3 +49,18 @@ def test_youtube_md_save(copy_root, studio):
                                    description="설명\n00:00 오프닝")
     assert out["file"] == "youtube.md"
     assert (copy_root / "hr-basics-01" / "youtube.md").read_text(encoding="utf-8").startswith("# 제목")
+
+
+def test_saved_youtube_md_roundtrips(copy_root, studio):
+    """고쳐 저장한 문안이 정본 — 재조회가 생성 초안으로 되돌리면 안 된다 (26회차 P21)."""
+    before = studio.deliverables("hr-basics-01")
+    assert before["saved"] is False          # 저장 전엔 생성 초안
+    assert before["title"] == "[인사 기본개념 강좌] 1강 — 구성원"
+    out = studio.save_deliverables("hr-basics-01", title="고친 제목",
+                                   description="고친 설명\n둘째 줄")
+    assert out["file"] == "youtube.md"
+    d = studio.deliverables("hr-basics-01")
+    assert d["saved"] is True
+    assert d["title"] == "고친 제목"
+    assert d["description"].startswith("고친 설명")
+    assert "둘째 줄" in d["description"]
