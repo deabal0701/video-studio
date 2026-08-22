@@ -217,8 +217,14 @@ class NewCourseDialog(QDialog):
         outer.addWidget(self.error)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttons.button(QDialogButtonBox.Ok).setText("만들기")
-        buttons.button(QDialogButtonBox.Ok).setObjectName("primary")
+        self.create_btn = buttons.button(QDialogButtonBox.Ok)
+        self.create_btn.setText("만들기")
+        self.create_btn.setObjectName("primary")
+        # 이름이 있어야 눌린다 (P20) — 그리고 만드는 동안 잠근다: 중복 클릭이면
+        # 자동 id 가 a·b… 로 물러나며 프로젝트가 2개 생긴다 (34회차 P18)
+        self._creating = False
+        self.create_btn.setEnabled(False)
+        self.title.textChanged.connect(self._sync_create_btn)
         buttons.button(QDialogButtonBox.Cancel).setText("취소")
         buttons.accepted.connect(self._create)
         buttons.rejected.connect(self.reject)
@@ -350,6 +356,9 @@ class NewCourseDialog(QDialog):
             self.error.setText("프로젝트 이름을 넣으세요 — 나머지는 전부 나중에 바꿀 수 있습니다")
             self.error.show()
             return
+        self._creating = True
+        self.create_btn.setEnabled(False)
+        self.create_btn.setText("만드는 중…")
         studio = self._make_studio()
         payload = self.body()
         single = not kinds.get(self.kind())["series"]
@@ -378,10 +387,17 @@ class NewCourseDialog(QDialog):
 
         run_bg(create, done=self._done, fail=self._fail)
 
+    def _sync_create_btn(self, *_a) -> None:
+        if not self._creating:
+            self.create_btn.setEnabled(bool(self.title.text().strip()))
+
     def _done(self, out: dict) -> None:
         self.created = out
         self.accept()
 
     def _fail(self, err) -> None:
+        self._creating = False
+        self.create_btn.setText("만들기")
+        self._sync_create_btn()
         self.error.setText(error_text(err))
         self.error.show()
