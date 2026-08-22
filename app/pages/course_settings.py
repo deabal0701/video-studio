@@ -159,14 +159,35 @@ class CourseSettingsTab(QWidget):
         del_row.addStretch(1)
         form.addRow("", del_row)
 
+        # 사용자 편집 감지 — 탭 재진입이 편집을 덮지 않게 (36회차 P0.
+        # textEdited 는 사용자 입력만, 나머지는 _loading 가드가 로드를 걸러낸다)
+        self.title.textEdited.connect(self._mark_dirty)
+        self.tagline.textEdited.connect(self._mark_dirty)
+        self.audience.textChanged.connect(self._mark_dirty)
+        self.length.currentTextChanged.connect(self._mark_dirty)
+        self.provider.currentIndexChanged.connect(self._mark_dirty)
+        self.voice.currentIndexChanged.connect(self._mark_dirty)
+        self.bgm.currentIndexChanged.connect(self._mark_dirty)
+        for btn in (self.c_brand, self.c_soft, self.c_bg):
+            btn.changed.connect(self._mark_dirty)
+
     # ── 로드 ────────────────────────────────────────────────────────────────
+    def _mark_dirty(self, *_a) -> None:
+        if not getattr(self, "_loading", False):
+            self._dirty = True
+
     def load(self, cid: str) -> None:
+        # 편집 중엔 탭 재진입이 화면을 덮으면 안 된다 (36회차 P0 — 배포 탭 26회차와
+        # 같은 결함·같은 처방. 저장하거나 다른 프로젝트를 열면 새로 읽는다)
+        if cid == self.cid and getattr(self, "_dirty", False):
+            return
         self.cid = cid
         studio = self._make_studio()
         run_bg(lambda: (studio.get_course(cid), studio.assets("bgm")),
                done=self._fill, fail=lambda e: self.result.setText(error_text(e)))
 
     def _fill(self, result) -> None:
+        self._loading = True
         body, bgms = result
         self._etag = body["etag"]
         self._doc = body["course"]
@@ -193,6 +214,8 @@ class CourseSettingsTab(QWidget):
         idx = self.bgm.findData(current)
         if idx >= 0:
             self.bgm.setCurrentIndex(idx)
+        self._loading = False
+        self._dirty = False
 
     def _sync_length_note(self, *_a) -> None:
         chars = kinds.length_to_chars(self.length.currentText())
@@ -334,10 +357,17 @@ class CourseSettingsTab(QWidget):
         body["render"] = render
 
         cid, etag, studio = self.cid, self._etag, self._make_studio()
+        # 처리 중 잠금 (P18 공통 문법) — 중복 클릭이 옛 etag 로 409 를 낸다
+        self.save_btn.setEnabled(False)
+        self.result.setText("저장 중…")
         run_bg(lambda: studio.put_course(cid, body, etag),
-               done=self._saved, fail=lambda e: self.result.setText(error_text(e)))
+               done=self._saved,
+               fail=lambda e: (self.result.setText(error_text(e)),
+                               self.save_btn.setEnabled(True)))
 
     def _saved(self, out: dict) -> None:
+        self.save_btn.setEnabled(True)
+        self._dirty = False   # 저장됨 — 다음 재진입은 새로 읽는다
         self._etag = out["etag"]
         problems = out.get("consistency", {})
         self.result.setText("저장됨 ✓" if not problems
