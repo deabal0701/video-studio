@@ -147,6 +147,12 @@ QPushButton:disabled {{ color: {INK_3}; border-color: {SEPARATOR}; background: {
    info 중립 · run 진행 중(파랑) · warn 주의(주황) · ok 성공 · err 실패
    run 은 2026-08-22 에 주황→파랑으로 옮겼다: warn 이 생기며 주황이 "주의" 로 갔고,
    진행 중을 주의색으로 칠하면 정상 빌드가 경고처럼 보였다. */
+/* 팔레트 프리셋 — 선택된 것이 한눈에 (10: "선택한 내용이 선택이 안 된다") */
+QPushButton#palettePreset {{ padding: 8px 14px; border: 2px solid {SEPARATOR};
+  border-radius: 10px; background: {BG_SURFACE}; }}
+QPushButton#palettePreset:checked {{ border: 2px solid {ACCENT};
+  background: {ACCENT_SOFT}; font-weight: 700; }}
+
 QLabel[chip="info"] {{ background: {BG_PAGE}; color: {INK_2};
   border-radius: 11px; padding: 2px 12px; }}
 QLabel[chip="run"] {{ background: {ACCENT_SOFT}; color: {ACCENT};

@@ -194,7 +194,10 @@ class ClipEditorTab(QWidget):
         sp_desc.setObjectName("caption")
         sp_desc.setWordWrap(True)
         sp.addWidget(sp_desc)
-        sp_row = QHBoxLayout()
+        self._sp_head, self._sp_desc = sp_head, sp_desc
+        self._sp_buttons = QWidget()
+        sp_row = QHBoxLayout(self._sp_buttons)
+        sp_row.setContentsMargins(0, 0, 0, 0)
         ai_btn = QPushButton("AI 로 대본 쓰기")
         ai_btn.setObjectName("primary")
         ai_btn.setToolTip("주제만 알려주면 AI 가 전체 클립의 내레이션을 채웁니다")
@@ -207,7 +210,19 @@ class ClipEditorTab(QWidget):
         for b in (ai_btn, paste_btn, self_btn):
             sp_row.addWidget(b)
         sp_row.addStretch(1)
-        sp.addLayout(sp_row)
+        sp.addWidget(self._sp_buttons)
+        # 진행 모드 — [시작] 뒤에 아무 일도 안 보이면 죽은 줄 안다 (10: "프로그레스바가
+        # 가면서 대본이 생성되어야 하는 거 아닌가"). 같은 카드가 진행 표시로 변신한다.
+        self.ai_bar = QProgressBar()
+        self.ai_bar.setRange(0, 0)          # 불확정 — 흐르는 바
+        self.ai_bar.setFixedHeight(8)
+        self.ai_bar.hide()
+        sp.addWidget(self.ai_bar)
+        self.ai_line = QLabel("")
+        self.ai_line.setObjectName("caption")
+        self.ai_line.setWordWrap(True)
+        self.ai_line.hide()
+        sp.addWidget(self.ai_line)
         self.start_panel.hide()
         lay.addWidget(self.start_panel)
 
@@ -378,6 +393,8 @@ class ClipEditorTab(QWidget):
         dlg.setWindowTitle(title)
         dlg.setMinimumWidth(680)
         lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(26, 24, 26, 20)
+        lay.setSpacing(14)
         cap = QLabel(prompt + " — 폴더 경로를 글에 적으면 AI 가 그 내용을 직접 읽습니다.")
         cap.setWordWrap(True)
         lay.addWidget(cap)
@@ -453,6 +470,32 @@ class ClipEditorTab(QWidget):
             if docs:
                 payload["sourceDocs"] = docs
             self.ai_requested.emit(payload)
+
+    # ── AI 진행 표시 (부모 EpisodePage 가 잡 이벤트를 흘려준다) ─────────────
+    def ai_progress_start(self, msg: str = "AI 가 대본을 쓰는 중입니다 — 몇 분 걸립니다."
+                          ) -> None:
+        self.start_panel.show()
+        self._sp_head.setText("AI 작업 중")
+        self._sp_desc.setText(msg)
+        self._sp_buttons.hide()
+        self.ai_bar.show()
+        self.ai_line.clear()
+        self.ai_line.show()
+
+    def ai_progress_line(self, line: str) -> None:
+        if line.strip():
+            self.ai_line.setText(line.strip()[-160:])
+
+    def ai_progress_state(self, msg: str) -> None:
+        self._sp_desc.setText(msg)
+
+    def ai_progress_end(self) -> None:
+        self._sp_head.setText("대본이 아직 비어 있습니다")
+        self._sp_desc.setText("대본을 쓰면 위의 [빌드]가 영상으로 만듭니다. 셋 중 하나로 시작하세요:")
+        self._sp_buttons.show()
+        self.ai_bar.hide()
+        self.ai_line.hide()
+        self._sync_start_panel()
 
     def _start_manual(self) -> None:
         """첫 내레이션 있는 자리로 데려간다 — 안내는 접는다."""

@@ -29,9 +29,19 @@ from .bridge import error_text, run_bg
 from .pages.course_settings import VOICE_PRESETS
 from .widgets import ColorButton
 
-# 표준 길이 — 편집 가능한 콤보라 직접 입력도 된다 (약 6.3자/초 실측 페이스)
-LENGTH_CHOICES = ["1분 (약 380자)", "5분 (약 1,850자)",
-                  "10분 (약 3,700자)", "15분 (약 5,600자)"]
+# 표준 길이 — 편집 가능한 콤보라 "3분" 같은 직접 입력도 된다.
+# 글자 예산(약 6.3자/초 실측)은 **계산해서 보여준다** — 고르게 하지 않는다 (10 지적).
+LENGTH_CHOICES = ["15초", "30초", "1분", "5분", "10분", "15분"]
+
+
+def _length_to_chars(text: str) -> int | None:
+    """"15초"·"5분"·"1분 30초" → 글자 예산. 못 읽으면 None."""
+    import re
+
+    sec = 0
+    for num, unit in re.findall(r"(\d+)\s*(분|초)", text):
+        sec += int(num) * (60 if unit == "분" else 1)
+    return round(sec * 6.3 / 5) * 5 if sec else None
 
 
 def _palette_icon(pal: dict, size: int = 30) -> QIcon:
@@ -65,7 +75,10 @@ class NewCourseDialog(QDialog):
         self.setMinimumWidth(720)
 
         form = QFormLayout(self)
-        form.setVerticalSpacing(14)
+        # 숨 쉴 간격 — 좁으면 폼이 벽처럼 읽힌다 (10: "위/아래 간격도 좀 넓게")
+        form.setContentsMargins(28, 26, 28, 22)
+        form.setVerticalSpacing(22)
+        form.setHorizontalSpacing(18)
 
         # ── 종류 — 골격·길이·색이 여기서 갈린다 ────────────────────────────
         kind_box = QVBoxLayout()
@@ -99,6 +112,7 @@ class NewCourseDialog(QDialog):
         self._preset_buttons: dict[str, QPushButton] = {}
         for name, pal in kinds.PRESET_PALETTES:
             b = QPushButton(name)
+            b.setObjectName("palettePreset")   # 선택 상태 스타일 (theme)
             b.setCheckable(True)
             b.setIcon(_palette_icon(pal))
             b.setIconSize(_palette_icon(pal).availableSizes()[0])
@@ -108,21 +122,28 @@ class NewCourseDialog(QDialog):
             pal_row.addWidget(b)
         pal_row.addStretch(1)
         pal_box.addLayout(pal_row)
-        pal_note = QLabel("영상의 바탕·강조 색입니다 — 다른 색은 아래 [자세한 설정]에서 직접 고릅니다.")
+        pal_note = QLabel("영상의 바탕·강조 색입니다 — 다른 색은 아래 [고급 설정]에서 직접 고릅니다.")
         pal_note.setObjectName("caption")
         pal_box.addWidget(pal_note)
         form.addRow("색", pal_box)
         self.preset_group.buttonToggled.connect(self._on_preset)
 
         # ── 길이 — 콤보 + 직접 입력 ─────────────────────────────────────────
+        len_box = QVBoxLayout()
         self.length = QComboBox()
         self.length.setEditable(True)
         self.length.addItems(LENGTH_CHOICES)
-        form.addRow("영상 길이", self.length)
+        self.length.setFixedWidth(200)
+        self.length.currentTextChanged.connect(self._sync_length_note)
+        len_box.addWidget(self.length)
+        self.length_note = QLabel("")
+        self.length_note.setObjectName("caption")
+        len_box.addWidget(self.length_note)
+        form.addRow("영상 길이", len_box)
 
         # ── 자세한 설정 (접기 — 펼치지 않으면 전부 기본값) ──────────────────
         self.adv_btn = QToolButton()
-        self.adv_btn.setText("자세한 설정 — 태그라인·대상·목소리·폴더 이름·색 직접 고르기")
+        self.adv_btn.setText("고급 설정 — 태그라인·대상·목소리·폴더 이름·색 직접 고르기")
         self.adv_btn.setCheckable(True)
         self.adv_btn.setArrowType(Qt.RightArrow)
         self.adv_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
@@ -198,6 +219,11 @@ class NewCourseDialog(QDialog):
         btn = self.kind_group.checkedButton()
         return btn.property("kindId") if btn else kinds.DEFAULT_KIND
 
+    def _sync_length_note(self, *_a) -> None:
+        chars = _length_to_chars(self.length.currentText())
+        self.length_note.setText(f"내레이션 약 {chars:,}자 분량입니다" if chars
+                                 else '"3분"처럼 분·초로 적어주세요')
+
     def _toggle_adv(self, on: bool) -> None:
         self.adv.setVisible(on)
         self.adv_btn.setArrowType(Qt.DownArrow if on else Qt.RightArrow)
@@ -207,9 +233,10 @@ class NewCourseDialog(QDialog):
         """종류를 바꾸면 설명·길이·프리셋이 따라온다 (직접 고른 색은 안 건드린다)."""
         spec = kinds.get(self.kind())
         self.kind_note.setText(spec["desc"])
-        if self.length.currentText().strip() in ("", *LENGTH_CHOICES,
-                                                 *(k["length"] for k in kinds.KINDS.values())):
-            self.length.setCurrentText(spec["length"])
+        plain = spec["length"].split(" (")[0]   # "15초 (약 95자)" → "15초"
+        if self.length.currentText().strip() in ("", *LENGTH_CHOICES):
+            self.length.setCurrentText(plain)
+        self._sync_length_note()
         if not self._custom_palette:
             preset = kinds.KIND_PRESET.get(self.kind())
             btn = self._preset_buttons.get(preset)
@@ -240,7 +267,7 @@ class NewCourseDialog(QDialog):
     def body(self) -> dict:
         return {
             "kind": self.kind(),
-            "episodeLength": self.length.currentText().strip() or None,
+            "episodeLength": self._length_value(),
             "course": self.course_id.text().strip(),   # 비면 _create 가 자동 생성
             "title": self.title.text().strip(),
             "tagline": self.tagline.text().strip(),
@@ -250,6 +277,14 @@ class NewCourseDialog(QDialog):
                         "bg": self.c_bg.value},
             "bgm": None,   # 기본 BGM — [설정] 탭에서 바꾼다
         }
+
+    def _length_value(self) -> str | None:
+        """저장값은 "15초 (약 95자)" — 예산 게이지가 "N자" 를 파싱한다 (plan_tab)."""
+        text = self.length.currentText().strip()
+        if not text:
+            return None
+        chars = _length_to_chars(text)
+        return f"{text} (약 {chars:,}자)" if chars else text
 
     def _create(self) -> None:
         """이름만 있으면 만든다. id 는 자동, 단발 종류는 영상 1편까지 함께.

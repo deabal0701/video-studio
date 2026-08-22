@@ -254,6 +254,8 @@ class EpisodePage(QWidget):
         "알아서 다 만들어라" (Claude Code 의 develop-video 사용법과 같은 한 번에 동선).
         """
         auto_build = bool(payload.pop("auto_build", False))
+        self._ai_streaming = True                      # 진행 줄을 시작 패널로도 흘린다
+        self.clip_tab.ai_progress_start()
         eid, studio = self.eid, self._studio
         self.log.clear()
         self.log.show()
@@ -282,6 +284,8 @@ class EpisodePage(QWidget):
         eid, studio = self.eid, self._studio
         self.load(eid)
         if not auto_build:
+            self._ai_streaming = False
+            self.clip_tab.ai_progress_end()
             return
 
         def check():
@@ -291,9 +295,12 @@ class EpisodePage(QWidget):
             if state == "done":
                 self._goto_review_after_build = True
                 self.log.appendPlainText("대본 완료 — 이어서 빌드합니다 (한 번에 모드)")
+                self.clip_tab.ai_progress_state("대본 완료 — 이어서 영상을 만드는 중입니다…")
                 self._build(None)
             else:
                 self.log.appendPlainText(f"대본이 {state} 로 끝나 빌드를 잇지 않습니다")
+                self._ai_streaming = False
+                self.clip_tab.ai_progress_end()
 
         run_bg(check, done=decide, fail=lambda _e: None)
 
@@ -571,6 +578,8 @@ class EpisodePage(QWidget):
             self._load_review()
             if getattr(self, "_goto_review_after_build", False):
                 self._goto_review_after_build = False
+                self._ai_streaming = False
+                self.clip_tab.ai_progress_end()
                 self.tabs.setCurrentIndex(2)   # 한 번에 모드 — 완성본을 바로 보여준다
             eid, studio = self.eid, self._studio
             run_bg(lambda: studio.inspect(eid), done=self._fill_inspect,
@@ -589,6 +598,8 @@ class EpisodePage(QWidget):
             line = ev.get("line", "")
             if line:
                 self.log.appendPlainText(line)
+                if getattr(self, "_ai_streaming", False):
+                    self.clip_tab.ai_progress_line(line)   # 시작 카드에도 실시간 (10)
         elif kind == "preflight":
             findings = ev.get("findings", [])
             self.log.appendPlainText(f"[0] 사전 점검 — {len(findings)}건"
