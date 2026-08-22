@@ -138,6 +138,21 @@ class CoursePage(QWidget):
         run_bg(lambda: studio.get_course(cid), done=self._fill, fail=self._fail)
         self._tab_changed(self.tabs.currentIndex())
 
+    def _reflow_board(self) -> None:
+        """레인 열 수 = 보드 폭에서 계산 — 좁으면 완료 레인이 아래로 쌓인다 (P6)."""
+        wraps = getattr(self, "_lane_wraps", [])
+        if not wraps:
+            return
+        per = theme.CARD_W + 24 + theme.GAP_CARD
+        cols = max(1, min(len(wraps),
+                          (self.board_scroll.viewport().width() + theme.GAP_CARD) // per))
+        for i, w in enumerate(wraps):
+            self._board_grid.addWidget(w, i // cols, i % cols, Qt.AlignTop | Qt.AlignLeft)
+
+    def resizeEvent(self, e):  # noqa: N802 — Qt 오버라이드
+        super().resizeEvent(e)
+        self._reflow_board()
+
     def _tab_changed(self, idx: int) -> None:
         if not self.cid:
             return
@@ -157,9 +172,14 @@ class CoursePage(QWidget):
         self._course = course
         self.title.setText(course.get("title", self.cid))
         holder = QWidget()
-        cols = QHBoxLayout(holder)
-        cols.setSpacing(theme.GAP_CARD)
-        cols.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        from PySide6.QtWidgets import QGridLayout
+
+        # 레인 3개 고정 가로 배치는 1180px 에서 완료 레인이 잘렸다 (16회차 발견, P6).
+        # 대시보드와 같은 처방 — 창 폭에서 열 수를 계산해 좁으면 아래로 쌓는다
+        self._board_grid = QGridLayout(holder)
+        self._board_grid.setSpacing(theme.GAP_CARD)
+        self._board_grid.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self._lane_wraps: list[QWidget] = []
         lanes: dict[str, QVBoxLayout] = {}
         empties: dict[str, QLabel] = {}
         for state in ("empty", "wip", "done"):
@@ -188,9 +208,8 @@ class CoursePage(QWidget):
             wrap = QWidget()
             wrap.setLayout(box)
             wrap.setFixedWidth(theme.CARD_W + 24)
-            cols.addWidget(wrap)
+            self._lane_wraps.append(wrap)
             lanes[state] = lane
-        cols.addStretch(1)   # 남는 폭은 레인이 아니라 여백이 먹는다
         for entry in course.get("episodes", []):
             badge = body["episodes"].get(entry["id"],
                                          {"id": entry["id"], "state": "empty", "stale": False})
@@ -204,6 +223,7 @@ class CoursePage(QWidget):
             lanes.get(badge["state"], lanes["empty"]).addWidget(card)
             empties[badge["state"] if badge["state"] in empties else "empty"].hide()
         self.board_scroll.setWidget(holder)
+        self._reflow_board()
         # 에이전트 게이트 — 키 없으면 버튼 비활성 + 사유 툴팁
         studio = self._make_studio()
         run_bg(studio.agent_status, done=self._apply_gate, fail=lambda _e: None)
