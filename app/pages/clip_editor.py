@@ -598,9 +598,18 @@ class ClipEditorTab(QWidget):
     def cur(self) -> dict | None:
         return self.clips[self._selected] if 0 <= self._selected < len(self.clips) else None
 
+    def _mark_dirty(self) -> None:
+        if not self._loading:
+            self._dirty = True
+
+    def has_unsaved(self) -> bool:
+        """저장하지 않은 대본 변경 여부 — 이탈 확인(P20)의 판단 재료."""
+        return bool(getattr(self, "_dirty", False))
+
     def load(self, eid: str, scenes: dict, etag: str, inspect: dict,
              budget_text: str) -> None:
         self._loading = True
+        self._dirty = False   # 새로 읽음 — 이전 편집 흔적 해제
         self.eid = eid
         self.doc = copy.deepcopy(scenes)
         self._etag = etag
@@ -673,6 +682,7 @@ class ClipEditorTab(QWidget):
         self.skeleton_warn.setVisible(bad)
 
     def _on_reorder(self, _p, start, _e, _d, dest) -> None:
+        self._mark_dirty()
         clips = self.clips
         moved = clips.pop(start)
         clips.insert(dest if dest < start else dest - 1, moved)
@@ -705,6 +715,7 @@ class ClipEditorTab(QWidget):
         return "broll" if n == 1 else f"broll{n}"
 
     def _add_clip(self, kind: str) -> None:
+        self._mark_dirty()
         cid = self._next_id(kind)
         clip = ({"id": cid, "video": "", "videoStart": 0, "shade": 0.35,
                  "duration": 2.0, "before": "end"} if kind == "broll" else
@@ -726,6 +737,7 @@ class ClipEditorTab(QWidget):
                                QMessageBox.Yes | QMessageBox.Cancel,
                                QMessageBox.Cancel) != QMessageBox.Yes:
             return
+        self._mark_dirty()
         self.clips.pop(self._selected)
         self._refresh_list(select=max(0, self._selected - 1))
 
@@ -813,6 +825,7 @@ class ClipEditorTab(QWidget):
             self.unknown_box.addWidget(holder)
 
     def _set_param(self, key: str, value) -> None:
+        self._mark_dirty()
         c = self.cur
         if c is None:
             return
@@ -830,6 +843,7 @@ class ClipEditorTab(QWidget):
 
     # ── 내레이션·발화시각 ────────────────────────────────────────────────────
     def _on_narration(self) -> None:
+        self._mark_dirty()
         if self._loading or self.cur is None:
             return
         self.cur["narration"] = self.narration.toPlainText()
@@ -901,6 +915,7 @@ class ClipEditorTab(QWidget):
     def _on_field_edit(self) -> None:
         if self._loading or self.cur is None:
             return
+        self._mark_dirty()
         c = self.cur
         c["videoStart"] = self.video_start.value()
         c["shade"] = self.shade.value()
@@ -1077,6 +1092,7 @@ class ClipEditorTab(QWidget):
         self.save_btn.setText("저장")
 
     def _saved(self, out: dict) -> None:
+        self._dirty = False
         self._save_done()
         self._etag = out["etag"]  # 경로 문제가 있어도 채택 — 다음 저장 409 교착 방지
         issues = out.get("pathIssues") or []

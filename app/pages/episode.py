@@ -48,8 +48,7 @@ class EpisodePage(QWidget):
         # 돌아갈 길이 화면에 있어야 한다 (09 G8: 내가 어디 있는지·어디로 가는지)
         self.back_btn = QPushButton("← 프로젝트")
         self.back_btn.setFlat(True)
-        self.back_btn.clicked.connect(
-            lambda: self.eid and self.back.emit(self.eid.rsplit("-", 1)[0]))
+        self.back_btn.clicked.connect(self._back_clicked)
         head.addWidget(self.back_btn)
         self.title = QLabel("")
         self.title.setObjectName("pageTitle")
@@ -286,6 +285,22 @@ class EpisodePage(QWidget):
 
         run_bg(lambda: studio.agent_submit("draft", eid, {"episodeId": eid, **payload}),
                done=submitted, fail=lambda e: (self._fail(e), self._set_building(False)))
+
+    def _back_clicked(self) -> None:
+        """[← 프로젝트] — 저장하지 않은 대본 변경이 있으면 확인을 거친다 (38회차 P20)."""
+        if not self.eid:
+            return
+        if self.clip_tab.has_unsaved():
+            from PySide6.QtWidgets import QMessageBox
+
+            if QMessageBox.warning(
+                    self, "저장하지 않은 변경",
+                    "대본에 저장하지 않은 변경이 있습니다 — 나가면 사라집니다.\n"
+                    "[저장]을 누른 뒤 나가는 것이 안전합니다. 그래도 나갈까요?",
+                    QMessageBox.Yes | QMessageBox.Cancel,
+                    QMessageBox.Cancel) != QMessageBox.Yes:
+                return
+        self.back.emit(self.eid.rsplit("-", 1)[0])
 
     @staticmethod
     def _fail_text(state: str) -> str:
