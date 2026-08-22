@@ -362,23 +362,97 @@ class ClipEditorTab(QWidget):
     def _sync_start_panel(self) -> None:
         self.start_panel.setVisible(bool(self.clips) and self._script_unwritten())
 
-    def _start_ai(self) -> None:
-        from PySide6.QtWidgets import QInputDialog
+    def _ai_dialog(self, title: str, prompt: str) -> tuple[str, bool, list] | None:
+        """주제 입력 + 근거 문서/폴더 + [영상까지 한 번에] — "알아서 다"가 기본값이다.
 
-        brief, ok = QInputDialog.getMultiLineText(
-            self, "AI 로 대본 쓰기",
-            "무엇에 대한 영상인지 알려주세요 — 주제·강조점·꼭 들어갈 내용", "")
-        if ok and brief.strip():
-            self.ai_requested.emit({"brief": brief.strip()})
+        Claude Code 에서 develop-video 스킬로 "만들어라" 하면 끝까지 가듯이, 이 앱의
+        에이전트도 같은 스킬을 읽는다 — 대본이 끝나면 빌드를 자동으로 잇는다 (10 P1+).
+        에이전트는 Read·Glob 도구가 있어 **글에 폴더 경로를 적어도 직접 읽지만**,
+        [근거 추가] 로 고르면 전용 통로(sourceDocs)로 정확히 전달된다.
+        """
+        from PySide6.QtWidgets import (QCheckBox, QDialog, QDialogButtonBox,
+                                       QFileDialog, QHBoxLayout, QPlainTextEdit,
+                                       QPushButton, QVBoxLayout)
+
+        dlg = QDialog(self.window())
+        dlg.setWindowTitle(title)
+        dlg.setMinimumWidth(680)
+        lay = QVBoxLayout(dlg)
+        cap = QLabel(prompt + " — 폴더 경로를 글에 적으면 AI 가 그 내용을 직접 읽습니다.")
+        cap.setWordWrap(True)
+        lay.addWidget(cap)
+        text = QPlainTextEdit()
+        text.setMinimumHeight(160)
+        lay.addWidget(text)
+
+        docs: list[str] = []
+        docs_label = QLabel("")
+        docs_label.setObjectName("caption")
+        docs_label.setWordWrap(True)
+
+        def add_files():
+            files, _ = QFileDialog.getOpenFileNames(dlg, "근거 문서 선택")
+            docs.extend(f for f in files if f not in docs)
+            _sync()
+
+        def add_dir():
+            d = QFileDialog.getExistingDirectory(dlg, "근거 폴더 선택")
+            if d and d not in docs:
+                docs.append(d)
+            _sync()
+
+        def _sync():
+            docs_label.setText("근거: " + " · ".join(docs) if docs else "")
+
+        doc_row = QHBoxLayout()
+        f_btn = QPushButton("근거 문서 추가…")
+        f_btn.clicked.connect(add_files)
+        d_btn = QPushButton("근거 폴더 추가…")
+        d_btn.clicked.connect(add_dir)
+        doc_hint = QLabel("(선택 — AI 가 여기 있는 내용만으로 씁니다. 지어내지 않게)")
+        doc_hint.setObjectName("caption")
+        doc_row.addWidget(f_btn)
+        doc_row.addWidget(d_btn)
+        doc_row.addWidget(doc_hint)
+        doc_row.addStretch(1)
+        lay.addLayout(doc_row)
+        lay.addWidget(docs_label)
+
+        auto = QCheckBox("영상까지 한 번에 — 대본이 끝나면 자동으로 빌드합니다 (몇 분 걸립니다)")
+        auto.setChecked(True)
+        lay.addWidget(auto)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.button(QDialogButtonBox.Ok).setText("시작")
+        buttons.button(QDialogButtonBox.Ok).setObjectName("primary")
+        buttons.button(QDialogButtonBox.Cancel).setText("취소")
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        lay.addWidget(buttons)
+        if dlg.exec() and text.toPlainText().strip():
+            return text.toPlainText().strip(), auto.isChecked(), docs
+        return None
+
+    def _start_ai(self) -> None:
+        got = self._ai_dialog("AI 로 대본 쓰기",
+                              "무엇에 대한 영상인지 알려주세요 — 주제·강조점·꼭 들어갈 내용")
+        if got:
+            brief, auto, docs = got
+            payload = {"brief": brief, "auto_build": auto}
+            if docs:
+                payload["sourceDocs"] = docs
+            self.ai_requested.emit(payload)
 
     def _start_paste(self) -> None:
-        from PySide6.QtWidgets import QInputDialog
-
-        text, ok = QInputDialog.getMultiLineText(
-            self, "글 붙여넣기",
-            "가진 원고를 붙여넣으세요 — AI 가 지어내지 않고 이 글을 클립에 나눠 담습니다", "")
-        if ok and text.strip():
-            self.ai_requested.emit({"brief": "붙여넣은 원고를 클립에 배분", "source": text.strip()})
+        got = self._ai_dialog("글 붙여넣기",
+                              "가진 원고를 붙여넣으세요 — AI 가 지어내지 않고 이 글을 "
+                              "클립에 나눠 담습니다")
+        if got:
+            text, auto, docs = got
+            payload = {"brief": "붙여넣은 원고를 클립에 배분",
+                       "source": text, "auto_build": auto}
+            if docs:
+                payload["sourceDocs"] = docs
+            self.ai_requested.emit(payload)
 
     def _start_manual(self) -> None:
         """첫 내레이션 있는 자리로 데려간다 — 안내는 접는다."""

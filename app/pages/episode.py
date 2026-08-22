@@ -248,7 +248,12 @@ class EpisodePage(QWidget):
                                   f"({gate.get('provider')} · {gate.get('models', {}).get('review')})")
 
     def _ai_draft(self, payload: dict) -> None:
-        """AI 대본 — ② 대본의 시작 패널에서 온다 (10 P1). 평가와 같은 잡 동선."""
+        """AI 대본 — ② 대본의 시작 패널에서 온다 (10 P1). 평가와 같은 잡 동선.
+
+        payload["auto_build"] 면 대본이 done 으로 끝났을 때 **빌드를 자동으로 잇는다** —
+        "알아서 다 만들어라" (Claude Code 의 develop-video 사용법과 같은 한 번에 동선).
+        """
+        auto_build = bool(payload.pop("auto_build", False))
         eid, studio = self.eid, self._studio
         self.log.clear()
         self.log.show()
@@ -264,13 +269,33 @@ class EpisodePage(QWidget):
             self._pump = JobEventPump(studio, self._job_id)
             self._pump.event.connect(self._on_event, Qt.QueuedConnection)
             # 끝나면 대본을 다시 읽는다 — AI 가 쓴 내용이 화면에 보여야 한다
-            self._pump.finished.connect(lambda: (self._set_building(False),
-                                                 self.load(eid)),
+            self._pump.finished.connect(lambda: self._after_draft(auto_build),
                                         Qt.QueuedConnection)
             self._pump.start()
 
         run_bg(lambda: studio.agent_submit("draft", eid, {"episodeId": eid, **payload}),
                done=submitted, fail=lambda e: (self._fail(e), self._set_building(False)))
+
+    def _after_draft(self, auto_build: bool) -> None:
+        """대본 잡이 끝났다 — 성공 + 한 번에 모드면 빌드를 잇는다."""
+        self._set_building(False)
+        eid, studio = self.eid, self._studio
+        self.load(eid)
+        if not auto_build:
+            return
+
+        def check():
+            return studio.job(self._job_id)["state"] if self._job_id else "failed"
+
+        def decide(state):
+            if state == "done":
+                self._goto_review_after_build = True
+                self.log.appendPlainText("대본 완료 — 이어서 빌드합니다 (한 번에 모드)")
+                self._build(None)
+            else:
+                self.log.appendPlainText(f"대본이 {state} 로 끝나 빌드를 잇지 않습니다")
+
+        run_bg(check, done=decide, fail=lambda _e: None)
 
     def _ai_review(self) -> None:
         """AI 평가 — 같은 잡 큐·같은 진행 로그 (05: kind=agent)."""
@@ -544,6 +569,9 @@ class EpisodePage(QWidget):
             # (구 웹 구현은 여기서 에디터를 리마운트해 미저장 편집이 사라졌다)
             self._on_clip_saved()
             self._load_review()
+            if getattr(self, "_goto_review_after_build", False):
+                self._goto_review_after_build = False
+                self.tabs.setCurrentIndex(2)   # 한 번에 모드 — 완성본을 바로 보여준다
             eid, studio = self.eid, self._studio
             run_bg(lambda: studio.inspect(eid), done=self._fill_inspect,
                    fail=lambda _e: None)
