@@ -195,10 +195,15 @@ class SettingsPage(QWidget):
         updates["AGENT_TEST_MODE"] = "1" if self.test_mode.isChecked() else ""
         updates["OPENAI_MODEL"] = self.openai_model.text().strip()
         studio = self._make_studio()
+        # 처리 중 잠금 + 즉시 피드백 (29회차 P18 — 저장/반영 버튼 공통 문법)
+        self.save_btn.setEnabled(False)
+        self.result.setText("저장 중…")
         run_bg(lambda: studio.save_settings(updates),
                done=lambda out: (self.result.setText(f"저장됨 ✓ — {out['file']}"),
+                                 self.save_btn.setEnabled(True),
                                  self.refresh()),
-               fail=lambda e: self.result.setText(error_text(e)))
+               fail=lambda e: (self.result.setText(error_text(e)),
+                               self.save_btn.setEnabled(True)))
 
     # ── 진단 ────────────────────────────────────────────────────────────────
     def _diagnose(self) -> None:
