@@ -155,7 +155,9 @@ class BrandKitTab(QWidget):
         self.apply_btn.setEnabled(False)
         self.result.setText("적용 중…")
         run_bg(lambda: studio.apply_brand_kit(cid),
-               done=lambda out: (self.result.setText(f"적용됨 ✓ — {', '.join(out['copied'])}"),
+               done=lambda out: (self.result.setText(
+                   "적용됨 ✓ — "   # 파일명 날것 대신 표시명 (37회차 P2)
+                   + " · ".join(kinds.screen_label(f) for f in out["copied"])),
                                  self.apply_btn.setEnabled(True)),
                fail=lambda e: (self.result.setText(error_text(e)),
                                self.apply_btn.setEnabled(True)))
