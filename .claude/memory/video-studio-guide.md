@@ -2,12 +2,12 @@
 id: video-studio-guide
 title: Video Studio 사용법 (화면별 상세)
 date: 2026-08-22
-status: draft
+status: done
 variants: [16x9]
-duration: null          # 완성 후 ffprobe 실측으로 채운다
+duration: 475.4s        # 7분 55초 (ffprobe 실측) · 1920x1080 30fps H.264 High/yuv420p · AAC-LC 48kHz · -13.9 LUFS · 70MB
 voice: edge / 선희 ko-KR-SunHiNeural rate +6%
 scenes: docs/video/video-studio-guide/scenes.json
-score: null            # 평가 전 null. 평가 agent가 채운다
+score: 3.3             # 평가 전 null. 평가 agent가 채운다
 ---
 
 ## 제작

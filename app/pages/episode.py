@@ -108,6 +108,7 @@ class EpisodePage(QWidget):
         self.plan_tab.applied.connect(lambda: self.load(self.eid))
         self.clip_tab = ClipEditorTab(make_studio)
         self.clip_tab.saved.connect(self._on_clip_saved)
+        self.clip_tab.ai_requested.connect(self._ai_draft)
         self.clip_tab.tts_requested.connect(lambda: self._build("tts"))
         self.deploy_tab = DeployTab(make_studio)
         self.tabs.addTab(self.plan_tab, "① 구성표")
@@ -245,6 +246,31 @@ class EpisodePage(QWidget):
         self.ai_review_btn.setToolTip(
             gate.get("reason") or f"완성본을 새 세션이 채점합니다 "
                                   f"({gate.get('provider')} · {gate.get('models', {}).get('review')})")
+
+    def _ai_draft(self, payload: dict) -> None:
+        """AI 대본 — ② 대본의 시작 패널에서 온다 (10 P1). 평가와 같은 잡 동선."""
+        eid, studio = self.eid, self._studio
+        self.log.clear()
+        self.log.show()
+        self.state_chip.setText("AI 대본 제출 중…")
+        self.state_chip.setProperty("chip", "run")
+        self._repolish(self.state_chip)
+        self.state_chip.show()
+        self._set_building(True)
+
+        def submitted(out):
+            self._job_id = out["jobId"]
+            self.job_started.emit(self._job_id)
+            self._pump = JobEventPump(studio, self._job_id)
+            self._pump.event.connect(self._on_event, Qt.QueuedConnection)
+            # 끝나면 대본을 다시 읽는다 — AI 가 쓴 내용이 화면에 보여야 한다
+            self._pump.finished.connect(lambda: (self._set_building(False),
+                                                 self.load(eid)),
+                                        Qt.QueuedConnection)
+            self._pump.start()
+
+        run_bg(lambda: studio.agent_submit("draft", eid, {"episodeId": eid, **payload}),
+               done=submitted, fail=lambda e: (self._fail(e), self._set_building(False)))
 
     def _ai_review(self) -> None:
         """AI 평가 — 같은 잡 큐·같은 진행 로그 (05: kind=agent)."""

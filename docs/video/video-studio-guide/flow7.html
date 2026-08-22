@@ -2,20 +2,22 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <title>화면 지도 ①~⑦</title>
+    <title>화면 지도 — 두 층</title>
     <link rel="stylesheet" href="../../../engine/motion/_base.css" />
     <style>
-      /* 앱의 화면 지도 — 프로젝트 탭 ①②③ + 영상 탭 ④⑤⑥⑦.
+      /* 앱의 화면 지도 — **두 층**이라는 것 하나를 그린다.
 
-         이 앱은 번호를 화면에 직접 달아 놓았다(① 설정 … ⑦ 배포). 그 번호가 곧 작업 순서라
-         지도 한 장이 사용법의 뼈대가 된다. 도입에서 전체를 깔고, 마무리에서 같은 그림으로
-         회수한다.
+         위 칸(영상 목록·설정·브랜드 킷)은 프로젝트의 서랍이라 순서가 없어 번호가 없고,
+         아래 칸(구성표·대본·검수·배포)만 진짜 순서라 ①~④ 가 붙는다. 초보자가 제일 헷갈리는
+         지점이 이 구분이라, 도입에서 이 그림을 깔고 마무리에서 같은 그림으로 회수한다.
+         (2026-08-22 UX P0 — docs/design/10_ux-plan.md. 그전에는 ①~⑦ 한 줄이라
+          "일곱 단계"로 오해됐다.)
 
          params:
            title    위쪽 한 줄
-           t1..t7   각 칸이 켜지는 시각(초) — 내레이션이 그 말을 하는 순간에 맞춘다
-                    (안 주면 0.4초 간격으로 차례로 켜진다)
-           focus    지금 설명 중인 칸 번호 1~7 (주면 그 칸만 밝고 나머지는 가라앉는다)
+           t1..t7   각 칸이 켜지는 시각(초) — 위 3칸이 t1~t3, 아래 4칸이 t4~t7.
+                    **내레이션이 그 이름을 말하는 순간에 맞춘다** (안 주면 0.4초 간격)
+           focus    지금 설명 중인 칸 1~7 (주면 그 칸만 밝고 나머지는 가라앉는다)
            ft       focus 가 적용되는 시각(초, 기본 0)
       */
       /* 아래 여백 14vh — 자막이 두 줄로 꺾이면 하단 82vh 까지 올라온다. 가운데 정렬만 두면
@@ -109,12 +111,12 @@
       <div class="head animated" data-p="title"></div>
 
       <div class="group">
-        <div class="label">프로젝트 — 시리즈 전체에 한 번</div>
+        <div class="label">프로젝트 — 순서가 아니다. 필요할 때 연다</div>
         <div class="row" id="rowA"></div>
       </div>
 
       <div class="group">
-        <div class="label">영상 — 한 편마다 반복</div>
+        <div class="label">영상 한 편 — 번호대로 하면 된다</div>
         <div class="row" id="rowB"></div>
       </div>
 
@@ -134,14 +136,17 @@
         };
         const num = (k, d) => (P[k] !== null && P[k] !== undefined && P[k] !== '' ? Number(P[k]) : d);
 
+        // 2026-08-22 UX P0 이후의 구조다 (docs/design/10_ux-plan.md).
+        // 프로젝트의 셋은 **순서가 아니라 서랍**이라 번호를 뗐고, 진짜 순서인 영상 안쪽에만
+        // ①~④ 를 다시 붙였다. 예전 ①~⑦ 한 줄 번호가 "일곱 단계"로 오해되던 것을 고친 것.
         const CELLS = [
-          ['①', '설정', '제목·목소리·비율'],
-          ['②', '영상 목록', '영상을 만들고 연다'],
-          ['③', '브랜드 킷', '색·로고·자막 모양'],
-          ['④', '구성표', '무엇을 몇 초에'],
-          ['⑤', '대본', '문장·화면·프리뷰'],
-          ['⑥', '검수', '빌드하고 눈으로 본다'],
-          ['⑦', '배포', '제목·설명·자막·썸네일'],
+          ['', '영상 목록', '영상을 만들고 연다'],
+          ['', '설정', '이름·목소리·색'],
+          ['', '브랜드 킷', '타이틀 카드 확인'],
+          ['①', '구성표', '무엇을 몇 초에'],
+          ['②', '대본', '문장·화면·프리뷰'],
+          ['③', '검수', '굽고 눈으로 본다'],
+          ['④', '배포', '제목·설명·자막·썸네일'],
         ];
         const focus = num('focus', 0);
         const ft = num('ft', 0);
@@ -150,9 +155,11 @@
           const n = i + 1;
           const el = document.createElement('div');
           el.className = 'cell animated' + (focus ? (n === focus ? ' hot' : ' dim') : '');
+          // 번호가 없는 칸(프로젝트의 서랍 셋)은 배지를 **아예 그리지 않는다** — 빈 원을 두면
+          // "번호가 있는데 안 보이는 것"처럼 읽혀 이 도식이 하려는 말과 정반대가 된다.
           el.innerHTML =
-            `<div class="num">${sym}</div><div class="name">${name}</div>` +
-            `<div class="what">${what}</div>`;
+            (sym ? `<div class="num">${sym}</div>` : '') +
+            `<div class="name">${name}</div><div class="what">${what}</div>`;
           const t = num(`t${n}`, 0.4 + i * 0.4);
           // 두 애니메이션(등장 + focus)의 지연을 각각 준다 — 등장은 t, 가라앉기·띄우기는 ft
           el.style.animationDelay = focus ? `${t}s, ${Math.max(t, ft)}s` : `${t}s`;

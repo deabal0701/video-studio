@@ -80,20 +80,38 @@ pump(1)
 shot("02-new-course-wizard", dlg)
 dlg.close()
 
-# ── 3~5. 강좌 화면 탭 ①②③ ──────────────────────────────────────────────────
+# ── 3~5. 프로젝트 화면 탭 ────────────────────────────────────────────────────
 win.show_course("hr-basics")
 pump(15, lambda: win.course_page.title.text() != "")
-win.course_page.tabs.setCurrentIndex(1)
+
+
+def tab(widget, label: str) -> None:
+    """탭을 **이름으로** 고른다 — 번호로 고르면 탭 순서가 바뀔 때 조용히 딴 화면을 찍는다.
+
+    2026-08-22 실측: 프로젝트 탭이 `① 설정·② 영상 목록·③ 브랜드 킷` 에서
+    `영상 목록·설정·브랜드 킷` 으로 재배치됐는데 여기는 인덱스 그대로였다. 그래서
+    `03-course-board.png` 에 설정이, `04-course-settings.png` 에 영상 목록이 찍혔다 —
+    **파일 이름과 내용이 서로 바뀐 채로** 커밋까지 갔다(빌드도 캡처도 오류를 내지 않는다).
+    """
+    for i in range(widget.count()):
+        if label in widget.tabText(i):
+            widget.setCurrentIndex(i)
+            return
+    raise SystemExit(f"탭을 못 찾았다: {label} — 있는 것: "
+                     f"{[widget.tabText(i) for i in range(widget.count())]}")
+
+
+tab(win.course_page.tabs, "영상 목록")
 pump(2)
 shot("03-course-board")
-win.course_page.tabs.setCurrentIndex(0)
+tab(win.course_page.tabs, "설정")
 pump(12, lambda: win.course_page.settings.title.text() != "")
 shot("04-course-settings")
-win.course_page.tabs.setCurrentIndex(2)
+tab(win.course_page.tabs, "브랜드 킷")
 pump(6)
 shot("05-course-brandkit")
 
-# ── 6~9. 회차 화면 탭 ④⑤⑥⑦ ────────────────────────────────────────────────
+# ── 6~9. 영상 화면 탭 ①②③④ ────────────────────────────────────────────────
 win.show_episode("hr-basics-01")
 ep, clip = win.episode_page, win.episode_page.clip_tab
 pump(20, lambda: clip.clip_list.count() > 0)
@@ -104,18 +122,18 @@ if "hook" in ids:
 pump(25)
 clip.scrub.setValue(35)
 pump(3)
-shot("06-episode-script")           # ⑤ 대본 (본체)
+shot("06-episode-script")           # ② 대본 (본체)
 if "broll" in ids:                  # B롤 클립 — 다른 편집 상태
     clip.clip_list.setCurrentRow(ids.index("broll"))
     pump(5)
     shot("07-episode-script-broll")
-ep.tabs.setCurrentIndex(0)
+tab(ep.tabs, "구성표")
 pump(12)
-shot("08-episode-plan")             # ④ 구성표
-ep.tabs.setCurrentIndex(2)
+shot("08-episode-plan")             # ① 구성표
+tab(ep.tabs, "검수")
 pump(120, lambda: ep.frames_row.count() > 1)
-shot("09-episode-review")           # ⑥ 검수
-ep.tabs.setCurrentIndex(3)
+shot("09-episode-review")           # ③ 검수
+tab(ep.tabs, "배포")
 pump(60, lambda: bool(ep.deploy_tab.title.text()))
 shot("10-episode-deploy")           # ⑦ 배포
 

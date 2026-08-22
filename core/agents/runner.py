@@ -87,10 +87,16 @@ def _task_prompt(kind: str, episode_id: str, payload: dict[str, Any],
                  projects_root: Path) -> str:
     ep = projects_root / episode_id
     if kind == "draft":
-        return (f"회차 초안을 만들어라. 회차 폴더: {ep}\n"
-                f"주제(brief): {payload.get('brief', '')}\n"
-                f"근거 문서: {payload.get('sourceDocs', [])}\n"
-                f"강좌 정체성: {ep.parent / episode_id.rsplit('-', 1)[0] / 'course.json'}")
+        prompt = (f"회차 초안을 만들어라. 회차 폴더: {ep}\n"
+                  f"주제(brief): {payload.get('brief', '')}\n"
+                  f"근거 문서: {payload.get('sourceDocs', [])}\n"
+                  f"강좌 정체성: {ep.parent / episode_id.rsplit('-', 1)[0] / 'course.json'}")
+        if payload.get("source"):
+            # 화면의 [글 붙여넣기] — 사용자가 가진 원고를 그대로 근거로 준다 (10 P1-7).
+            # 지어내지 말고 이 글을 배분하라는 지시가 핵심이다.
+            prompt += ("\n\n원고 전문 — 아래 글의 내용만으로 클립들의 내레이션을 채워라. "
+                       "새 사실을 지어내지 마라:\n" + str(payload["source"]))
+        return prompt
     if kind == "diagram":
         return (f"도식 html 을 만들어라. 회차 폴더: {ep}\n"
                 f"클립: {payload.get('clipId', '')}\n"

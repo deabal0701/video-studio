@@ -100,6 +100,7 @@ class _PreviewColumn(QWidget):
 class ClipEditorTab(QWidget):
     saved = Signal()          # 부모가 파생 상태 재조회
     tts_requested = Signal()  # [TTS 실측 갱신] — 부모의 잡 동선 재사용
+    ai_requested = Signal(dict)  # AI 대본 — {"brief": ...} 또는 {"source": ...} (부모가 잡 제출)
 
     def __init__(self, make_studio):
         super().__init__()
@@ -180,6 +181,36 @@ class ClipEditorTab(QWidget):
         w = QWidget()
         scroll.setWidget(w)
         lay = QVBoxLayout(w)
+
+        # ── 시작 안내 — 대본이 비어 있을 때만 (10 P1: "대본을 쉽게 만들 방법이 없는가")
+        self.start_panel = QWidget()
+        self.start_panel.setObjectName("card")
+        sp = QVBoxLayout(self.start_panel)
+        sp.setContentsMargins(18, 16, 18, 16)
+        sp_head = QLabel("대본이 아직 비어 있습니다")
+        sp_head.setObjectName("sectionTitle")
+        sp.addWidget(sp_head)
+        sp_desc = QLabel("대본을 쓰면 위의 [빌드]가 영상으로 만듭니다. 셋 중 하나로 시작하세요:")
+        sp_desc.setObjectName("caption")
+        sp_desc.setWordWrap(True)
+        sp.addWidget(sp_desc)
+        sp_row = QHBoxLayout()
+        ai_btn = QPushButton("AI 로 대본 쓰기")
+        ai_btn.setObjectName("primary")
+        ai_btn.setToolTip("주제만 알려주면 AI 가 전체 클립의 내레이션을 채웁니다")
+        ai_btn.clicked.connect(self._start_ai)
+        paste_btn = QPushButton("글 붙여넣기 → AI 가 배분")
+        paste_btn.setToolTip("가진 원고를 붙여넣으면 AI 가 지어내지 않고 클립에 나눠 담습니다")
+        paste_btn.clicked.connect(self._start_paste)
+        self_btn = QPushButton("직접 쓰기")
+        self_btn.clicked.connect(self._start_manual)
+        for b in (ai_btn, paste_btn, self_btn):
+            sp_row.addWidget(b)
+        sp_row.addStretch(1)
+        sp.addLayout(sp_row)
+        self.start_panel.hide()
+        lay.addWidget(self.start_panel)
+
         self.cur_id = QLabel("")
         self.cur_id.setObjectName("sectionTitle")
         lay.addWidget(self.cur_id)
@@ -317,6 +348,45 @@ class ClipEditorTab(QWidget):
         lay.addStretch(1)
         return w
 
+    # ── 시작 안내 (10 P1) ───────────────────────────────────────────────────
+    def _script_unwritten(self) -> bool:
+        """모든 내레이션이 비었거나 골격의 "[…]" 안내문 그대로면 아직 안 쓴 것이다."""
+        wrote = False
+        for c in self.clips:
+            n = (c.get("narration") or "").strip()
+            if n and not n.startswith("["):
+                wrote = True
+                break
+        return not wrote
+
+    def _sync_start_panel(self) -> None:
+        self.start_panel.setVisible(bool(self.clips) and self._script_unwritten())
+
+    def _start_ai(self) -> None:
+        from PySide6.QtWidgets import QInputDialog
+
+        brief, ok = QInputDialog.getMultiLineText(
+            self, "AI 로 대본 쓰기",
+            "무엇에 대한 영상인지 알려주세요 — 주제·강조점·꼭 들어갈 내용", "")
+        if ok and brief.strip():
+            self.ai_requested.emit({"brief": brief.strip()})
+
+    def _start_paste(self) -> None:
+        from PySide6.QtWidgets import QInputDialog
+
+        text, ok = QInputDialog.getMultiLineText(
+            self, "글 붙여넣기",
+            "가진 원고를 붙여넣으세요 — AI 가 지어내지 않고 이 글을 클립에 나눠 담습니다", "")
+        if ok and text.strip():
+            self.ai_requested.emit({"brief": "붙여넣은 원고를 클립에 배분", "source": text.strip()})
+
+    def _start_manual(self) -> None:
+        """첫 내레이션 있는 자리로 데려간다 — 안내는 접는다."""
+        self.start_panel.hide()
+        if self.clips:
+            self.clip_list.setCurrentRow(0)
+        self.narration.setFocus()
+
     # ── 문맥 ────────────────────────────────────────────────────────────────
     @property
     def clips(self) -> list[dict]:
@@ -370,6 +440,7 @@ class ClipEditorTab(QWidget):
             item.setToolTip(c.get("narration", ""))
             self.clip_list.addItem(item)
         self.clip_list.blockSignals(False)
+        self._sync_start_panel()
         if 0 <= select < len(self.clips):
             self.clip_list.setCurrentRow(select)
             self._selected = select
