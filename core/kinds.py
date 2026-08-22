@@ -105,7 +105,26 @@ def role_label(clip_id: str | None) -> str:
         return f"챕터 {num}" if num else "챕터"
     if base == "s":
         return f"본문 {num}" if num else "본문"
+    if base == "b":
+        return f"B롤 {num}" if num else "B롤"
     return cid
+
+
+# 공용 템플릿 html → 표시명 (10: "사용자가 intro.html 을 어떻게 알 수 있는가").
+# 파일명은 구현이고, 화면에는 무엇이 그려지는지가 보여야 한다.
+TEMPLATE_LABELS = {
+    "intro.html": "타이틀 카드", "chapter.html": "챕터 카드", "outro.html": "마무리 카드",
+    "course-intro.html": "프로젝트 타이틀 카드", "course-stinger.html": "로고 전환",
+}
+
+
+def screen_label(text: str | None) -> str:
+    """구성표 '화면' 칸 — 아는 파일명이면 표시명을 앞세운다 (파일명은 괄호 보조)."""
+    t = str(text or "").strip()
+    for fname, label in TEMPLATE_LABELS.items():
+        if t == fname or t.endswith("/" + fname):
+            return f"{label} ({fname})"
+    return t
 
 
 def get(kind: str | None) -> dict[str, Any]:

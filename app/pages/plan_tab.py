@@ -13,10 +13,11 @@ import re
 
 from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView, QLabel,
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton,
-                               QSplitter, QTableWidget, QTableWidgetItem, QVBoxLayout,
+                               QTableWidget, QTableWidgetItem, QToolButton, QVBoxLayout,
                                QWidget)
 from PySide6.QtCore import Qt, Signal
 
+from core import kinds
 from core.plan_apply import parse_plan_rows
 
 from .. import theme
@@ -34,6 +35,11 @@ class PlanTab(QWidget):
         self._budget = 1850
 
         lay = QVBoxLayout(self)
+        guide = QLabel("영상이 어떤 순서의 화면으로 가는지와 분량 배분을 정하는 곳입니다 — "
+                       "[AI 로 대본 쓰기](② 대본)를 쓰면 여기까지 자동으로 채워집니다.")
+        guide.setObjectName("caption")
+        guide.setWordWrap(True)
+        lay.addWidget(guide)
         self.budget_label = QLabel("")
         lay.addWidget(self.budget_label)
         self.budget_bar = QProgressBar()
@@ -41,27 +47,37 @@ class PlanTab(QWidget):
         self.budget_bar.setFixedHeight(6)
         lay.addWidget(self.budget_bar)
 
-        split = QSplitter(Qt.Vertical)
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["구간", "화면", "글자수"])
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.setColumnWidth(0, 90)
+        self.table.setColumnWidth(0, 150)
         self.table.setColumnWidth(2, 90)
         # 남는 폭은 "화면" 열이 먹는다 — 표가 좌측 1/3 에 몰리지 않게 (09 G2)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        split.addWidget(self.table)
+        lay.addWidget(self.table, 1)
+
+        # 원문(plan.md)은 접어 둔다 — 마크다운 주석·표 문법·제작 은어는 고급 사용자용이다.
+        # 파일이 SSOT 라 직접 편집 길은 반드시 남긴다 (기능 제거 없음 — 10 조건).
+        self.raw_btn = QToolButton()
+        self.raw_btn.setText("원문(plan.md) 직접 편집 — 고급")
+        self.raw_btn.setCheckable(True)
+        self.raw_btn.setArrowType(Qt.RightArrow)
+        self.raw_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        lay.addWidget(self.raw_btn)
         self.raw = QPlainTextEdit()
         # 마크다운 표는 고정폭이라야 열이 보인다
         self.raw.setStyleSheet("font-family: Consolas, 'D2Coding', monospace;")
         self.raw.textChanged.connect(self._on_edit)
-        split.addWidget(self.raw)
-        split.setSizes([420, 380])   # 표가 잘리지 않게 (09 G3)
-        lay.addWidget(split, 1)
+        self.raw.setMinimumHeight(260)
+        self.raw.hide()
+        lay.addWidget(self.raw, 1)
+        self.raw_btn.toggled.connect(self._toggle_raw)
 
         row = QHBoxLayout()
-        self.save_btn = QPushButton("plan.md 저장")
+        self.save_btn = QPushButton("구성표 저장")
         self.save_btn.setObjectName("primary")
         self.save_btn.clicked.connect(self._save)
+        self.save_btn.hide()   # 원문을 펼쳤을 때만 — 표는 편집이 없어 저장할 것도 없다
         self.apply_btn = QPushButton("대본으로 반영 (없는 구간 → 클립 골격)")
         self.apply_btn.clicked.connect(self._apply)
         self.result = QLabel("")
@@ -71,6 +87,11 @@ class PlanTab(QWidget):
         row.addWidget(self.result)
         row.addStretch(1)
         lay.addLayout(row)
+
+    def _toggle_raw(self, on: bool) -> None:
+        self.raw.setVisible(on)
+        self.save_btn.setVisible(on)
+        self.raw_btn.setArrowType(Qt.DownArrow if on else Qt.RightArrow)
 
     def load(self, eid: str, budget_text: str = "") -> None:
         self.eid = eid
@@ -97,8 +118,10 @@ class PlanTab(QWidget):
         for i, r in enumerate(rows):
             total += r["chars"] or 0
             # 마크다운 기호를 걷어내고 보여준다 — `**도식**`·백틱이 날것으로 보이면 안 된다 (09 G7)
-            screen = re.sub(r"[`*]", "", r["screen"]).strip()
-            for j, v in enumerate([r["id"], screen, str(r["chars"] or "")]):
+            screen = kinds.screen_label(re.sub(r"[`*]", "", r["screen"]).strip())
+            # 구간 id 는 규약이라 못 바꾼다 — 역할을 한국어로 함께 (10: "intro 가 뭔지")
+            section = f'{kinds.role_label(r["id"])} ({r["id"]})'
+            for j, v in enumerate([section, screen, str(r["chars"] or "")]):
                 self.table.setItem(i, j, QTableWidgetItem(v))
         pct = round(total / self._budget * 100) if self._budget else 0
         self.budget_label.setText(f"예산 {total:,} / {self._budget:,}자 · {pct}%"
