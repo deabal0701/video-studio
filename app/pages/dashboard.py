@@ -118,12 +118,16 @@ class DashboardPage(QWidget):
         self.error.hide()
         outer.addWidget(self.error)
 
-        self.empty = QLabel("아직 프로젝트가 없습니다 — 오른쪽 위 [+ 새 프로젝트] 로 시작하세요.\n"
-                            "프로젝트를 만들면 목소리·색·BGM 이 모든 영상에 그대로 물려집니다.")
+        # 안내는 Primary 하나만 가리킨다 — [새 영상 만들기]가 좌측 열 머리로 승격된 뒤
+        # "오른쪽 위 [+ 새 프로젝트]"는 보조 버튼을 가리키는 낡은 길이었다 (33회차 P11·P15)
+        self.empty = QLabel("아직 프로젝트가 없습니다 — 왼쪽 위 [새 영상 만들기]로 시작하세요.\n"
+                            "프로젝트를 만들면 목소리·색·배경음악이 모든 영상에 그대로 물려집니다.")
         self.empty.setObjectName("caption")
         self.empty.setAlignment(Qt.AlignCenter)
         self.empty.hide()
-        outer.addWidget(self.empty)
+        # 빈 상태 안내는 세로 중앙 — 상단 구석에 붙으면 첫 화면이 미완성처럼
+        # 보인다 (33회차 P25. stretch 1: 보일 때만 남는 높이를 차지한다)
+        outer.addWidget(self.empty, 1)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
