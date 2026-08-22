@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
                                QMainWindow, QStackedWidget, QStatusBar, QWidget)
 
@@ -38,12 +38,22 @@ class MainWindow(QMainWindow):
         self.nav.setFixedWidth(200)
         # 이모지 금지 — OS 폰트가 제각각으로 그린다 (09 G4).
         # 아이콘이 필요하면 **코드로 그린다** (app/icons.py) — 어느 PC 에서나 같은 그림이다
-        for key, label in (("dashboard", "대시보드"), ("library", "라이브러리"),
-                           ("jobs", "작업 큐"), ("settings", "설정")):
-            item = QListWidgetItem(icons.nav(key, theme.INK_2), label, self.nav)
+        # "새 영상 만들기"는 화면이 아니라 **행동** — 첫 목적(영상 하나 만들기)이
+        # 대시보드 안 [+ 새 프로젝트]에 숨어 있으면 못 찾는다 (2026-08-23 사용자 지적)
+        for key, label in (("dashboard", "대시보드"), ("create", "새 영상 만들기"),
+                           ("library", "라이브러리"), ("jobs", "작업 큐"),
+                           ("settings", "설정")):
+            accent = key == "create"
+            item = QListWidgetItem(
+                icons.nav(key, theme.ACCENT if accent else theme.INK_2), label, self.nav)
             item.setData(Qt.UserRole, key)
+            if accent:
+                from PySide6.QtGui import QColor
+                item.setForeground(QColor(theme.ACCENT))
         self.nav.setIconSize(QSize(18, 18))
         self.nav.setCurrentRow(0)
+        self._nav_row = 0              # 마지막 "화면" 행 — 행동 항목 클릭 후 복귀 지점
+        self._new_video_open = False   # 위저드 이중 오픈 방지 (press·release 가 따로 온다)
         lay.addWidget(self.nav)
 
         self.stack = QStackedWidget()
@@ -92,15 +102,44 @@ class MainWindow(QMainWindow):
 
     # ── 페이지 전환 ──────────────────────────────────────────────────────────
     def _nav_to(self, row: int) -> None:
-        self.stack.setCurrentIndex([0, 3, 4, 5][row] if row < 4 else 0)
+        if row == 1:   # "새 영상 만들기" — 화면 전환이 아니라 위저드를 연다
+            self.nav.blockSignals(True)
+            self.nav.setCurrentRow(self._nav_row)
+            self.nav.blockSignals(False)
+            if not self._new_video_open:
+                # 시그널 핸들러 안에서 exec() 하면 release 이벤트가 두 번째
+                # 대화상자를 연다 — 이벤트 루프로 미룬다
+                self._new_video_open = True
+                QTimer.singleShot(0, self._new_video)
+            return
+        self._nav_row = row
+        self.stack.setCurrentIndex({0: 0, 2: 3, 3: 4, 4: 5}[row])
         if row == 0:
             self.dashboard.refresh()
-        elif row == 1:
-            self.library_page.refresh()
         elif row == 2:
-            self.jobs_page.refresh()
+            self.library_page.refresh()
         elif row == 3:
+            self.jobs_page.refresh()
+        elif row == 4:
             self.settings_page.refresh()
+
+    def _new_video(self) -> None:
+        """내비 [새 영상 만들기] — 위저드에서 만들면 곧장 작업 화면으로.
+
+        단발(홍보·광고·매뉴얼·일반)은 영상 화면 ② 대본으로 직행, 시리즈(강의)는
+        영상 목록으로 (대시보드 [+ 새 프로젝트]와 같은 규칙)."""
+        from .dialogs import NewCourseDialog
+
+        try:
+            dlg = NewCourseDialog(self.make_studio, self)
+            if dlg.exec() and dlg.created:
+                self.dashboard.refresh()
+                if dlg.created.get("episodeId"):
+                    self.show_episode(dlg.created["episodeId"])
+                else:
+                    self.show_course(dlg.created["id"])
+        finally:
+            self._new_video_open = False
 
     def _mark_nav_home(self) -> None:
         """프로젝트·영상은 대시보드에서 파고든 화면이다 — 내비도 그렇게 말해야 한다.

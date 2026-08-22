@@ -99,8 +99,17 @@ def _draw_film(p: QPainter, color: str, *, stacked: bool) -> None:
                              QPointF(cx - 1.8, cy + 2.8)]))
 
 
+def _draw_create(p: QPainter, color: str) -> None:
+    """필름 한 장 + 플러스 — "새 영상 만들기" (내비의 유일한 행동 항목)."""
+    _stroke(p, color)
+    p.drawRoundedRect(QRectF(4, 5.5, 16, 13), 2.2, 2.2)
+    p.drawLine(QPointF(12, 8.5), QPointF(12, 15.5))
+    p.drawLine(QPointF(8.5, 12), QPointF(15.5, 12))
+
+
 _SHAPES = {
     "dashboard": _draw_dashboard,
+    "create": _draw_create,
     "library": _draw_library,
     "jobs": _draw_jobs,
     "settings": _draw_settings,
