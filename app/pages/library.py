@@ -61,6 +61,7 @@ class LibraryPage(QWidget):
         self.play_btn = QPushButton("▶ 미리듣기")
         self.play_btn.setEnabled(False)
         self.play_btn.clicked.connect(self._play)
+        self.audio.bind(self.play_btn, "▶ 미리듣기")
         self.ref_label = QLabel("")
         self.ref_label.setObjectName("caption")
         play_row.addWidget(self.play_btn)
@@ -131,12 +132,15 @@ class LibraryPage(QWidget):
         self.ref_label.setText(f"대본 기입값: {self._rows[row]['ref']}" if ok else "")
 
     def _play(self) -> None:
+        if self.audio.stop_if_playing(self.play_btn):   # 두 번째 클릭 = 중지
+            return
         row = self.table.currentRow()
         if not (0 <= row < len(self._rows)):
             return
         kind, name = self.kind.currentData(), self._rows[row]["name"]
         studio = self._make_studio()
-        run_bg(lambda: studio.asset_path(kind, name), done=self.audio.play,
+        run_bg(lambda: studio.asset_path(kind, name),
+               done=lambda path: self.audio.start(self.play_btn, path),
                fail=lambda e: self.result.setText(error_text(e)))
 
     # ── 받기 ────────────────────────────────────────────────────────────────

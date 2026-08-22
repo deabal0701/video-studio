@@ -37,12 +37,43 @@ class ColorButton(QPushButton):
 
 
 class AudioPreview:
-    """mp3 미리듣기 — TTS 샘플·BGM 시청취 공용 (파일 경로 재생)."""
+    """mp3 미리듣기 — TTS 샘플·BGM 시청취 공용 (파일 경로 재생).
+
+    **재생 버튼은 토글이어야 한다** (2026-08-22 사용자 지적: "중지를 어떻게 하나?").
+    `bind()` 로 버튼을 등록하면 재생 중엔 "중지"로 바뀌고, 끝나면 저절로 돌아온다.
+    한 화면에 버튼이 여럿이면(목소리·BGM) 같은 인스턴스에 전부 등록한다 —
+    플레이어가 하나라 소리도 겹치지 않는다.
+    """
 
     def __init__(self) -> None:
         self.player = QMediaPlayer()
         self.out = QAudioOutput()
         self.player.setAudioOutput(self.out)
+        self._buttons: dict = {}   # 버튼 → 평상시 라벨
+        self._active = None        # 지금 재생을 시작한 버튼
+        self.player.playbackStateChanged.connect(self._sync_buttons)
+
+    def bind(self, btn, idle_text: str) -> None:
+        """버튼을 토글로 등록 — 라벨 관리는 여기서 한다."""
+        self._buttons[btn] = idle_text
+        btn.setText(idle_text)
+
+    def stop_if_playing(self, btn) -> bool:
+        """그 버튼이 시작한 재생이 돌고 있으면 멈추고 True (호출자는 그대로 return)."""
+        if self._active is btn and                 self.player.playbackState() == QMediaPlayer.PlayingState:
+            self.player.stop()
+            return True
+        return False
+
+    def start(self, btn, path) -> None:
+        """버튼 주도 재생 — 라벨이 '중지'로 바뀐다."""
+        self._active = btn
+        self.play(path)
+
+    def _sync_buttons(self, *_a) -> None:
+        playing = self.player.playbackState() == QMediaPlayer.PlayingState
+        for b, idle in self._buttons.items():
+            b.setText("중지" if (playing and b is self._active) else idle)
 
     def play(self, path) -> None:
         self.player.stop()

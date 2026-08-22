@@ -304,6 +304,7 @@ class ClipEditorTab(QWidget):
         voice_row = QHBoxLayout()
         self.voice_btn = QPushButton("▶ 캐시 재생")
         self.voice_btn.clicked.connect(self._play_voice)
+        self.audio.bind(self.voice_btn, "▶ 캐시 재생")
         self.tts_btn = QPushButton("음성 다시 만들기")
         self.tts_btn.clicked.connect(self.tts_requested.emit)
         voice_row.addWidget(self.voice_btn)
@@ -745,12 +746,14 @@ class ClipEditorTab(QWidget):
                                 else "TTS 캐시 없음 — [TTS 실측 갱신]으로 만드세요")
 
     def _play_voice(self) -> None:
+        if self.audio.stop_if_playing(self.voice_btn):   # 두 번째 클릭 = 중지
+            return
         c = self.cur
         if not c:
             return
         p = OUT_ROOT / self.eid / "audio" / f"motion-{c.get('id')}.mp3"
         if p.exists():
-            self.audio.play(p)
+            self.audio.start(self.voice_btn, p)
 
     # ── 저장 (etag — 응답 etag 항상 채택) ───────────────────────────────────
     def _save(self) -> None:

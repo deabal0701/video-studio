@@ -80,6 +80,7 @@ class CourseSettingsTab(QWidget):
         self.voice.setMinimumWidth(300)
         self.tts_btn = QPushButton("▶ 들어보기")
         self.tts_btn.clicked.connect(self._preview_tts)
+        self.audio.bind(self.tts_btn, "▶ 들어보기")
         self.prefetch_btn = QPushButton("전부 미리 만들기")
         self.prefetch_btn.setToolTip("한 번 만들어 두면 이후 들어보기는 즉시 나고 과금도 없습니다")
         self.prefetch_btn.clicked.connect(self._prefetch)
@@ -114,6 +115,7 @@ class CourseSettingsTab(QWidget):
         self.bgm.setMinimumWidth(420)
         self.bgm_play = QPushButton("▶ 듣기")
         self.bgm_play.clicked.connect(self._play_bgm)
+        self.audio.bind(self.bgm_play, "▶ 듣기")
         bgm_row.addWidget(self.bgm)
         bgm_row.addWidget(self.bgm_play)
         bgm_row.addStretch(1)
@@ -203,6 +205,9 @@ class CourseSettingsTab(QWidget):
 
     # ── 미리듣기 (캐시 우선 — 같은 목소리를 두 번 합성하지 않는다) ────────────
     def _preview_tts(self) -> None:
+        if self.audio.stop_if_playing(self.tts_btn):   # 두 번째 클릭 = 중지
+            self.tts_state.setText("")
+            return
         voice_id, prov = self.voice.currentData(), self.provider.currentData()
         if not voice_id:
             return
@@ -210,8 +215,8 @@ class CourseSettingsTab(QWidget):
         studio = self._make_studio()
         self.tts_state.setText("준비 중…")
         run_bg(lambda: studio.voice_sample(prov, voice_id, gender=gender),
-               done=lambda path: (self.audio.play(path),
-                                  self.tts_state.setText("재생 중"),
+               done=lambda path: (self.audio.start(self.tts_btn, path),
+                                  self.tts_state.setText(""),
                                   self._reload_voices(select=voice_id)),
                fail=lambda e: self.tts_state.setText(error_text(e)))
 
@@ -245,12 +250,15 @@ class CourseSettingsTab(QWidget):
                                self.prefetch_btn.setEnabled(True)))
 
     def _play_bgm(self) -> None:
+        if self.audio.stop_if_playing(self.bgm_play):   # 두 번째 클릭 = 중지
+            return
         ref = self.bgm.currentData()
         if not ref:
             return
         studio = self._make_studio()
         name = ref.split("/")[-1]
-        run_bg(lambda: studio.asset_path("bgm", name), done=self.audio.play,
+        run_bg(lambda: studio.asset_path("bgm", name),
+               done=lambda path: self.audio.start(self.bgm_play, path),
                fail=lambda e: self.result.setText(error_text(e)))
 
     # ── 저장 (etag) ──────────────────────────────────────────────────────────

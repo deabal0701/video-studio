@@ -87,6 +87,14 @@ STYLESHEET = f"""
 * {{ font-family: {FONT_STACK}; font-size: {TEXT_BODY}px; color: {INK}; }}
 QMainWindow, QStackedWidget > QWidget {{ background: {BG_PAGE}; }}
 
+/* 툴팁 — 반드시 QSS 로 명시한다. 팔레트(ToolTipBase/Text)만으로는 Windows 다크 모드가
+   덮어써 검정 배경에 검정 글자가 됐다 (2026-08-22 실측 — "글자가 안 보인다").
+   border-radius 는 쓰지 않는다: 툴팁은 네이티브 창이라 모서리 밖이 검게 남는다. */
+QToolTip {{
+  background: {BG_SURFACE}; color: {INK};
+  border: 1px solid {SEPARATOR}; padding: 6px 10px;
+}}
+
 /* 입력 위젯 — 흰 배경·테두리 명시 (OS 테마 차단, 08 §5. border 는 background 와 세트) */
 QLineEdit, QPlainTextEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {{
   background: {BG_SURFACE}; border: 1px solid {SEPARATOR};
