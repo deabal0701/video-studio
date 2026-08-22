@@ -672,7 +672,13 @@ class ClipEditorTab(QWidget):
         c = self.cur
         if not c:
             return
-        if QMessageBox.question(self, "삭제", f"{c.get('id')} 클립을 삭제할까요?") != QMessageBox.Yes:
+        narr = len((c.get("narration") or "").strip())
+        msg = f"{kinds.role_label(c.get('id'))} ({c.get('id')}) 클립을 삭제할까요?"
+        if narr:
+            msg += f"\n\n쓴 내레이션 {narr}자도 함께 지워집니다."
+        if QMessageBox.warning(self, "클립 삭제", msg,
+                               QMessageBox.Yes | QMessageBox.Cancel,
+                               QMessageBox.Cancel) != QMessageBox.Yes:
             return
         self.clips.pop(self._selected)
         self._refresh_list(select=max(0, self._selected - 1))

@@ -21,6 +21,7 @@ class EpisodeCard(QFrame):
     opened = Signal(str)
     create = Signal(int)    # n — [영상 만들기] (03 ②)
     ai_draft = Signal(int)  # n — [✨ AI 초안] (05: 미생성 영상은 스캐폴딩 후 제출)
+    delete_requested = Signal(str, str)   # eid, 표시명 — 확인은 페이지가 맡는다
 
     def __init__(self, entry: dict, badge: dict):
         super().__init__()
@@ -30,10 +31,23 @@ class EpisodeCard(QFrame):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(14, 12, 14, 12)
         lay.setSpacing(6)
-        title = QLabel(f"{entry.get('n', '?')}강 {entry.get('title', '')}")
+        label = f"{entry.get('n', '?')}강 {entry.get('title', '')}"
+        title = QLabel(label)
         title.setWordWrap(True)
         title.setStyleSheet("font-weight: 600;")
-        lay.addWidget(title)
+        head = QHBoxLayout()
+        head.addWidget(title, 1)
+        if badge["state"] != "empty":
+            # 영상 삭제를 카드에서 바로 — 프로젝트만 지울 수 있고 영상 하나는 못
+            # 지우던 구멍 (16회차 P7. 대시보드 카드와 같은 문법)
+            del_btn = QPushButton("삭제")
+            del_btn.setObjectName("cardDelete")
+            del_btn.setCursor(Qt.ArrowCursor)
+            del_btn.setToolTip("이 영상을 삭제합니다 (확인을 거칩니다)")
+            del_btn.clicked.connect(
+                lambda: self.delete_requested.emit(self.eid, label))
+            head.addWidget(del_btn, 0, Qt.AlignTop)
+        lay.addLayout(head)
         # 레인 제목이 이미 상태다 — 카드에 상태 칩을 또 두지 않는다 (09 G5).
         # 대신 이 카드에서만 아는 것(완성본 길이·재빌드 필요)을 보여준다
         row = QHBoxLayout()
@@ -184,6 +198,7 @@ class CoursePage(QWidget):
             card.opened.connect(self.open_episode.emit)
             card.create.connect(self._create_episode)
             card.ai_draft.connect(self._ai_draft)
+            card.delete_requested.connect(self._delete_episode)
             if badge["state"] == "empty":
                 self._ai_cards.append(card)
             lanes.get(badge["state"], lanes["empty"]).addWidget(card)
@@ -228,6 +243,21 @@ class CoursePage(QWidget):
         run_bg(lambda: studio.create_episode(cid, n),
                done=lambda out: (self.load(cid), self.open_episode.emit(out["id"])),
                fail=self._fail)
+
+    def _delete_episode(self, eid: str, label: str) -> None:
+        from PySide6.QtWidgets import QMessageBox
+
+        if QMessageBox.warning(
+                self, "영상 삭제",
+                f'"{label}" 영상을 삭제할까요?' + chr(10) + chr(10) +
+                "대본·완성본(mp4)까지 지워지고 되돌릴 수 없습니다. "
+                "자리는 남아 [영상 만들기]로 다시 만들 수 있습니다.",
+                QMessageBox.Yes | QMessageBox.Cancel,
+                QMessageBox.Cancel) != QMessageBox.Yes:
+            return
+        cid, studio = self.cid, self._make_studio()
+        run_bg(lambda: studio.delete_episode(eid),
+               done=lambda _out: self.load(cid), fail=self._fail)
 
     def _add_episode(self) -> None:
         ns = [e.get("n", 0) for e in self._course.get("episodes", [])]
