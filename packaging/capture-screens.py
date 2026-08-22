@@ -117,16 +117,30 @@ ep, clip = win.episode_page, win.episode_page.clip_tab
 pump(20, lambda: clip.clip_list.count() > 0)
 pump(90, lambda: bool(clip._gallery))
 ids = [c.get("id") for c in clip.clips]
-if "hook" in ids:
-    clip.clip_list.setCurrentRow(ids.index("hook"))
-pump(25)
+
+
+def pick(clip_id: str) -> None:
+    """클립을 고르고 **편집기가 실제로 그 클립을 물었는지 확인한다.**
+
+    `setCurrentRow` 는 신호를 보낼 뿐이고 편집기 갱신은 비동기다. 확인 없이 찍으면
+    직전 클립이 그대로 찍힌다 — 2026-08-22 실측: `06-episode-script.png` 에 hook 대신
+    broll 이 찍혔고(목록 선택만 옮겨가고 오른쪽은 안 바뀐 상태) 아무 오류도 안 났다.
+    """
+    if clip_id not in ids:
+        raise SystemExit(f"클립을 못 찾았다: {clip_id} — 있는 것: {ids}")
+    clip.clip_list.setCurrentRow(ids.index(clip_id))
+    if not pump(30, lambda: (clip.cur or {}).get("id") == clip_id):
+        raise SystemExit(f"편집기가 {clip_id} 로 안 바뀐다 (지금: {(clip.cur or {}).get('id')})")
+
+
+pick("hook")
+pump(25)                            # 프리뷰 로드(node 2회) 를 기다린다
 clip.scrub.setValue(35)
 pump(3)
 shot("06-episode-script")           # ② 대본 (본체)
-if "broll" in ids:                  # B롤 클립 — 다른 편집 상태
-    clip.clip_list.setCurrentRow(ids.index("broll"))
-    pump(5)
-    shot("07-episode-script-broll")
+pick("broll")                       # B롤 클립 — 다른 편집 상태
+pump(5)
+shot("07-episode-script-broll")
 tab(ep.tabs, "구성표")
 pump(12)
 shot("08-episode-plan")             # ① 구성표
@@ -135,7 +149,7 @@ pump(120, lambda: ep.frames_row.count() > 1)
 shot("09-episode-review")           # ③ 검수
 tab(ep.tabs, "배포")
 pump(60, lambda: bool(ep.deploy_tab.title.text()))
-shot("10-episode-deploy")           # ⑦ 배포
+shot("10-episode-deploy")           # ④ 배포
 
 # ── 11~13. 내비 페이지 ───────────────────────────────────────────────────────
 win.nav.setCurrentRow(1)
@@ -154,11 +168,25 @@ from app.pages.first_run import FirstRunWizard  # noqa: E402
 wiz = FirstRunWizard(win.make_studio, win)
 wiz.show()
 pump(20)
+# **첫 쪽에서 찍는지 확인하고 찍는다.** 2026-08-22 실측: 이 두 장이 같은 그림(둘 다 4쪽)으로
+# 커밋됐다 — 찍히는 쪽을 아무도 확인하지 않았기 때문이다. 위저드는 오류를 내지 않고
+# 그냥 그 순간의 쪽을 준다. 무엇이 찍혔는지는 **제목으로 확인**해야 안다.
+wiz.restart()
+pump(2)
+assert wiz.currentPage().title().startswith("1."), \
+    f"첫 실행 위저드가 1쪽이 아니다: {wiz.currentPage().title()!r}"
 shot("14-first-run", wiz)   # 위젯 인자 필수 — 빼면 뒤의 메인 창이 찍힌다
+
 # 마지막 쪽(준비물 — 소재·목소리)까지 넘겨서 찍는다. 1쪽만 찍으면 뒤쪽은 아무도 안 본다
-for _ in range(3):
+first_title = wiz.currentPage().title()
+while wiz.nextId() >= 0:
+    before = wiz.currentId()
     wiz.next()
     pump(8)
+    if wiz.currentId() == before:
+        raise SystemExit(f"위저드가 {wiz.currentPage().title()!r} 에서 안 넘어간다")
+assert wiz.currentPage().title() != first_title, "마지막 쪽이 첫 쪽과 같다"
+print(f"    (위저드 마지막 쪽: {wiz.currentPage().title()})")
 shot("16-first-run-ready", wiz)
 wiz.close()
 
