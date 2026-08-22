@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from . import kinds
+
 # 페이스 (02_data-model "길이·분량 계산" — build.js 규칙과 동일해야 함)
 CHARS_PER_SEC_LECTURE = 6.4
 
@@ -29,8 +31,8 @@ def consistency(scenes: dict[str, Any], course: dict[str, Any]) -> list[str]:
     """규약: 회차 scenes.voice ≡ course.voice ∧ scenes.render ⊇ course.render."""
     problems: list[str] = []
     if course.get("voice") and scenes.get("voice") != course["voice"]:
-        problems.append("voice 가 course.json 과 다르다")
+        problems.append("목소리(voice) 값이 프로젝트 설정과 다릅니다")
     for key, want in (course.get("render") or {}).items():
         if scenes.get("render", {}).get(key) != want:
-            problems.append(f"render.{key} 가 course.json 과 다르다")
+            problems.append(f"{kinds.render_label(key)} 값이 프로젝트 설정과 다릅니다")
     return problems

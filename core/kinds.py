@@ -154,6 +154,21 @@ def param_label(key: str) -> str:
     return f"{PARAM_LABELS[k]} ({k})" if k in PARAM_LABELS else k
 
 
+# 렌더 설정 키 → 표시명 — 일관성 배너 등이 "render.bgm" 을 날것으로 말하면 안 된다.
+RENDER_LABELS = {
+    "background": "배경색", "brand": "브랜드 색", "brandText": "브랜드 글자색",
+    "subtitleScale": "자막 크기", "subtitleMargin": "자막 여백",
+    "watermark": "워터마크", "watermarkAlign": "워터마크 위치",
+    "bgm": "배경음악", "bgmGain": "배경음악 볼륨", "bgmDucking": "배경음악 자동 줄임",
+    "endCard": "마무리 카드",
+}
+
+
+def render_label(key: str) -> str:
+    k = str(key or "")
+    return f"{RENDER_LABELS[k]}({k})" if k in RENDER_LABELS else k
+
+
 # 공용 템플릿 html → 표시명 (10: "사용자가 intro.html 을 어떻게 알 수 있는가").
 # 파일명은 구현이고, 화면에는 무엇이 그려지는지가 보여야 한다.
 TEMPLATE_LABELS = {

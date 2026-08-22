@@ -78,7 +78,7 @@ class PlanTab(QWidget):
         self.save_btn.setObjectName("primary")
         self.save_btn.clicked.connect(self._save)
         self.save_btn.hide()   # 원문을 펼쳤을 때만 — 표는 편집이 없어 저장할 것도 없다
-        self.apply_btn = QPushButton("대본으로 반영 (없는 구간 → 클립 골격)")
+        self.apply_btn = QPushButton("대본으로 반영 — 표에만 있는 구간을 대본에 추가")
         self.apply_btn.clicked.connect(self._apply)
         self.result = QLabel("")
         self.result.setObjectName("caption")
@@ -147,8 +147,10 @@ class PlanTab(QWidget):
         added = out.get("added") or []
         QMessageBox.information(
             self, "대본으로 반영",
-            f"클립 골격 추가: {', '.join(added)} — ② 대본에서 내레이션을 채우세요"
-            if added else "반영할 새 구간 없음 (기존 클립은 보존)")
+            "대본에 구간 추가: "
+            + " · ".join(f"{kinds.role_label(a)} ({a})" for a in added)
+            + " — ② 대본에서 내레이션을 채우세요"
+            if added else "반영할 새 구간 없음 (기존 대본은 그대로)")
         self.result.setText(f"반영 {len(added)}건")
         if added:
             self.applied.emit()
