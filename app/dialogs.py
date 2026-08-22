@@ -1,36 +1,73 @@
-"""모달 다이얼로그 — 새 프로젝트 위저드 (03 ①: 스킬의 "프로젝트 만들기 질문 4개"가 그대로 폼)."""
+"""모달 다이얼로그 — 새 프로젝트 위저드.
+
+**묻는 것은 셋뿐이다: 종류·이름·색** (10_ux-plan #4 — 점진적 노출: 기본만 보이고
+고급은 요청 시). 나머지(id·태그라인·대상·목소리·색 직접 고르기)는 "자세한 설정"
+접기 안에 있고, 전부 만든 뒤 [설정] 탭에서 바꿀 수 있다.
+
+- **id 는 자동 생성** — 종류+날짜(+abc…)로 짓고, 이미 있으면 다음 글자로 물러난다.
+  폴더명이 필요할 뿐 사용자가 지을 이유가 없다 ("프로젝트 id 꼭 필요한가?" — 사용자).
+- **색은 프리셋 4종 원클릭** (파랑·주황·초록·검정 — 전부 대비 검증값). 직접 고르면
+  프리셋 선택이 풀린다.
+- BGM 은 여기서 묻지 않는다 — 기본 BGM 이 깔리고 [설정] 탭에서 바꾼다.
+"""
 
 from __future__ import annotations
 
+from datetime import date
+
+from PySide6.QtCore import QRectF, Qt
+from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (QButtonGroup, QComboBox, QDialog, QDialogButtonBox,
                                QFormLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QPlainTextEdit, QRadioButton, QVBoxLayout)
+                               QPlainTextEdit, QPushButton, QRadioButton, QToolButton,
+                               QVBoxLayout, QWidget)
 
 from core import kinds
+from core.facade import Conflict
 
 from .bridge import error_text, run_bg
-
 from .pages.course_settings import VOICE_PRESETS
 from .widgets import ColorButton
 
+# 표준 길이 — 편집 가능한 콤보라 직접 입력도 된다 (약 6.3자/초 실측 페이스)
+LENGTH_CHOICES = ["1분 (약 380자)", "5분 (약 1,850자)",
+                  "10분 (약 3,700자)", "15분 (약 5,600자)"]
+
+
+def _palette_icon(pal: dict, size: int = 30) -> QIcon:
+    """프리셋 견본 — 배경 위에 브랜드·보조 점. 말로 설명하지 않고 보여준다."""
+    px = QPixmap(size * 2, size)
+    px.setDevicePixelRatio(1.0)
+    px.fill(Qt.transparent)
+    p = QPainter(px)
+    p.setRenderHint(QPainter.Antialiasing, True)
+    p.setPen(QColor("#d2d2d7"))
+    p.setBrush(QColor(pal["bg"]))
+    p.drawRoundedRect(QRectF(0.5, 0.5, size * 2 - 1, size - 1), 6, 6)
+    p.setPen(Qt.NoPen)
+    p.setBrush(QColor(pal["brand"]))
+    p.drawEllipse(QRectF(size * 0.35, size * 0.28, size * 0.44, size * 0.44))
+    p.setBrush(QColor(pal["brandSoft"]))
+    p.drawEllipse(QRectF(size * 1.05, size * 0.36, size * 0.28, size * 0.28))
+    p.end()
+    return QIcon(px)
+
 
 class NewCourseDialog(QDialog):
-    """개설 위저드 — 한 번 정하면 시리즈 내내 고정된다 (수락 시 create_course 제출)."""
+    """만들기 위저드 — 수락 시 create_course(+단발이면 영상 1편까지) 제출."""
 
     def __init__(self, make_studio, parent=None):
         super().__init__(parent)
         self._make_studio = make_studio
         self.created: dict | None = None
-        # 종류를 바꿀 때 **사람이 고친 값은 덮지 않는다** — 자동으로 넣었던 값만 기억한다
-        self._auto_lengths: set[str] = {k["length"] for k in kinds.KINDS.values()}
-        self._auto_colors: set[str] = {c for k in kinds.KINDS.values()
-                                       for c in k["palette"].values()}
-        self.setWindowTitle("새 프로젝트 만들기 — 한 번 정하면 시리즈 내내 고정됩니다")
-        self.setMinimumWidth(520)
+        self._custom_palette = False   # 직접 고르기를 쓰면 프리셋 추종을 멈춘다
+        self.setWindowTitle("새 프로젝트 만들기")
+        self.setMinimumWidth(720)
 
         form = QFormLayout(self)
+        form.setVerticalSpacing(14)
 
-        # 종류가 먼저다 — 골격·길이·색이 여기서 갈린다 (core/kinds.py)
+        # ── 종류 — 골격·길이·색이 여기서 갈린다 ────────────────────────────
         kind_box = QVBoxLayout()
         kind_row = QHBoxLayout()
         self.kind_group = QButtonGroup(self)
@@ -50,18 +87,59 @@ class NewCourseDialog(QDialog):
         form.addRow("종류", kind_box)
         self.kind_group.buttonToggled.connect(self._on_kind)
 
-        self.course_id = QLineEdit()
-        self.course_id.setPlaceholderText("영문 소문자와 붙임표로 (예: hr-basics) — 폴더 이름이 됩니다")
+        # ── 이름 — 유일한 필수 입력 ─────────────────────────────────────────
         self.title = QLineEdit()
-        self.tagline = QLineEdit()
-        self.tagline.setPlaceholderText("예: 개념 하나를, 5분에")
-        self.audience = QPlainTextEdit()
-        self.audience.setPlaceholderText("누가 보는 프로젝트인지 — 대본의 눈높이가 여기서 정해집니다")
-        self.audience.setFixedHeight(72)
-        form.addRow("프로젝트 id", self.course_id)
+        self.title.setPlaceholderText("예: 여름 신제품 소개")
         form.addRow("프로젝트 이름", self.title)
-        form.addRow("태그라인", self.tagline)
-        form.addRow("대상", self.audience)
+
+        # ── 색 — 프리셋 4종 원클릭 ──────────────────────────────────────────
+        pal_box = QVBoxLayout()
+        pal_row = QHBoxLayout()
+        self.preset_group = QButtonGroup(self)
+        self._preset_buttons: dict[str, QPushButton] = {}
+        for name, pal in kinds.PRESET_PALETTES:
+            b = QPushButton(name)
+            b.setCheckable(True)
+            b.setIcon(_palette_icon(pal))
+            b.setIconSize(_palette_icon(pal).availableSizes()[0])
+            b.setProperty("presetName", name)
+            self.preset_group.addButton(b)
+            self._preset_buttons[name] = b
+            pal_row.addWidget(b)
+        pal_row.addStretch(1)
+        pal_box.addLayout(pal_row)
+        pal_note = QLabel("영상의 바탕·강조 색입니다 — 다른 색은 아래 [자세한 설정]에서 직접 고릅니다.")
+        pal_note.setObjectName("caption")
+        pal_box.addWidget(pal_note)
+        form.addRow("색", pal_box)
+        self.preset_group.buttonToggled.connect(self._on_preset)
+
+        # ── 길이 — 콤보 + 직접 입력 ─────────────────────────────────────────
+        self.length = QComboBox()
+        self.length.setEditable(True)
+        self.length.addItems(LENGTH_CHOICES)
+        form.addRow("영상 길이", self.length)
+
+        # ── 자세한 설정 (접기 — 펼치지 않으면 전부 기본값) ──────────────────
+        self.adv_btn = QToolButton()
+        self.adv_btn.setText("자세한 설정 — 태그라인·대상·목소리·폴더 이름·색 직접 고르기")
+        self.adv_btn.setCheckable(True)
+        self.adv_btn.setArrowType(Qt.RightArrow)
+        self.adv_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        form.addRow("", self.adv_btn)
+
+        self.adv = QWidget()
+        adv_form = QFormLayout(self.adv)
+        adv_form.setContentsMargins(0, 0, 0, 0)
+        adv_form.setVerticalSpacing(12)
+
+        self.tagline = QLineEdit()
+        self.tagline.setPlaceholderText("한 줄 소개 (선택 — 예: 개념 하나를, 5분에)")
+        adv_form.addRow("태그라인", self.tagline)
+        self.audience = QPlainTextEdit()
+        self.audience.setPlaceholderText("누가 보는 영상인지 — 대본의 눈높이가 여기서 정해집니다 (선택)")
+        self.audience.setFixedHeight(60)
+        adv_form.addRow("대상", self.audience)
 
         voice_row = QHBoxLayout()
         self.v_female = QRadioButton(VOICE_PRESETS["female"][1])
@@ -69,30 +147,39 @@ class NewCourseDialog(QDialog):
         self.v_male = QRadioButton(VOICE_PRESETS["male"][1])
         voice_row.addWidget(self.v_female)
         voice_row.addWidget(self.v_male)
+        voice_note = QLabel("만든 뒤 [설정] 탭에서 제공자·목소리를 자세히 고를 수 있습니다")
+        voice_note.setObjectName("caption")
+        voice_row.addWidget(voice_note)
         voice_row.addStretch(1)
-        form.addRow("목소리", voice_row)
+        adv_form.addRow("목소리", voice_row)
 
-        pal_row = QHBoxLayout()
+        self.course_id = QLineEdit()
+        self.course_id.setPlaceholderText("비우면 자동 (예: summer-promo — 영문 소문자·붙임표, 폴더 이름)")
+        adv_form.addRow("폴더 이름", self.course_id)
+
+        custom_row = QHBoxLayout()
         _pal = kinds.get(kinds.DEFAULT_KIND)["palette"]
         self.c_brand = ColorButton(_pal["brand"])
         self.c_soft = ColorButton(_pal["brandSoft"])
         self.c_bg = ColorButton(_pal["bg"])
-        for label, btn in (("브랜드", self.c_brand), ("보조", self.c_soft),
-                           ("배경", self.c_bg)):
-            cap = QLabel(label)
+        for cap_text, btn in (("브랜드", self.c_brand), ("보조", self.c_soft),
+                              ("배경", self.c_bg)):
+            cap = QLabel(cap_text)
             cap.setObjectName("caption")
-            pal_row.addWidget(cap)
-            pal_row.addWidget(btn)
-            pal_row.addSpacing(14)
-        pal_row.addStretch(1)
-        form.addRow("색", pal_row)
+            custom_row.addWidget(cap)
+            custom_row.addWidget(btn)
+            custom_row.addSpacing(14)
+            btn.changed.connect(self._on_custom_color)
+        custom_row.addStretch(1)
+        adv_form.addRow("색 직접", custom_row)
 
-        self.length = QLineEdit()
-        form.addRow("영상 길이", self.length)
-        self.bgm = QComboBox()
-        form.addRow("BGM", self.bgm)
+        self.adv.hide()
+        form.addRow("", self.adv)
+        self.adv_btn.toggled.connect(self._toggle_adv)
+
         self.error = QLabel("")
         self.error.setProperty("chip", "err")
+        self.error.setWordWrap(True)
         self.error.hide()
         form.addRow("", self.error)
 
@@ -104,58 +191,97 @@ class NewCourseDialog(QDialog):
         buttons.rejected.connect(self.reject)
         form.addRow(buttons)
 
-        self._on_kind()   # 기본 종류의 설명·길이·색을 처음부터 보여준다
+        self._on_kind()   # 기본 종류의 설명·길이·프리셋을 처음부터 보여준다
 
-        studio = self._make_studio()
-        run_bg(lambda: studio.assets("bgm"),
-               done=lambda bgms: [self.bgm.addItem(a["name"], a["ref"]) for a in bgms],
-               fail=lambda _e: None)
+    # ── 상태 ────────────────────────────────────────────────────────────────
+    def kind(self) -> str:
+        btn = self.kind_group.checkedButton()
+        return btn.property("kindId") if btn else kinds.DEFAULT_KIND
 
+    def _toggle_adv(self, on: bool) -> None:
+        self.adv.setVisible(on)
+        self.adv_btn.setArrowType(Qt.DownArrow if on else Qt.RightArrow)
+        self.adjustSize()
+
+    def _on_kind(self, *_a) -> None:
+        """종류를 바꾸면 설명·길이·프리셋이 따라온다 (직접 고른 색은 안 건드린다)."""
+        spec = kinds.get(self.kind())
+        self.kind_note.setText(spec["desc"])
+        if self.length.currentText().strip() in ("", *LENGTH_CHOICES,
+                                                 *(k["length"] for k in kinds.KINDS.values())):
+            self.length.setCurrentText(spec["length"])
+        if not self._custom_palette:
+            preset = kinds.KIND_PRESET.get(self.kind())
+            btn = self._preset_buttons.get(preset)
+            if btn:
+                btn.setChecked(True)
+
+    def _on_preset(self, btn, on: bool) -> None:
+        if not on:
+            return
+        name = btn.property("presetName")
+        pal = dict(kinds.PRESET_PALETTES)[name]
+        self._custom_palette = False
+        for cb, key in ((self.c_brand, "brand"), (self.c_soft, "brandSoft"),
+                        (self.c_bg, "bg")):
+            cb.blockSignals(True)   # 프리셋 반영이지 사용자 직접 선택이 아니다 (08 §7)
+            cb.set_value(pal[key])
+            cb.blockSignals(False)
+
+    def _on_custom_color(self, *_a) -> None:
+        """직접 고르면 프리셋 추종을 멈추고 선택 표시를 푼다."""
+        self._custom_palette = True
+        self.preset_group.setExclusive(False)
+        for b in self._preset_buttons.values():
+            b.setChecked(False)
+        self.preset_group.setExclusive(True)
+
+    # ── 제출 ────────────────────────────────────────────────────────────────
     def body(self) -> dict:
         return {
             "kind": self.kind(),
-            "episodeLength": self.length.text().strip() or None,
-            "course": self.course_id.text().strip(),
+            "episodeLength": self.length.currentText().strip() or None,
+            "course": self.course_id.text().strip(),   # 비면 _create 가 자동 생성
             "title": self.title.text().strip(),
             "tagline": self.tagline.text().strip(),
             "audience": self.audience.toPlainText().strip(),
             "voice": dict(VOICE_PRESETS["male" if self.v_male.isChecked() else "female"][0]),
             "palette": {"brand": self.c_brand.value, "brandSoft": self.c_soft.value,
                         "bg": self.c_bg.value},
-            "bgm": self.bgm.currentData(),
+            "bgm": None,   # 기본 BGM — [설정] 탭에서 바꾼다
         }
 
-    def kind(self) -> str:
-        btn = self.kind_group.checkedButton()
-        return btn.property("kindId") if btn else kinds.DEFAULT_KIND
-
-    def _on_kind(self, *_a) -> None:
-        """종류를 바꾸면 그 종류의 기본 길이·색을 넣는다 (사람이 고친 값은 안 건드린다)."""
-        spec = kinds.get(self.kind())
-        self.kind_note.setText(spec["desc"])
-        if not self.length.text().strip() or self.length.text().strip() in self._auto_lengths:
-            self.length.setText(spec["length"])
-        pal = spec["palette"]
-        for btn, key in ((self.c_brand, "brand"), (self.c_soft, "brandSoft"),
-                         (self.c_bg, "bg")):
-            if btn.value in self._auto_colors:
-                btn.set_value(pal[key])
-        self._auto_lengths = {spec["length"]}
-        self._auto_colors = set(pal.values())
-
     def _create(self) -> None:
-        """단발 종류(홍보·광고·매뉴얼·일반)는 **영상 1편까지 함께** 만든다.
+        """이름만 있으면 만든다. id 는 자동, 단발 종류는 영상 1편까지 함께.
 
-        "새 프로젝트를 누르면 영상이 만들어지는 것인가?" (2026-08-22 사용자) — 답이
-        종류마다 달라야 직관적이다: 시리즈(강의)는 빈 프로젝트를 열어 편을 추가하고,
-        단발은 만들기 = 곧 영상 1편이라 빈 보드를 거치지 않고 영상 화면으로 직행한다.
+        단발(홍보·광고·매뉴얼·일반)은 만들기 = 곧 영상 1편이라 빈 보드를 거치지 않고
+        영상 화면으로 직행한다 (시리즈인 강의만 편 목록을 거친다).
         """
+        if not self.title.text().strip():
+            self.error.setText("프로젝트 이름을 넣으세요 — 나머지는 전부 나중에 바꿀 수 있습니다")
+            self.error.show()
+            return
         studio = self._make_studio()
         payload = self.body()
         single = not kinds.get(self.kind())["series"]
+        auto_id = not payload["course"]
+        base = f"{self.kind()}-{date.today():%m%d}"
 
         def create():
-            out = studio.create_course(payload)
+            if not auto_id:
+                out = studio.create_course(payload)
+            else:
+                # 자동 id — 이미 있으면 a·b·c… 로 물러난다 (같은 날 여러 개)
+                last_err = None
+                for suffix in ("", "a", "b", "c", "d", "e", "f", "g"):
+                    payload["course"] = base + suffix
+                    try:
+                        out = studio.create_course(payload)
+                        break
+                    except Conflict as err:
+                        last_err = err
+                else:
+                    raise last_err
             if single:
                 ep = studio.create_episode(out["id"], 1, title=payload["title"])
                 out["episodeId"] = ep["id"]

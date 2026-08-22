@@ -74,7 +74,9 @@ from app.dialogs import NewCourseDialog  # noqa: E402
 
 dlg = NewCourseDialog(win.make_studio, win)
 dlg.show()
-pump(10, lambda: dlg.bgm.count() > 0)
+pump(2)
+dlg.adv_btn.setChecked(True)   # 접기까지 펼쳐 찍는다 — 숨은 결함도 봐야 한다
+pump(1)
 shot("02-new-course-wizard", dlg)
 dlg.close()
 

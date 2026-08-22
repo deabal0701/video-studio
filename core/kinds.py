@@ -71,6 +71,42 @@ KINDS: dict[str, dict[str, Any]] = {
 
 DEFAULT_KIND = "lecture"
 
+# 위저드의 원클릭 팔레트 (2026-08-22 사용자: "청·주황·검정·초록 4가지 선택 + 필요시 추가").
+# 전부 대비 검증값 — tests/test_kinds.py 가 종류 팔레트와 같은 기준(4.5:1)으로 지킨다.
+PRESET_PALETTES = [
+    ("파랑", {"brand": "#5B8DEF", "brandSoft": "#A9C6FF", "bg": "#0B1220"}),
+    ("주황", {"brand": "#F97316", "brandSoft": "#FDBA74", "bg": "#140B05"}),
+    ("초록", {"brand": "#22C55E", "brandSoft": "#86EFAC", "bg": "#0A1410"}),
+    ("검정", {"brand": "#F4F4F5", "brandSoft": "#A1A1AA", "bg": "#09090B"}),
+]
+
+# 종류 → 기본 프리셋 이름 (위저드 초기 선택)
+KIND_PRESET = {"lecture": "파랑", "promo": "주황", "ad": "주황",
+               "manual": "파랑", "general": "초록"}
+
+
+# 클립 id → 역할 한국어 (10 #8: "broll·hook·ch2 가 뭔지 모르겠다").
+# id 는 엔진·대본 규약이라 못 바꾼다 — 화면이 역할을 함께 말해준다.
+ROLE_LABELS = {
+    "broll": "실사 도입", "title": "타이틀", "hook": "도입 훅",
+    "stinger": "로고 전환", "promise": "오늘의 약속", "recap": "정리",
+    "outro": "마무리", "intro": "도입", "proof": "핵심 근거",
+}
+
+
+def role_label(clip_id: str | None) -> str:
+    """"도입 훅" 같은 역할 이름 — 모르는 id 는 그대로 돌려준다 (죽지 않는다)."""
+    cid = str(clip_id or "")
+    if cid in ROLE_LABELS:
+        return ROLE_LABELS[cid]
+    base = cid.rstrip("0123456789ab")
+    num = cid[len(base):]
+    if base == "ch":
+        return f"챕터 {num}" if num else "챕터"
+    if base == "s":
+        return f"본문 {num}" if num else "본문"
+    return cid
+
 
 def get(kind: str | None) -> dict[str, Any]:
     """모르는 값이 와도 죽지 않는다 — 옛 프로젝트에는 kind 가 없다."""

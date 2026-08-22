@@ -110,10 +110,10 @@ class EpisodePage(QWidget):
         self.clip_tab.saved.connect(self._on_clip_saved)
         self.clip_tab.tts_requested.connect(lambda: self._build("tts"))
         self.deploy_tab = DeployTab(make_studio)
-        self.tabs.addTab(self.plan_tab, "④ 구성표")
-        self.tabs.addTab(self.clip_tab, "⑤ 대본")
-        self.tabs.addTab(self._make_review_tab(), "⑥ 검수")
-        self.tabs.addTab(self.deploy_tab, "⑦ 배포")
+        self.tabs.addTab(self.plan_tab, "① 구성표")
+        self.tabs.addTab(self.clip_tab, "② 대본")
+        self.tabs.addTab(self._make_review_tab(), "③ 검수")
+        self.tabs.addTab(self.deploy_tab, "④ 배포")
         self.tabs.setCurrentIndex(1)
         self.tabs.currentChanged.connect(self._on_tab)
         outer.addWidget(self.tabs, 1)
@@ -215,7 +215,8 @@ class EpisodePage(QWidget):
     # ── 로드 ────────────────────────────────────────────────────────────────
     def load(self, eid: str) -> None:
         self.eid = eid
-        self.title.setText(eid)
+        self.title.setText(eid)          # 즉시 표시 — 아래에서 사람 이름으로 바꾼다
+        self._load_display_name(eid)
         self.error.hide()
         self._studio = self._make_studio()
         studio = self._studio
@@ -338,6 +339,30 @@ class EpisodePage(QWidget):
                done=lambda _o: self.load(eid), fail=self._fail)
 
     # ── 검수 자료 ───────────────────────────────────────────────────────────
+    def _load_display_name(self, eid: str) -> None:
+        """제목을 폴더 id("hr-basic3-01")가 아니라 **"프로젝트명 — 1편 제목"** 으로 (10 #9).
+
+        id 는 폴더 이름일 뿐이다 — 사람이 붙인 이름과의 관계가 화면에 보여야 한다.
+        프로젝트가 없으면(단일 영상) id 그대로 둔다.
+        """
+        cid = eid.rsplit("-", 1)[0]
+        studio = self._make_studio()
+
+        def get():
+            course = studio.get_course(cid)["course"]
+            entry = next((e for e in course.get("episodes", []) if e.get("id") == eid), {})
+            return course.get("title", cid), entry.get("n"), entry.get("title", "")
+
+        def fill(r):
+            ctitle, n, etitle = r
+            label = ctitle + (f" — {n}편" if n else "")
+            if etitle and etitle != ctitle:
+                label += f" {etitle}"
+            self.title.setText(label)
+            self.title.setToolTip(f"폴더: {eid}")
+
+        run_bg(get, done=fill, fail=lambda _e: None)
+
     def _load_review(self) -> None:
         eid, studio = self.eid, self._studio
 
@@ -428,7 +453,7 @@ class EpisodePage(QWidget):
                    if self._checklist.get("items", {}).get(k))
         stamp = self._checklist.get("updatedAt", "")
         if done == len(CHECK_ITEMS):
-            self.check_note.setText(f"검수 완료 — ⑦ 배포 탭으로 넘어가세요"
+            self.check_note.setText(f"검수 완료 — ④ 배포 탭으로 넘어가세요"
                                     + (f" (기록 {stamp})" if stamp else ""))
             self.check_note.setStyleSheet(f"color: {theme.SUCCESS};")
         else:

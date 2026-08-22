@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QFormLayou
                                QProgressBar, QPushButton, QScrollArea, QSplitter,
                                QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
 
-from core import env, paths
+from core import env, kinds, paths
 from core.status import OUT_ROOT
 # 강의 페이스(자/초)의 정본은 core.validate — 화면이 사본을 두면 갈라진다 (02 길이 계산)
 from core.validate import CHARS_PER_SEC_LECTURE as PACE
@@ -362,8 +362,11 @@ class ClipEditorTab(QWidget):
         self.clip_list.clear()
         for c in self.clips:
             secs, measured = clip_seconds(c, self.audio_cache)
-            label = f"{c.get('id', '?'):<9} {c.get('file') or c.get('video') or '—'}"
-            item = QListWidgetItem(f"≡ {label}  {secs:.1f}s{'' if measured else '?'}")
+            # 역할을 한국어로 먼저 — id 는 괄호 보조 (10 #8)
+            role = kinds.role_label(c.get("id"))
+            label = f"{role} ({c.get('id', '?')})"
+            item = QListWidgetItem(f"≡ {label:<16} {c.get('file') or c.get('video') or '—'}"
+                                   f"  {secs:.1f}s{'' if measured else '?'}")
             item.setToolTip(c.get("narration", ""))
             self.clip_list.addItem(item)
         self.clip_list.blockSignals(False)
@@ -464,7 +467,7 @@ class ClipEditorTab(QWidget):
         if c is None:
             return
         self._loading = True
-        self.cur_id.setText(c.get("id", "?"))
+        self.cur_id.setText(f'{kinds.role_label(c.get("id"))} ({c.get("id", "?")})')
         is_broll = "video" in c
         self.screen_label.setText(c.get("file") or c.get("video") or "(미선택)")
         self.tpl_btn.setVisible(not is_broll)

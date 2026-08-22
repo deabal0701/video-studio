@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (QAbstractItemView, QCheckBox, QComboBox, QFormLayout,
                                QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea,
                                QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
@@ -89,7 +89,7 @@ class SettingsPage(QWidget):
         lay.addWidget(self.override_note)
 
         save_row = QHBoxLayout()
-        self.save_btn = QPushButton("저장")
+        self.save_btn = QPushButton("키 저장")   # 무엇을 저장하는지 버튼이 말한다 (10 #1)
         self.save_btn.setObjectName("primary")
         self.save_btn.clicked.connect(self._save)
         self.result = QLabel("")
@@ -100,13 +100,18 @@ class SettingsPage(QWidget):
         lay.addLayout(save_row)
 
         # ── 자가진단 ─────────────────────────────────────────────────────────
-        diag_head = QLabel("자가진단")
+        diag_head = QLabel("환경 점검")
         diag_head.setObjectName("sectionTitle")
         lay.addWidget(diag_head)
+        diag_desc = QLabel("영상을 만들 준비가 됐는지 확인합니다 — 빠진 것이 있으면 "
+                           "무엇을 하면 되는지 함께 보여줍니다.")
+        diag_desc.setObjectName("caption")
+        diag_desc.setWordWrap(True)
+        lay.addWidget(diag_desc)
         diag_row = QHBoxLayout()
         self.diag_btn = QPushButton("다시 점검")
         self.diag_btn.clicked.connect(self._diagnose)
-        self.tts_btn = QPushButton("TTS 연결 확인 (한 문장 실제 합성)")
+        self.tts_btn = QPushButton("목소리 합성 테스트 (한 문장을 실제로 만들어 봅니다)")
         self.tts_btn.clicked.connect(self._check_tts)
         self.tts_result = QLabel("")
         self.tts_result.setObjectName("caption")
@@ -174,8 +179,9 @@ class SettingsPage(QWidget):
         self.override_note.setVisible(bool(overrides))
         if overrides:
             self.override_note.setText(
-                f"아래 값은 {', '.join(sorted({sources[n] for n in overrides}))} 가 이기고 "
-                f"있습니다 — 여기서 고쳐 저장해도 적용되지 않습니다: {', '.join(overrides)}")
+                f"다음 값은 {', '.join(sorted({sources[n] for n in overrides}))} 에 설정돼 "
+                f"있어 그 값이 우선 적용됩니다 — 여기서 바꾸려면 그 파일에서 지우세요: "
+                f"{', '.join(overrides)}")
         self._loaded = True
 
     # ── 저장 ────────────────────────────────────────────────────────────────
@@ -201,19 +207,33 @@ class SettingsPage(QWidget):
                                self.diag_btn.setEnabled(True)))
 
     def _fill_diag(self, checks: list[dict]) -> None:
+        """점검 결과를 **한 줄씩** 채운다 — OK 가 차례로 찍히는 것이 보여야
+        "점검했다"가 전달된다 (10 #3b: "체크를 하는 동작을 보여주면 좋겠다")."""
         self.diag_btn.setEnabled(True)
-        self.diag_table.setRowCount(len(checks))
-        for i, c in enumerate(checks):
-            self.diag_table.setItem(i, 0, QTableWidgetItem(c["name"]))
-            state = QTableWidgetItem("OK" if c["ok"] else "없음")
-            state.setForeground(Qt.darkGreen if c["ok"] else Qt.red)
-            self.diag_table.setItem(i, 1, state)
-            detail = c["detail"] + ("" if c["ok"] or not c["hint"] else f"  → {c['hint']}")
-            self.diag_table.setItem(i, 2, QTableWidgetItem(detail))
+        self.diag_table.setRowCount(0)
+        self._diag_queue = list(checks)
+        self._diag_timer = QTimer(self)
+        self._diag_timer.setInterval(140)
+        self._diag_timer.timeout.connect(self._diag_tick)
+        self._diag_timer.start()
+
+    def _diag_tick(self) -> None:
+        if not self._diag_queue:
+            self._diag_timer.stop()
+            return
+        c = self._diag_queue.pop(0)
+        i = self.diag_table.rowCount()
+        self.diag_table.insertRow(i)
+        self.diag_table.setItem(i, 0, QTableWidgetItem(c["name"]))
+        state = QTableWidgetItem("OK" if c["ok"] else "없음")
+        state.setForeground(Qt.darkGreen if c["ok"] else Qt.red)
+        self.diag_table.setItem(i, 1, state)
+        detail = c["detail"] + ("" if c["ok"] or not c["hint"] else f"  → {c['hint']}")
+        self.diag_table.setItem(i, 2, QTableWidgetItem(detail))
         # 표가 제 내용만큼 자란다 — 스크롤 안의 스크롤은 못 쓴다 (09 G3)
         self.diag_table.setFixedHeight(
             self.diag_table.horizontalHeader().height()
-            + sum(self.diag_table.rowHeight(i) for i in range(len(checks))) + 4)
+            + sum(self.diag_table.rowHeight(r) for r in range(i + 1)) + 4)
 
     def _check_tts(self) -> None:
         studio = self._make_studio()

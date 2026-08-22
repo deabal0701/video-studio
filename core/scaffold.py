@@ -59,10 +59,10 @@ def scaffold_course(root: Path, course_id: str, *, title: str, tagline: str = ""
                    "kind": kind or kinds_mod.DEFAULT_KIND})
     if not episode_length:
         episode_length = spec["length"]
-    if tagline:
-        course["tagline"] = tagline
-    if audience:
-        course["audience"] = audience
+    # 빈 값도 **반드시 덮는다** — 안 덮으면 템플릿의 "[시그니처 인트로 한 줄 —…]"
+    # 대괄호 안내문이 값으로 남아 타이틀 카드에 그대로 박힌다 (2026-08-22 실측)
+    course["tagline"] = tagline
+    course["audience"] = audience
     if episode_length:
         course["episodeLength"] = episode_length
     course["episodes"] = episodes or []

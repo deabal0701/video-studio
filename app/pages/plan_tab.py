@@ -124,7 +124,7 @@ class PlanTab(QWidget):
         added = out.get("added") or []
         QMessageBox.information(
             self, "대본으로 반영",
-            f"클립 골격 추가: {', '.join(added)} — ⑤ 에서 내레이션을 채우세요"
+            f"클립 골격 추가: {', '.join(added)} — ② 대본에서 내레이션을 채우세요"
             if added else "반영할 새 구간 없음 (기존 클립은 보존)")
         self.result.setText(f"반영 {len(added)}건")
         if added:

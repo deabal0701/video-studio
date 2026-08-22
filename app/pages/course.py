@@ -97,10 +97,11 @@ class CoursePage(QWidget):
         self.board_scroll = QScrollArea()
         self.board_scroll.setWidgetResizable(True)
         self.brandkit = BrandKitTab(make_studio)
-        self.tabs.addTab(self.settings, "① 설정")
-        self.tabs.addTab(self.board_scroll, "② 영상 목록")
-        self.tabs.addTab(self.brandkit, "③ 브랜드 킷")
-        self.tabs.setCurrentIndex(1)  # 보드가 기본 탭 (07 재편)
+        # 번호를 붙이지 않는다 — 이 셋은 **순서가 아니다** (10 #6: 번호가 순서를
+        # 사칭해 "①부터 해야 하나"로 읽혔다). 순서인 것은 영상 안의 4단계뿐.
+        self.tabs.addTab(self.board_scroll, "영상 목록")
+        self.tabs.addTab(self.settings, "설정")
+        self.tabs.addTab(self.brandkit, "브랜드 킷")
         self.tabs.currentChanged.connect(self._tab_changed)
         outer.addWidget(self.tabs, 1)
         self._course: dict = {}
@@ -114,7 +115,7 @@ class CoursePage(QWidget):
     def _tab_changed(self, idx: int) -> None:
         if not self.cid:
             return
-        if idx == 0:
+        if idx == 1:
             self.settings.load(self.cid)
         elif idx == 2:
             self.brandkit.load(self.cid)

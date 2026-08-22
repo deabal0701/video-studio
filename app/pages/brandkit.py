@@ -46,7 +46,7 @@ class BrandKitTab(QWidget):
         pv.addWidget(self.pv_title)
         pv_col = QVBoxLayout()
         pv_col.addWidget(self.preview)
-        cap = QLabel("축소판입니다 — 엔진이 실제로 그리는 화면은 영상의 ⑤ 대본 탭 프리뷰에서 봅니다.")
+        cap = QLabel("축소판입니다 — 엔진이 실제로 그리는 화면은 영상의 ② 대본 탭 프리뷰에서 봅니다.")
         cap.setObjectName("caption")
         cap.setWordWrap(True)
         cap.setFixedWidth(480)
