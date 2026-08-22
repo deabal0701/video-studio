@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QSize, Qt, QTimer
-from PySide6.QtWidgets import (QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
-                               QMainWindow, QStackedWidget, QStatusBar, QWidget)
+from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
+                               QMainWindow, QStackedWidget, QStatusBar, QVBoxLayout,
+                               QWidget)
 
 from core import env
 
@@ -29,13 +30,54 @@ class MainWindow(QMainWindow):
         self.make_studio = lambda: self._studio
 
         central = QWidget()
-        lay = QHBoxLayout(central)
+        outer = QVBoxLayout(central)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        # 창 상단 경계선 — OS 제목줄(흰색)과 흰 내비가 맞닿아 **창의 윗변이 반쪽만
+        # 그어져 있었다**: 좌측 200px 은 ffffff→ffffff 라 경계가 아예 없고, 내비가
+        # 끝나는 x=200 부터서야 ffffff→f5f5f7 로 선이 생겨 상단이 계단처럼 보인다
+        # (2026-08-23 사용자: "화면 상단이 매끄럽지 않다" — 실측 픽셀로 확인).
+        # 하단 상태바는 border-top 으로 이미 닫혀 있었다 — 같은 문법으로 위도 닫는다.
+        top_rule = QFrame()
+        top_rule.setObjectName("topRule")
+        top_rule.setFixedHeight(1)
+        outer.addWidget(top_rule)
+
+        body = QWidget()
+        lay = QHBoxLayout(body)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
 
+        # 내비 열 = 브랜드 머리 + 메뉴. **창의 좌상단은 시선이 가장 먼저 닿는 자리인데**
+        # 지금까지 거기 앉아 있던 것은 가장 약한 것(작은 회색 메뉴 글자)이었고, 바로 옆
+        # 본문에는 28px 볼드 제목이 있어 위계가 뒤집혀 있었다 (P22). 또 설치형 앱인데
+        # 클라이언트 영역 어디에도 제품 이름이 없어 "Video Studio" 를 말하는 것은 OS
+        # 제목줄의 작은 회색 글자뿐이었다 (P14·P25 — 여러 창 사이에서 자기를 못 밝힌다).
+        # (2026-08-23 사용자: "제목표시줄과 약간의 공백 — 다른 것을 채워 넣을 수 있나")
+        side = QFrame()
+        side.setObjectName("side")
+        side.setFixedWidth(200)
+        side_lay = QVBoxLayout(side)
+        side_lay.setContentsMargins(0, 0, 0, 0)
+        side_lay.setSpacing(0)
+
+        brand = QWidget()
+        brand_lay = QHBoxLayout(brand)
+        # 로고 왼쪽 16px = 내비 항목 아이콘의 왼쪽 여백 — 세로선이 하나로 맞는다
+        brand_lay.setContentsMargins(16, 14, 14, 12)
+        brand_lay.setSpacing(9)
+        mark = QLabel()
+        mark.setPixmap(icons.app_icon().pixmap(24, 24))
+        mark.setFixedWidth(24)
+        brand_lay.addWidget(mark)
+        word = QLabel("Video Studio")
+        word.setObjectName("brandWord")
+        brand_lay.addWidget(word, 1)
+        side_lay.addWidget(brand)
+
         self.nav = QListWidget()
         self.nav.setObjectName("nav")
-        self.nav.setFixedWidth(200)
         # 이모지 금지 — OS 폰트가 제각각으로 그린다 (09 G4).
         # 아이콘이 필요하면 **코드로 그린다** (app/icons.py) — 어느 PC 에서나 같은 그림이다
         # "새 영상 만들기"는 화면이 아니라 **행동** — 첫 목적(영상 하나 만들기)이
@@ -54,7 +96,8 @@ class MainWindow(QMainWindow):
         self.nav.setCurrentRow(0)
         self._nav_row = 0              # 마지막 "화면" 행 — 행동 항목 클릭 후 복귀 지점
         self._new_video_open = False   # 위저드 이중 오픈 방지 (press·release 가 따로 온다)
-        lay.addWidget(self.nav)
+        side_lay.addWidget(self.nav, 1)
+        lay.addWidget(side)
 
         self.stack = QStackedWidget()
         self.dashboard = DashboardPage(self.make_studio)
@@ -67,6 +110,7 @@ class MainWindow(QMainWindow):
                   self.library_page, self.jobs_page, self.settings_page):
             self.stack.addWidget(w)
         lay.addWidget(self.stack, 1)
+        outer.addWidget(body, 1)
         self.setCentralWidget(central)
 
         # 내비 ↔ 스택 (프로젝트/영상 페이지는 내비 밖 — 카드 열기로 진입)
