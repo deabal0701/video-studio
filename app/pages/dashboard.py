@@ -6,7 +6,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel, QProgressBar,
                                QPushButton, QScrollArea, QVBoxLayout, QWidget)
 
-from .. import theme
+from .. import icons, theme
 from ..bridge import error_text, run_bg
 
 
@@ -22,10 +22,21 @@ class CourseCard(QFrame):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(18, 16, 18, 16)
         lay.setSpacing(8)
+        # 아이콘 + 제목 한 줄 — 아이콘은 **그 프로젝트의 브랜드 색**으로 칠한다.
+        # 색이 곧 정체성이라(타이틀 카드에 그대로 쓰인다) 목록에서 색만 보고 알아본다.
+        head = QHBoxLayout()
+        head.setSpacing(10)
+        mark = QLabel()
+        mark.setPixmap(icons.project(info.get("brand") or "",
+                                     series=not info.get("single")).pixmap(22, 22))
+        mark.setFixedWidth(24)
+        mark.setAlignment(Qt.AlignTop)
+        head.addWidget(mark)
         title = QLabel(info.get("title", info["id"]))
         title.setWordWrap(True)
         title.setStyleSheet("font-size: 16px; font-weight: 600;")
-        lay.addWidget(title)
+        head.addWidget(title, 1)
+        lay.addLayout(head)
         if info.get("single"):
             sub = QLabel("단발 영상")
             sub.setObjectName("caption")

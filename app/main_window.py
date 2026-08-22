@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import (QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
                                QMainWindow, QStackedWidget, QStatusBar, QWidget)
 
 from core import env
 
+from . import icons, theme
 from .bridge import Bridge
 from .pages.course import CoursePage
 from .pages.dashboard import DashboardPage
@@ -34,9 +36,13 @@ class MainWindow(QMainWindow):
         self.nav = QListWidget()
         self.nav.setObjectName("nav")
         self.nav.setFixedWidth(200)
-        # 이모지 금지 — OS 폰트가 제각각으로 그린다 (09 G4). 텍스트만으로 충분하다
-        for label in ("대시보드", "라이브러리", "작업 큐", "설정"):
-            QListWidgetItem(label, self.nav)
+        # 이모지 금지 — OS 폰트가 제각각으로 그린다 (09 G4).
+        # 아이콘이 필요하면 **코드로 그린다** (app/icons.py) — 어느 PC 에서나 같은 그림이다
+        for key, label in (("dashboard", "대시보드"), ("library", "라이브러리"),
+                           ("jobs", "작업 큐"), ("settings", "설정")):
+            item = QListWidgetItem(icons.nav(key, theme.INK_2), label, self.nav)
+            item.setData(Qt.UserRole, key)
+        self.nav.setIconSize(QSize(18, 18))
         self.nav.setCurrentRow(0)
         lay.addWidget(self.nav)
 

@@ -157,8 +157,16 @@ class Studio:
                 out.append(c)
                 continue
             episodes = [self._episode_summary(e) for e in c["episodes"]]
+            # 브랜드 색·종류 — 화면이 프로젝트 아이콘을 그 색으로 칠한다 (app/icons.py)
+            brand, kind = "", None
+            try:
+                doc = schema.load_json(self.root / c["id"] / "course.json")
+                brand = (doc.get("palette") or {}).get("brand", "")
+                kind = doc.get("kind")
+            except Exception:  # noqa: BLE001 — 색을 못 읽어도 목록은 떠야 한다
+                pass
             out.append({"id": c["id"], "title": c["title"], "episodeCount": c["episodeCount"],
-                        "scaffolded": len(episodes),
+                        "scaffolded": len(episodes), "brand": brand, "kind": kind,
                         "done": sum(1 for e in episodes if e["state"] == "done")})
         return out
 

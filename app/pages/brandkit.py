@@ -34,6 +34,7 @@ class BrandKitTab(QWidget):
 
         # 간이 프리뷰 — palette 를 타이틀 카드 구도로
         self.preview = QFrame()
+        self.preview.setObjectName("kitPreview")
         self.preview.setFixedSize(480, 270)
         pv = QVBoxLayout(self.preview)
         pv.setAlignment(Qt.AlignCenter)
@@ -63,6 +64,7 @@ class BrandKitTab(QWidget):
         self.swatches: dict[str, tuple[QFrame, QLabel]] = {}
         for key, label in (("brand", "브랜드"), ("brandSoft", "보조"), ("bg", "배경")):
             chip = QFrame()
+            chip.setObjectName("swatch")
             chip.setFixedSize(30, 20)
             code = QLabel("")
             code.setObjectName("caption")
@@ -114,7 +116,9 @@ class BrandKitTab(QWidget):
         bg = pal.get("bg", _P["bg"])
         brand = pal.get("brand", _P["brand"])
         soft = pal.get("brandSoft", _P["brandSoft"])
-        self.preview.setStyleSheet(f"background: {bg}; border-radius: 12px;")
+        # 선택자 필수 — 자식 라벨까지 물들이지 않게 (Qt 스타일시트는 자식에 전파된다)
+        self.preview.setStyleSheet(f"#kitPreview {{ background: {bg};"
+                                   " border-radius: 12px; }")
         self.pv_kicker.setText(d.get("title", ""))
         self.pv_kicker.setStyleSheet(f"color: {soft}; font-size: 12px; letter-spacing: 2px;")
         self.pv_title.setText("1강 — 영상 제목 자리")
@@ -123,8 +127,8 @@ class BrandKitTab(QWidget):
             f"border-bottom: 2px solid {brand}; padding-bottom: 6px;")
         for key, value in (("brand", brand), ("brandSoft", soft), ("bg", bg)):
             chip, code = self.swatches[key]
-            chip.setStyleSheet(f"background: {value}; border: 1px solid #d7dae0;"
-                               " border-radius: 4px;")
+            chip.setStyleSheet(f"#swatch {{ background: {value};"
+                               " border: 1px solid #d7dae0; border-radius: 4px; }")
             code.setText(value)
         font = d.get("fontUrl") or d.get("font") or ""
         self.font_label.setText(font.rsplit("/", 1)[-1] if font else "프로젝트 기본 글꼴")
