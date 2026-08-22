@@ -1,5 +1,22 @@
 # PySide6 실행 환경 — conda 로 통일 (2026-08-21 확정)
 
+## 어느 환경을 쓰나 (한 줄 규칙 — 2026-08-22 사용자 질문으로 명문화)
+
+| 하는 일 | 환경 | 직접 만질 일 |
+|---|---|---|
+| **개발 전부** — 앱 실행·pytest·캡처·core | conda `penv3.13-insait` | O (일상) |
+| **설치본 동결만** — `build-installer.ps1` | `.qt-venv` (pip 휠) | **X — 스크립트가 알아서 만들고 쓴다** |
+
+`.qt-venv` 는 개발 환경이 아니라 **빌드 도구다** (Inno Setup 과 같은 지위). 지워도 되고
+(`build-installer.ps1` 이 재생성), 활성화할 일도 없고, 새 conda env(penv3.13-video 등)를
+만들어도 통일되지 않는다 — 문제는 env 이름이 아니라 **conda 의 파일 배치 자체**라서다:
+
+- pip 휠 PySide6 ← conda 파이썬에서 안 뜬다 (Qt6Core.dll WinError 127, 실측)
+- conda-forge PySide6 ← PyInstaller 훅이 Qt 자산을 못 찾는다 (site-packages 밖
+  `$PREFIX\Library\` 에 있음 — 실측 conda 0개 vs pip 휠 144개 DLL)
+
+양쪽 제약이 반대 방향이라 **두 개가 최소**다. 개발자는 conda 만 기억하면 된다.
+
 **파이썬은 conda `penv3.13-insait` 하나다** — core·pytest·앱(PySide6) 전부.
 단, PySide6 는 **pip 휠 금지, conda-forge 빌드 필수**:
 
