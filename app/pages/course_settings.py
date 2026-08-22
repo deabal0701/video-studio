@@ -120,7 +120,7 @@ class CourseSettingsTab(QWidget):
         bgm_row.addWidget(self.bgm)
         bgm_row.addWidget(self.bgm_play)
         bgm_row.addStretch(1)
-        form.addRow("BGM", bgm_row)
+        form.addRow("배경음악", bgm_row)
 
         # 길이 = 콤보 + 자동 글자수 — 위저드와 같은 UX (루프 4회차 P10·P11:
         # "글자수 지정은 너무 어렵다"가 이 탭에는 남아 있었다)
@@ -137,7 +137,7 @@ class CourseSettingsTab(QWidget):
         form.addRow("영상 길이", len_box)
 
         save_row = QHBoxLayout()
-        self.save_btn = QPushButton("저장")
+        self.save_btn = QPushButton("설정 저장")
         self.save_btn.setObjectName("primary")
         self.save_btn.clicked.connect(self._save)
         self.result = QLabel("")
