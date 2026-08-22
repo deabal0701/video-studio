@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>앱 화면 카드</title>
+    <link rel="stylesheet" href="../../../engine/motion/_base.css" />
+    <style>
+      /* 실제 앱 화면(PNG)을 얹는 카드 — 사용법 영상의 주력 템플릿이다.
+
+         정지 화면을 그냥 띄우면 "멈춘 영상"으로 보이므로 아주 느린 밀어들어가기를 건다.
+         **크롭(cx·cy·cw·ch)이 핵심이다** — 1600x900 앱 화면을 통째로 넣으면 14px 글자가
+         1080p 프레임에서 안 읽힌다. 설명하는 영역만 잘라 키워야 시청자가 읽는다.
+
+         params:
+           src   화면 PNG (이 파일 기준 상대 또는 절대) — 필수
+           step  좌상단 단계 칩 ("② 영상 목록")
+           cx cy cw  크롭 (원본 대비 %, 기본 0/0/100 = 전체). ch 는 안 주면 cw 와 같다
+           hx hy hw hh  강조 사각형 (원본 대비 %) — 주면 바깥이 어두워지고 테두리가 뜬다
+           ht    강조가 나타나는 시각(초, 기본 1.2) — 내레이션이 그 말을 하는 순간에 맞춘다
+           kb    밀어들어가기 세기 (기본 0.04 = 4%) · dur 그 시간(초)
+           fit   cover(기본, 창 전체 캡처) | contain(대화상자 캡처 — 4:3 이라 잘리면 안 된다)
+           fw    틀의 가로 폭(vw, 기본 72 = 16:9). 세로형 대화상자 캡처는 **그 그림의 가로세로
+                 비율 × 40.5** 로 준다 (1435×1085 → 53.6 · 910×775 → 47.6) — 빈 띠가 없어진다
+                 (틀 높이가 72vh 로 고정이라, 비율 A 를 내려면 폭 = A × 72 ÷ 1.778 = A × 40.5)
+      */
+      .stage { padding: 0; gap: 0; justify-content: flex-start; }
+
+      .chip {
+        position: absolute;
+        top: 3.6vh;
+        left: 4.2vw;
+        z-index: 3;
+        font-size: 2.9vh;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: #fff;
+        background: color-mix(in srgb, var(--brand) 85%, black);
+        padding: 0.9vh 2.2vh;
+        border-radius: 999px;
+        animation-name: fadeUp;
+        animation-duration: 0.6s;
+        animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+
+      /* 화면이 앉는 틀. 자막은 하단 ~16vh 까지 올라오므로 그 위(81.5vh)에서 끝낸다.
+         **틀을 16:9 로 맞춘 것이 중요하다.** 16:9 프레임에서 높이 H vh 인 상자의 16:9 폭은
+         정확히 H vw 다(100vh=1080 · 100vw=1920). 틀이 화면 캡처(16:9)와 같은 비율이라야
+         `cover` 가 아무것도 잘라내지 않고, 그래야 cx·hy 같은 %가 **원본 PNG 의 %와 1:1** 로
+         맞는다. 틀을 더 넓게(91.6vw) 잡았더니 cover 가 세로를 23% 잘라내
+         "원본 45% 지점"이 화면 58% 에 찍혔다 — 강조 상자가 엉뚱한 곳을 가리켰다(실측). */
+      .frame {
+        position: absolute;
+        top: 9.5vh;
+        left: calc((100vw - var(--fw, 72) * 1vw) / 2);
+        width: calc(var(--fw, 72) * 1vw);
+        height: 72vh;
+        border-radius: 1.6vh;
+        overflow: hidden;
+        background: #0a0c10;
+        box-shadow: 0 2.4vh 6vh rgb(0 0 0 / 0.55), 0 0 0 0.2vh rgb(255 255 255 / 0.09);
+        animation-name: frameIn;
+        animation-duration: 0.9s;
+        animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+      @keyframes frameIn {
+        from { opacity: 0; transform: translateY(2.4vh) scale(0.985); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      /* 켄번즈 — 크롭 변환과 섞이지 않게 층을 따로 둔다 */
+      .kb {
+        width: 100%;
+        height: 100%;
+        animation-name: push;
+        animation-duration: var(--kb-dur, 24s);
+        animation-timing-function: linear;
+      }
+      @keyframes push {
+        from { transform: scale(1); }
+        to   { transform: scale(calc(1 + var(--kb, 0.04))); }
+      }
+
+      /* 크롭 — transform-origin 0 0 에서 (cx,cy)를 좌상단으로 끌어와 확대한다 */
+      .canvas {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transform-origin: 0 0;
+        transform: scale(var(--z, 1)) translate(calc(var(--cx, 0) * -1%), calc(var(--cy, 0) * -1%));
+      }
+      /* 창 전체(16:9) 캡처는 cover 로 꽉 채우고, 대화상자 캡처(4:3)는 fit=contain 으로
+         통째로 보인다 — cover 로 두면 위저드 아래쪽 버튼이 잘려 나간다. */
+      .canvas > img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: var(--fit, cover);
+        object-position: center top;
+      }
+
+      /* 강조 — 상자 바깥을 통째로 덮는 거대한 spread 그림자.
+         "여기를 보라"를 말이 아니라 그림으로 한다. 테두리·반경은 크롭 배율로 나눠
+         화면을 키워도 선 굵기가 같아 보이게 한다. */
+      .spot {
+        position: absolute;
+        left: calc(var(--hx, 0) * 1%);
+        top: calc(var(--hy, 0) * 1%);
+        width: calc(var(--hw, 10) * 1%);
+        height: calc(var(--hh, 10) * 1%);
+        border: calc(0.34vh / var(--z, 1)) solid var(--brand-soft);
+        border-radius: calc(1vh / var(--z, 1));
+        animation-name: spotIn;
+        animation-duration: 0.7s;
+        animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+      @keyframes spotIn {
+        from { opacity: 0; box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0); }
+        to   { opacity: 1; box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.5); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="chip animated" data-p="step"></div>
+      <div class="frame animated">
+        <div class="kb animated">
+          <div class="canvas">
+            <img id="shot" alt="" />
+            <div class="spot animated"></div>
+          </div>
+        </div>
+      </div>
+      <div class="wipe animated"></div>
+    </div>
+    <script src="../../../engine/motion/_params.js"></script>
+    <script>
+      // 숫자 params 는 _params.js 가 다루지 않는다(그쪽은 텍스트·색 담당) — 여기서 읽는다.
+      //
+      // **키를 리터럴로 한 번씩 적는다.** 0단계 사전 점검(engine/lib/preflight.js)은 템플릿이
+      // 받는 이름을 `data-p="…"` 와 **리터럴 `.get('키')`** 로만 찾는다. `q.get(k)` 처럼
+      // 변수로 읽으면 그 이름을 못 보고 "이 템플릿이 받지 않는 params" 로 오탐해 굽기 전에
+      // 멈춘다. 아래 표가 코드이자 그 선언이다.
+      (() => {
+        const q = new URLSearchParams(location.search);
+        const P = {
+          src: q.get('src'), fit: q.get('fit'), fw: q.get('fw'), kb: q.get('kb'), dur: q.get('dur'),
+          cx: q.get('cx'), cy: q.get('cy'), cw: q.get('cw'), ch: q.get('ch'),
+          hx: q.get('hx'), hy: q.get('hy'), hw: q.get('hw'), hh: q.get('hh'), ht: q.get('ht'),
+        };
+        const num = (k, d) => (P[k] !== null && P[k] !== undefined && P[k] !== '' ? Number(P[k]) : d);
+        const root = document.documentElement;
+
+        document.getElementById('shot').src = P.src ?? '';
+
+        const cw = num('cw', 100);
+        // ch 를 안 주면 **cw 와 같다** — 틀이 16:9 라 가로 cw% 를 보면 세로도 cw% 가 보인다.
+        // 예전에 ch 기본값을 100 으로 두었더니 min(100/cw, 100/100)=1 이 되어 **크롭을 줘도
+        // 확대가 안 되고** 이미지만 옆으로 밀려 오른쪽에 검은 띠가 남았다(실측).
+        const ch = num('ch', cw);
+        // 가로·세로 중 더 많이 잘린 쪽에 맞춘다 — 지정한 영역이 반드시 다 들어오게.
+        const z = Math.max(1, Math.min(100 / cw, 100 / ch));
+        root.style.setProperty('--cx', num('cx', 0));
+        root.style.setProperty('--cy', num('cy', 0));
+        root.style.setProperty('--z', z);
+        root.style.setProperty('--kb', num('kb', 0.04));
+        if (P.fit) root.style.setProperty('--fit', P.fit);
+        if (P.fw) root.style.setProperty('--fw', num('fw', 91.6));
+        if (P.dur) root.style.setProperty('--kb-dur', `${num('dur', 24)}s`);
+
+        const spot = document.querySelector('.spot');
+        if (P.hw) {
+          for (const k of ['hx', 'hy', 'hw', 'hh']) root.style.setProperty(`--${k}`, num(k, 0));
+          spot.style.animationDelay = `${num('ht', 1.2)}s`;
+        } else {
+          spot.remove();
+        }
+      })();
+    </script>
+  </body>
+</html>

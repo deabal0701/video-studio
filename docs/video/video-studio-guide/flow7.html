@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <title>화면 지도 ①~⑦</title>
+    <link rel="stylesheet" href="../../../engine/motion/_base.css" />
+    <style>
+      /* 앱의 화면 지도 — 프로젝트 탭 ①②③ + 영상 탭 ④⑤⑥⑦.
+
+         이 앱은 번호를 화면에 직접 달아 놓았다(① 설정 … ⑦ 배포). 그 번호가 곧 작업 순서라
+         지도 한 장이 사용법의 뼈대가 된다. 도입에서 전체를 깔고, 마무리에서 같은 그림으로
+         회수한다.
+
+         params:
+           title    위쪽 한 줄
+           t1..t7   각 칸이 켜지는 시각(초) — 내레이션이 그 말을 하는 순간에 맞춘다
+                    (안 주면 0.4초 간격으로 차례로 켜진다)
+           focus    지금 설명 중인 칸 번호 1~7 (주면 그 칸만 밝고 나머지는 가라앉는다)
+           ft       focus 가 적용되는 시각(초, 기본 0)
+      */
+      /* 아래 여백 14vh — 자막이 두 줄로 꺾이면 하단 82vh 까지 올라온다. 가운데 정렬만 두면
+         두 번째 묶음의 아래 테두리가 그 자리에 걸린다(실측 915px vs 자막 상단 890px). */
+      .stage { padding: 0 5vw 14vh; gap: 3.4vh; justify-content: center; }
+
+      .head {
+        font-size: 4.4vh;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        animation-name: fadeUp;
+        animation-duration: 0.7s;
+        animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+
+      .group {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 1.6vh;
+        padding: 2.6vh 2.8vh 3vh;
+        border-radius: 2vh;
+        background: rgb(255 255 255 / 0.045);
+        border: 0.18vh solid rgb(255 255 255 / 0.10);
+      }
+      .group > .label {
+        font-size: 2.6vh;
+        font-weight: 700;
+        color: var(--brand-soft);
+        text-align: left;
+        letter-spacing: 0.02em;
+      }
+      .row { display: flex; gap: 1.6vh; justify-content: center; }
+
+      .cell {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.1vh;
+        padding: 2.2vh 1vh;
+        border-radius: 1.4vh;
+        background: rgb(255 255 255 / 0.06);
+        border: 0.18vh solid rgb(255 255 255 / 0.12);
+        animation-name: cellIn;
+        animation-duration: 0.55s;
+        animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+      }
+      @keyframes cellIn {
+        from { opacity: 0; transform: translateY(1.8vh) scale(0.96); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      .num {
+        width: 5.4vh;
+        height: 5.4vh;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--brand) 82%, black);
+        font-size: 2.8vh;
+        font-weight: 800;
+      }
+      .name { font-size: 2.7vh; font-weight: 700; letter-spacing: -0.01em; }
+      .what { font-size: 2.05vh; color: rgb(255 255 255 / 0.62); line-height: 1.35; }
+
+      /* focus — 설명 중인 칸만 남기고 나머지를 가라앉힌다 */
+      .cell.dim {
+        animation-name: cellIn, sink;
+        animation-duration: 0.55s, 0.5s;
+        animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1), ease-out;
+      }
+      @keyframes sink { to { opacity: 0.26; filter: saturate(0.3); } }
+
+      .cell.hot {
+        animation-name: cellIn, lift;
+        animation-duration: 0.55s, 0.5s;
+        animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1), ease-out;
+      }
+      @keyframes lift {
+        to {
+          background: color-mix(in srgb, var(--brand) 26%, transparent);
+          border-color: var(--brand-soft);
+          transform: scale(1.045);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="head animated" data-p="title"></div>
+
+      <div class="group">
+        <div class="label">프로젝트 — 시리즈 전체에 한 번</div>
+        <div class="row" id="rowA"></div>
+      </div>
+
+      <div class="group">
+        <div class="label">영상 — 한 편마다 반복</div>
+        <div class="row" id="rowB"></div>
+      </div>
+
+      <div class="wipe animated"></div>
+    </div>
+    <script src="../../../engine/motion/_params.js"></script>
+    <script>
+      (() => {
+        const q = new URLSearchParams(location.search);
+        // 키를 리터럴로 한 번씩 적는다 — 0단계 사전 점검은 `data-p` 와 **리터럴 `.get('키')`**
+        // 로만 템플릿이 받는 이름을 찾는다. `\`t${n}\`` 처럼 조립해 읽으면 t1~t7 을 못 보고
+        // "받지 않는 params" 로 오탐해 굽기 전에 멈춘다.
+        const P = {
+          focus: q.get('focus'), ft: q.get('ft'),
+          t1: q.get('t1'), t2: q.get('t2'), t3: q.get('t3'), t4: q.get('t4'),
+          t5: q.get('t5'), t6: q.get('t6'), t7: q.get('t7'),
+        };
+        const num = (k, d) => (P[k] !== null && P[k] !== undefined && P[k] !== '' ? Number(P[k]) : d);
+
+        const CELLS = [
+          ['①', '설정', '제목·목소리·비율'],
+          ['②', '영상 목록', '영상을 만들고 연다'],
+          ['③', '브랜드 킷', '색·로고·자막 모양'],
+          ['④', '구성표', '무엇을 몇 초에'],
+          ['⑤', '대본', '문장·화면·프리뷰'],
+          ['⑥', '검수', '빌드하고 눈으로 본다'],
+          ['⑦', '배포', '제목·설명·자막·썸네일'],
+        ];
+        const focus = num('focus', 0);
+        const ft = num('ft', 0);
+
+        CELLS.forEach(([sym, name, what], i) => {
+          const n = i + 1;
+          const el = document.createElement('div');
+          el.className = 'cell animated' + (focus ? (n === focus ? ' hot' : ' dim') : '');
+          el.innerHTML =
+            `<div class="num">${sym}</div><div class="name">${name}</div>` +
+            `<div class="what">${what}</div>`;
+          const t = num(`t${n}`, 0.4 + i * 0.4);
+          // 두 애니메이션(등장 + focus)의 지연을 각각 준다 — 등장은 t, 가라앉기·띄우기는 ft
+          el.style.animationDelay = focus ? `${t}s, ${Math.max(t, ft)}s` : `${t}s`;
+          document.getElementById(n <= 3 ? 'rowA' : 'rowB').appendChild(el);
+        });
+      })();
+    </script>
+  </body>
+</html>
