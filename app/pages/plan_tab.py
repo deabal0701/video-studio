@@ -144,8 +144,10 @@ class PlanTab(QWidget):
             for j, v in enumerate([section, screen, str(r["chars"] or "")]):
                 self.table.setItem(i, j, QTableWidgetItem(v))
         pct = round(total / self._budget * 100) if self._budget else 0
-        self.budget_label.setText(f"예산 {total:,} / {self._budget:,}자 · {pct}%"
-                                  + (" — 넘치면 압축이 아니라 영상 분할" if pct > 100 else ""))
+        # ② 대본 게이지와 같은 말 (지적 13d — "예산 N/M자"는 이 탭에만 남아 있었다)
+        self.budget_label.setText(
+            f"전체 구성 {total:,}자 / 목표 {self._budget:,}자 ({pct}%)"
+            + (" — 목표를 넘으면 말을 빠르게 하지 않고 영상을 나눕니다" if pct > 100 else ""))
         self.budget_label.setStyleSheet(
             f"color: {theme.DANGER}; font-weight: 700;" if pct > 100 else "")
         self.budget_bar.setValue(min(100, pct))

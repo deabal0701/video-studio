@@ -153,12 +153,30 @@ class DeployTab(QWidget):
         self.srt_btn.setToolTip("" if data.get("srt")
                                 else "완성본이 없습니다 — 위 [빌드] 를 먼저 누르세요")
         self._sync_save_btn()
+        # 챕터 상태 — 사유별로 말하고, 정상(카드 없음)은 오류 색을 쓰지 않는다
+        # (75회차 A4: 갓 만든 홍보 영상의 기본 상태가 node 명령줄 빨간 오류로 떴다)
         err = data.get("chaptersError")
-        self.chapters_note.setText(
-            f"챕터 생성 실패 — {err}" if err
-            else "챕터 없음 — 빌드 산출물(audio manifest)이 있어야 실측됩니다"
-            if not data.get("chapters") else "")
-        self.chapters_note.setVisible(bool(err) or not data.get("chapters"))
+        reason = data.get("chaptersReason")
+        if err:
+            self.chapters_note.setText(
+                "챕터를 계산하지 못했습니다 — 자세한 사유는 마우스를 올리면 보입니다")
+            self.chapters_note.setToolTip(err)
+            self.chapters_note.setProperty("chip", "err")
+        elif reason == "no_cards":
+            self.chapters_note.setText(
+                "챕터 없음 — 챕터 카드가 없는 대본입니다. 홍보·광고처럼 짧은 영상은 "
+                "보통 이대로 두고, 챕터를 원하면 ② 대본에서 [+챕터]로 넣으세요")
+            self.chapters_note.setToolTip("")
+            self.chapters_note.setProperty("chip", "info")
+        elif not data.get("chapters"):
+            self.chapters_note.setText("챕터 시각은 위 [빌드] 뒤에 실측돼 여기 채워집니다")
+            self.chapters_note.setToolTip("")
+            self.chapters_note.setProperty("chip", "info")
+        else:
+            self.chapters_note.setText("")
+        self.chapters_note.style().unpolish(self.chapters_note)
+        self.chapters_note.style().polish(self.chapters_note)
+        self.chapters_note.setVisible(bool(self.chapters_note.text()))
         while self.thumbs_row.count():
             item = self.thumbs_row.takeAt(0)
             if item.widget():

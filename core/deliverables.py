@@ -32,12 +32,20 @@ def build(episode_dir: Path, projects_root: Path) -> dict[str, Any]:
     scenes, course, n, ep_title, ep_subtitle = _episode_meta(episode_dir)
 
     chapters_error = None
+    chapters_reason = None   # "no_cards"(정상 — 챕터 카드 없는 대본) | "error"
     try:
         chapter_lines = [l for l in engine_io.chapters(eid, projects_root).splitlines()
                          if re.match(r"^\d\d:\d\d ", l)]
-    except Exception as err:  # noqa: BLE001 — 캐시 없음 등은 빈 챕터로 가되, 사유는 드러낸다
+    except Exception as err:  # noqa: BLE001 — 사유를 구분해 내린다 (75회차 A4)
         chapter_lines = []
-        chapters_error = str(err)[-300:]  # 조용히 비면 배포물이 반쪽 — 화면이 사유를 보여준다 (07 결함 4)
+        # 챕터 카드가 대본에 없는 것은 **오류가 아니다** — 홍보·광고 골격은 원래
+        # 챕터 없이 태어난다. 갓 만든 영상의 기본 상태가 빨간 오류로 보였고, node
+        # 명령줄·경로가 화면에 날것으로 떴다 (75회차 A4 프로브 실측)
+        if "대본에 없다" in str(err):
+            chapters_reason = "no_cards"
+        else:
+            chapters_reason = "error"
+            chapters_error = str(err)[-300:]  # 화면은 요약을 말하고 이 원문은 툴팁으로
 
     course_title = course.get("title", "")
     # `[강좌명] N강 — 제목` 은 **시리즈**의 문법이다 (대괄호=재생목록, N강=회차).
@@ -55,7 +63,8 @@ def build(episode_dir: Path, projects_root: Path) -> dict[str, Any]:
     description = "\n".join(filter(None, [
         promise,
         "",
-        "⏱ 챕터", *chapter_lines,
+        # 챕터가 없으면 헤더도 넣지 않는다 — 빈 "⏱ 챕터" 섹션이 초안에 남았다 (75회차 A4)
+        *(["⏱ 챕터", *chapter_lines] if chapter_lines else []),
         "",
         f"▶ 재생목록: {course_title} (링크 자리)" if course_title else "",
         course.get("tagline", ""),
@@ -86,6 +95,7 @@ def build(episode_dir: Path, projects_root: Path) -> dict[str, Any]:
         "description": description,
         "chapters": chapter_lines,
         "chaptersError": chapters_error,
+        "chaptersReason": chapters_reason,
         "srt": [f.name for f in srt],
         "thumbnails": [f.name for f in thumbs],
         "subtitle": ep_subtitle,
