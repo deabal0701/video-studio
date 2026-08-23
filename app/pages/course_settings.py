@@ -53,7 +53,11 @@ class CourseSettingsTab(QWidget):
         outer.addStretch(1)
         self.title = QLineEdit()
         self.tagline = QLineEdit()
+        # 위저드는 이 두 칸이 뭘 적는 곳인지 말해 주는데 여기선 맨칸이었다 (68회차 P9·P11)
+        self.tagline.setPlaceholderText("한 줄 소개 (선택 — 예: 개념 하나를, 5분에)")
         self.audience = QPlainTextEdit()
+        self.audience.setPlaceholderText(
+            "누가 보는 영상인지 — 대본의 눈높이가 여기서 정해집니다 (선택)")
         self.audience.setFixedHeight(110)
         for w in (self.title, self.tagline, self.audience):
             w.setMaximumWidth(theme.RD_FIELD)
@@ -118,7 +122,16 @@ class CourseSettingsTab(QWidget):
             pal_row.addWidget(btn)
             pal_row.addSpacing(14)
         pal_row.addStretch(1)
-        form.addRow("색", pal_row)
+        pal_box = QVBoxLayout()
+        pal_box.addLayout(pal_row)
+        # 색을 바꾸는 **세 번째 자리**다 — 위저드(66회차)·브랜드 킷(53회차)은 대비를
+        # 말하는데 여기만 조용했다. 밝은 배경을 골라도 경고 0건이었다 (68회차 실측:
+        # 흰 글자/배경 1.0:1). 판정은 core.kinds 가 갖는다 — 세 화면이 같은 말을 쓴다
+        self.contrast_note = QLabel("")
+        self.contrast_note.setWordWrap(True)
+        self.contrast_note.setMaximumWidth(theme.RD_FIELD)
+        pal_box.addWidget(self.contrast_note)
+        form.addRow("색", pal_box)
 
         bgm_row = QHBoxLayout()
         self.bgm = QComboBox()
@@ -183,6 +196,7 @@ class CourseSettingsTab(QWidget):
         self.bgm.currentIndexChanged.connect(self._mark_dirty)
         for btn in (self.c_brand, self.c_soft, self.c_bg):
             btn.changed.connect(self._mark_dirty)
+            btn.changed.connect(self._sync_contrast)
 
     # ── 로드 ────────────────────────────────────────────────────────────────
     def _sync_save_btn(self, *_a) -> None:
@@ -246,9 +260,19 @@ class CourseSettingsTab(QWidget):
         idx = self.bgm.findData(current)
         if idx >= 0:
             self.bgm.setCurrentIndex(idx)
+        self._sync_contrast()
         self._loading = False
         self._dirty = False
         self._sync_save_btn()
+
+    def _sync_contrast(self, *_a) -> None:
+        ok, text = kinds.contrast_report(self.c_bg.value, self.c_brand.value,
+                                         self.c_soft.value)
+        self.contrast_note.setObjectName("caption" if ok else "")
+        self.contrast_note.setProperty("chip", None if ok else "err")
+        self.contrast_note.setText(text if ok else f"{text} — 다른 색을 고르세요")
+        self.contrast_note.style().unpolish(self.contrast_note)
+        self.contrast_note.style().polish(self.contrast_note)
 
     def _sync_length_note(self, *_a) -> None:
         chars = kinds.length_to_chars(self.length.currentText())
