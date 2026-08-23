@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QFormLayout, QFrame, QHBoxLayout, QLabel, QMessag
 
 from core import kinds, paths
 
-from ..bridge import error_text, run_bg
+from ..bridge import error_text, guard, run_bg
 
 
 _P = kinds.get(kinds.DEFAULT_KIND)["palette"]   # 색 폴백 (종류가 정본)
@@ -127,8 +127,10 @@ class BrandKitTab(QWidget):
             self.result.setText("")
         self.cid = cid
         studio = self._make_studio()
-        run_bg(lambda: studio.get_course(cid), done=self._fill,
-               fail=lambda e: self.result.setText(error_text(e)))
+        # A3 가드 — 프로젝트를 옮긴 뒤 도착한 옛 응답이 새 화면을 덮지 않게
+        run_bg(lambda: studio.get_course(cid), done=guard(self, "cid", cid, self._fill),
+               fail=guard(self, "cid", cid,
+                          lambda e: self.result.setText(error_text(e))))
 
     def _fill(self, body: dict) -> None:
         d = body["course"]
@@ -201,10 +203,15 @@ class BrandKitTab(QWidget):
         # 처리 중 상태 — 안 잠그면 중복 클릭이 두 번 실행된다 (P18·P20)
         self.apply_btn.setEnabled(False)
         self.result.setText("적용 중…")
+        def _done(out) -> None:
+            self.apply_btn.setEnabled(True)   # 버튼 복원은 대상 무관 — 항상
+            if self.cid == cid:   # A3 — 옛 프로젝트의 "적용됨"을 새 화면에 남기지 않는다
+                self.result.setText("적용됨 ✓ — "   # 파일명 날것 대신 표시명 (37회차 P2)
+                                    + " · ".join(kinds.screen_label(f)
+                                                 for f in out["copied"]))
+
         run_bg(lambda: studio.apply_brand_kit(cid),
-               done=lambda out: (self.result.setText(
-                   "적용됨 ✓ — "   # 파일명 날것 대신 표시명 (37회차 P2)
-                   + " · ".join(kinds.screen_label(f) for f in out["copied"])),
-                                 self.apply_btn.setEnabled(True)),
-               fail=lambda e: (self.result.setText(error_text(e)),
-                               self.apply_btn.setEnabled(True)))
+               done=_done,
+               fail=lambda e: (self.apply_btn.setEnabled(True),
+                               self.cid == cid
+                               and self.result.setText(error_text(e))))

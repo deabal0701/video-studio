@@ -15,7 +15,7 @@ from core.facade import NotBuilt
 from core.status import OUT_ROOT
 
 from .. import theme
-from ..bridge import JobEventPump, agent_gate_failed, error_text, run_bg
+from ..bridge import JobEventPump, agent_gate_failed, error_text, guard, run_bg
 from .clip_editor import ClipEditorTab
 from .deploy_tab import DeployTab
 from .jobs import STATE_LABEL as JOB_STATE_LABEL   # 상태 한국어 — 작업 큐와 같은 말 (P11)
@@ -258,6 +258,23 @@ class EpisodePage(QWidget):
             self.media_label.setText("")
             self.silence_label.setText("")
             self.stop_media()
+            # A3 — 이전 영상의 잡 진행(펌프)이 새 화면을 계속 그리게 두지 않는다.
+            # 잡 자체는 큐에서 계속 돌고 작업 큐 화면이 보여 준다 (74회차)
+            if getattr(self, "_pump", None) is not None \
+                    and getattr(self, "_pump_eid", None) != eid:
+                try:
+                    self._pump.event.disconnect()
+                    self._pump.finished.disconnect()
+                except RuntimeError:
+                    pass   # 이미 끊겼으면 그만
+                self._pump = None
+                self.state_chip.hide()
+                self.log.hide()
+                self.cancel_btn.setVisible(False)
+                # _set_building(False) 는 재조회 연쇄를 부르므로 버튼만 직접 푼다
+                for b in (self.build_btn, self.tts_only_btn, self.compose_btn,
+                          self.ai_review_btn, self.clip_tab.tts_btn):
+                    b.setEnabled(True)
         self.eid = eid
         self.title.setText(eid)          # 즉시 표시 — 아래에서 사람 이름으로 바꾼다
         self._load_display_name(eid)
@@ -277,13 +294,17 @@ class EpisodePage(QWidget):
                     budget = ""
             return body, cons, budget
 
-        run_bg(get, done=self._fill, fail=self._fail)
+        # A3 가드 — 다른 영상으로 넘어간 뒤 도착한 응답이 새 화면을 되덮지 않게
+        run_bg(get, done=guard(self, "eid", eid, self._fill),
+               fail=guard(self, "eid", eid, self._fail))
         # inspect 는 최대 60초(엔진 subprocess) — 별도 워커로 늦게 도착해도 무방
-        run_bg(lambda: studio.inspect(eid), done=self._fill_inspect,
+        run_bg(lambda: studio.inspect(eid),
+               done=guard(self, "eid", eid, self._fill_inspect),
                # A1-허용: 실측을 못 얻으면 추정으로 계속 쓴다 — 클립 라벨의 "?" 가 추정임을
                # 표시하고, 부품 문제 자체는 [설정]의 환경 점검이 말한다
-               fail=lambda _e: self._fill_inspect({}))
+               fail=guard(self, "eid", eid, lambda _e: self._fill_inspect({})))
         # 에이전트 게이트 — 키 없으면 버튼 비활성 + 사유 툴팁 (05: 메뉴 통째로 비활성)
+        # A3-허용: 게이트는 전역 상태(키 유무)라 어느 영상이든 같은 값이다
         run_bg(studio.agent_status, done=self._fill_agent,
                fail=lambda e: self._fill_agent(agent_gate_failed(e)))
 
@@ -313,6 +334,7 @@ class EpisodePage(QWidget):
 
         def submitted(out):
             self._job_id = out["jobId"]
+            self._pump_eid = eid   # A3 — load() 가 다른 영상으로 넘어가면 펌프를 뗀다
             self.job_started.emit(self._job_id)
             self._pump = JobEventPump(studio, self._job_id)
             self._pump.event.connect(self._on_event, Qt.QueuedConnection)
@@ -399,6 +421,8 @@ class EpisodePage(QWidget):
                 f"대본은 끝났지만 상태를 확인하지 못해 빌드를 잇지 못했습니다 — "
                 f"{error_text(err)}. 위의 [빌드]로 직접 이어가세요")
 
+        # A3-허용: 펌프 finished 에서만 불린다 — 영상을 옮기면 load() 가 펌프를 떼므로
+        # 여기까지 오지 않는다
         run_bg(check, done=decide, fail=check_failed)
 
     def _ai_review(self) -> None:
@@ -414,6 +438,7 @@ class EpisodePage(QWidget):
 
         def submitted(out):
             self._job_id = out["jobId"]
+            self._pump_eid = eid   # A3 — load() 가 다른 영상으로 넘어가면 펌프를 뗀다
             self.job_started.emit(self._job_id)
             self._pump = JobEventPump(studio, self._job_id)
             self._pump.event.connect(self._on_event, Qt.QueuedConnection)
@@ -505,7 +530,8 @@ class EpisodePage(QWidget):
                 self.player.setSource(QUrl.fromLocalFile(str(mp4)))
                 self.media_label.setText(f"완성본 {finals[0]}")
 
-        run_bg(get, done=fill, fail=self._fail)
+        run_bg(get, done=guard(self, "eid", eid, fill),
+               fail=guard(self, "eid", eid, self._fail))
 
     def _sync_course(self) -> None:
         eid, studio = self.eid, self._studio
@@ -519,9 +545,17 @@ class EpisodePage(QWidget):
             self.sync_btn.setEnabled(True)
             self.sync_btn.setText("프로젝트 값으로 맞추기")
 
-        run_bg(lambda: studio.sync_course(eid, etag),
-               done=lambda _o: (_restore(), self.load(eid)),
-               fail=lambda e: (_restore(), self._fail(e)))
+        def _done(_o) -> None:
+            _restore()   # 버튼 복원은 대상 무관 — 공유 위젯이라 항상
+            if self.eid == eid:   # A3 — 떠난 영상을 도로 끌고 오지 않는다
+                self.load(eid)
+
+        def _failed(e) -> None:
+            _restore()
+            if self.eid == eid:   # A3 — 옛 대상의 오류를 새 화면에 붙이지 않는다
+                self._fail(e)
+
+        run_bg(lambda: studio.sync_course(eid, etag), done=_done, fail=_failed)
 
     # ── 검수 자료 ───────────────────────────────────────────────────────────
     def _load_display_name(self, eid: str) -> None:
@@ -542,7 +576,8 @@ class EpisodePage(QWidget):
 
         # A1-허용: 표시명을 못 만들면 제목이 폴더 id 로 남는다 — 그 값은 툴팁에도 있는
         # 것이라 오해를 낳지 않고, facade 쪽이 이미 id 로 후퇴한다
-        run_bg(lambda: studio.episode_display_name(eid), done=fill, fail=lambda _e: None)
+        run_bg(lambda: studio.episode_display_name(eid),
+               done=guard(self, "eid", eid, fill), fail=lambda _e: None)
 
     def _load_review(self) -> None:
         eid, studio = self.eid, self._studio
@@ -609,7 +644,8 @@ class EpisodePage(QWidget):
             if not isinstance(err, NotBuilt):
                 self._fail(err)
 
-        run_bg(get, done=fill, fail=fail)
+        run_bg(get, done=guard(self, "eid", eid, fill),
+               fail=guard(self, "eid", eid, fail))
 
     def _fill_title_pair(self) -> None:
         while self.pair_row.count():
@@ -672,7 +708,9 @@ class EpisodePage(QWidget):
         eid, studio = self.eid, self._studio
 
         def done(out: dict) -> None:
-            self._review_saving = False
+            self._review_saving = False   # 플래그 해제는 대상 무관 — 항상 (A3)
+            if self.eid != eid:           # A3 — 옛 영상의 체크리스트를 되그리지 않는다
+                return
             # 서버 항목으로 되덮지 않는다 — 저장 중 새 체크가 더 있었을 수 있다
             if out.get("updatedAt"):
                 self._checklist["updatedAt"] = out["updatedAt"]
@@ -685,7 +723,8 @@ class EpisodePage(QWidget):
         def fail(err) -> None:
             self._review_saving = False
             self._review_dirty = False
-            self._fail(err)
+            if self.eid == eid:   # A3 — 옛 영상의 저장 오류를 새 화면에 붙이지 않는다
+                self._fail(err)
 
         run_bg(lambda: studio.put_review(eid, {"items": items, "note": note}),
                done=done, fail=fail)
@@ -713,6 +752,7 @@ class EpisodePage(QWidget):
 
         def submitted(out):
             self._job_id = out["jobId"]
+            self._pump_eid = eid   # A3 — load() 가 다른 영상으로 넘어가면 펌프를 뗀다
             self.job_started.emit(self._job_id)
             self._pump = JobEventPump(studio, self._job_id)
             self._pump.event.connect(self._on_event, Qt.QueuedConnection)
@@ -727,6 +767,8 @@ class EpisodePage(QWidget):
         # A2-허용: 취소는 멱등 — 두 번 눌러도 같은 잡에 같은 요청이고, 이미 취소된
         # 잡이면 큐가 canceled=false 로 답할 뿐 오류가 아니다. 애타는 사용자의
         # 연타를 막을 이유가 없다
+        # A3-허용: 취소 실패 안내는 방금 누른 행동의 결과 — 어느 화면에서 보든
+        # 사용자 자신의 요청에 대한 답이라 대상 혼동이 없다
         if self._job_id and self._studio:
             jid = self._job_id
             run_bg(lambda: self._studio.cancel_job(jid), fail=self._fail)
@@ -749,7 +791,8 @@ class EpisodePage(QWidget):
                 self.clip_tab.ai_progress_end()
                 self.tabs.setCurrentIndex(2)   # 한 번에 모드 — 완성본을 바로 보여준다
             eid, studio = self.eid, self._studio
-            run_bg(lambda: studio.inspect(eid), done=self._fill_inspect,
+            run_bg(lambda: studio.inspect(eid),
+                   done=guard(self, "eid", eid, self._fill_inspect),
                    # A1-허용: 빌드 뒤 실측 갱신 실패 — 위와 같이 추정 라벨로 남는다
                    fail=lambda _e: None)
 

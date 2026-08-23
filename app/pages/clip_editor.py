@@ -30,7 +30,7 @@ from core.status import OUT_ROOT
 from core.validate import CHARS_PER_SEC_LECTURE as PACE
 
 from .. import theme
-from ..bridge import error_text, run_bg
+from ..bridge import error_text, guard, run_bg
 from ..widgets import AudioPreview
 
 SKELETON = ["broll", "title", "hook", "stinger", "promise"]
@@ -708,8 +708,11 @@ class ClipEditorTab(QWidget):
         studio = self._make_studio()
         self._assets_ready = False
         self._assets_error = ""   # 앞 영상의 실패 사유를 물려주지 않는다
+        # A3 가드 — 영상을 빠르게 옮기면 앞 영상의 갤러리(scope 전용 템플릿)가
+        # 늦게 도착해 새 영상의 목록을 덮는다
         run_bg(lambda: (studio.templates(scope=eid), studio.assets("broll")),
-               done=self._assets_loaded, fail=self._assets_failed)
+               done=guard(self, "eid", eid, self._assets_loaded),
+               fail=guard(self, "eid", eid, self._assets_failed))
         self._refresh_list(select=0)
         self._loading = False
 
@@ -1138,15 +1141,24 @@ class ClipEditorTab(QWidget):
             self.extract_btn.setEnabled(True)
             self.extract_btn.setText("B롤 프레임을 이미지(src)로 가져오기")
 
+        def _done(out) -> None:
+            _extract_done()   # 버튼 복원은 대상 무관 — 공유 위젯이라 항상
+            if self.eid != eid:   # A3 — 다른 영상의 대본에 옛 프레임을 꽂지 않는다
+                return
+            self._set_param("src", out["src"])
+            self._render_params_form()
+            self.issues.setText(f"배경 프레임 가져옴 — 이미지(src)에 기입됨 (B롤 {vs}s 지점)")
+            self.issues.setProperty("chip", "ok")
+            self._repolish(self.issues)
+            self.issues.show()
+
+        def _failed(e) -> None:
+            _extract_done()
+            if self.eid == eid:   # A3 — 옛 영상의 오류를 새 화면에 붙이지 않는다
+                self._show_issue(error_text(e))
+
         run_bg(lambda: studio.bg_frame(eid, video=video, video_start=vs, clip_file=cf),
-               done=lambda out: (_extract_done(),
-                                 self._set_param("src", out["src"]),
-                                 self._render_params_form(),
-                                 self.issues.setText(f"배경 프레임 가져옴 — 이미지(src)에 "
-                                                     f"기입됨 (B롤 {vs}s 지점)"),
-                                 self.issues.setProperty("chip", "ok"),
-                                 self._repolish(self.issues), self.issues.show()),
-               fail=lambda e: (_extract_done(), self._show_issue(error_text(e))))
+               done=_done, fail=_failed)
 
     # ── B롤 재생 토글 (음성 미리듣기와 같은 문법 — 재생 중엔 "중지") ─────────
     def _toggle_broll(self) -> None:
@@ -1165,6 +1177,7 @@ class ClipEditorTab(QWidget):
 
     # ── 프리뷰 (QWebEngineView — preview.js 문서 + 질의 params) ──────────────
     def _refresh_preview(self) -> None:
+        # A3-허용: 프리뷰 재렌더는 마지막 로드가 이긴다 — 클립 전환 시 새 프리뷰가 다시 불린다
         # A2-허용: [↻ 재생]의 재클릭은 곧 "다시 재생" — 중복 실행이 기능이다.
         # 겹쳐도 같은 캐시 경로에 같은 문서를 다시 쓰고 마지막 로드가 이긴다
         c = self.cur
@@ -1288,9 +1301,15 @@ class ClipEditorTab(QWidget):
         # 409 충돌 에러를 띄운다 (P18·P20)
         self.save_btn.setEnabled(False)
         self.save_btn.setText("저장 중…")
+        def _done(out) -> None:
+            if self.eid == eid:   # A3 — 옛 영상의 etag·결과를 새 대본에 쓰지 않는다
+                self._saved(out)
+            else:
+                self._save_done()   # 버튼 복원만 — 공유 위젯
         run_bg(lambda: studio.put_episode(eid, body, etag),
-               done=self._saved,
-               fail=lambda e: (self._show_issue(error_text(e)), self._save_done()))
+               done=_done,
+               fail=lambda e: (self.eid == eid and self._show_issue(error_text(e)),
+                               self._save_done()))
 
     def _save_done(self) -> None:
         self.save_btn.setEnabled(True)

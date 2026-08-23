@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QInputDialog, QLabel, QPushB
 from core import kinds
 
 from .. import theme
-from ..bridge import agent_gate_failed, error_text, run_bg
+from ..bridge import agent_gate_failed, error_text, guard, run_bg
 from .brandkit import BrandKitTab
 from .course_settings import CourseSettingsTab
 
@@ -150,7 +150,10 @@ class CoursePage(QWidget):
     def load(self, cid: str) -> None:
         self.cid = cid
         studio = self._make_studio()
-        run_bg(lambda: studio.get_course(cid), done=self._fill, fail=self._fail)
+        # A3 가드 — 프로젝트를 빠르게 옮기면 앞 프로젝트의 보드가 늦게 도착해
+        # 새 제목 아래에 옛 영상 목록이 그려진다
+        run_bg(lambda: studio.get_course(cid), done=guard(self, "cid", cid, self._fill),
+               fail=guard(self, "cid", cid, self._fail))
         self._tab_changed(self.tabs.currentIndex())
 
     def _reflow_board(self) -> None:
@@ -246,6 +249,7 @@ class CoursePage(QWidget):
             self.board_scroll.setWidget(wrap)
             self._lane_wraps = []
             studio = self._make_studio()
+            # A3-허용: 게이트는 전역 상태(키 유무) — 어느 프로젝트든 같은 값이다
             run_bg(studio.agent_status, done=self._apply_gate,
                    fail=lambda e: self._apply_gate(agent_gate_failed(e)))
             return
@@ -266,6 +270,7 @@ class CoursePage(QWidget):
         self.board_scroll.setWidget(holder)
         self._reflow_board()
         # 에이전트 게이트 — 키 없으면 버튼 비활성 + 사유 툴팁
+        # A3-허용: 게이트는 전역 상태(키 유무) — 어느 프로젝트든 같은 값이다
         studio = self._make_studio()
         run_bg(studio.agent_status, done=self._apply_gate,
                    fail=lambda e: self._apply_gate(agent_gate_failed(e)))
@@ -312,6 +317,7 @@ class CoursePage(QWidget):
                 eid = studio.create_episode(cid, n)["id"]
             return eid
 
+        # A3-허용: 만들기의 완료 동선 — 만든 영상으로 이동이 기대 동작이다
         run_bg(ensure,
                done=lambda eid: (self._end_create(), self.open_episode_ai.emit(eid)),
                fail=lambda e: (self._end_create(), self._fail(e)))
@@ -321,8 +327,10 @@ class CoursePage(QWidget):
         if not self._begin_create():
             return
         cid, studio = self.cid, self._make_studio()
+        # A3-허용: 완료 동선(emit). 보드 새로고침만 현재 프로젝트일 때로 제한
         run_bg(lambda: studio.create_episode(cid, n),
-               done=lambda out: (self._end_create(), self.load(cid),
+               done=lambda out: (self._end_create(),
+                                 self.cid == cid and self.load(cid),
                                  self.open_episode.emit(out["id"])),
                fail=lambda e: (self._end_create(), self._fail(e)))
 
@@ -341,7 +349,9 @@ class CoursePage(QWidget):
             return
         cid, studio = self.cid, self._make_studio()
         run_bg(lambda: studio.delete_episode(eid),
-               done=lambda _out: (self._end_create(), self.load(cid)),
+               done=lambda _out: (self._end_create(),
+                                  # A3 — 떠난 프로젝트의 보드를 도로 그리지 않는다
+                                  self.cid == cid and self.load(cid)),
                fail=lambda e: (self._end_create(), self._fail(e)))
 
     def _add_episode(self) -> None:
@@ -375,6 +385,7 @@ class CoursePage(QWidget):
         if not self._begin_create():
             return
         cid, studio = self.cid, self._make_studio()
+        # A3-허용: 완료 동선 — 만든 영상으로 이동(emit)이 기대 동작
         run_bg(lambda: studio.create_episode(cid, n, title=title.strip()),
                done=lambda out: (self._end_create(), self.load(cid),
                                  self.open_episode.emit(out["id"])),

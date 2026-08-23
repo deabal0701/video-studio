@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (QComboBox, QFormLayout, QHBoxLayout, QLabel, QLin
 
 from core import kinds, voices
 
-from ..bridge import error_text, run_bg
+from ..bridge import error_text, guard, run_bg
 from ..widgets import AudioPreview, ColorButton
 
 VOICE_PRESETS = {
@@ -224,8 +224,12 @@ class CourseSettingsTab(QWidget):
             self.tts_state.setText("")
         self.cid = cid
         studio = self._make_studio()
+        # A3 가드 — 프로젝트를 옮긴 뒤 도착한 옛 설정이 새 폼을 덮으면, 사용자가
+        # 그걸 고쳐 저장해 **다른 프로젝트의 값**이 기록된다
         run_bg(lambda: (studio.get_course(cid), studio.assets("bgm")),
-               done=self._fill, fail=lambda e: self.result.setText(error_text(e)))
+               done=guard(self, "cid", cid, self._fill),
+               fail=guard(self, "cid", cid,
+                          lambda e: self.result.setText(error_text(e))))
 
     def _fill(self, result) -> None:
         self._loading = True
@@ -283,6 +287,9 @@ class CourseSettingsTab(QWidget):
     # ── 목소리 목록 ─────────────────────────────────────────────────────────
     def _reload_voices(self, _idx: int = -1, *, select: str | None = None) -> None:
         prov = self.provider.currentData()
+        # A3 — 제공자를 빠르게 바꾸면 앞 제공자의 목소리 목록이 늦게 도착해
+        # 새 목록을 덮는다 (라이브러리 kind 토큰과 같은 처방)
+        self._voices_req = prov
         self.voice.clear()
         self.prov_note.setText("불러오는 중…")
         studio = self._make_studio()
@@ -306,9 +313,11 @@ class CourseSettingsTab(QWidget):
             for w in (self.voice, self.tts_btn, self.prefetch_btn):
                 w.setEnabled(ok)
 
-        run_bg(lambda: studio.voice_catalog(prov), done=fill,
-               fail=lambda e: (self.prov_note.setText(error_text(e)),
-                               self.voice.setEnabled(False)))
+        run_bg(lambda: studio.voice_catalog(prov),
+               done=guard(self, "_voices_req", prov, fill),
+               fail=guard(self, "_voices_req", prov,
+                          lambda e: (self.prov_note.setText(error_text(e)),
+                                     self.voice.setEnabled(False))))
 
     # ── 미리듣기 (캐시 우선 — 같은 목소리를 두 번 합성하지 않는다) ────────────
     def _preview_tts(self) -> None:
@@ -324,6 +333,8 @@ class CourseSettingsTab(QWidget):
         if not voice_id:
             return
         gender = "male" if self.v_male.isChecked() else "female"
+        # A3-허용: 표본 재생은 제공자·목소리 소속 — 프로젝트 전환과 무관하고,
+        # 전환하면 load 가 콤보를 새로 채운다
         studio = self._make_studio()
         self._sampling = True
         self.tts_state.setText("준비 중…")
@@ -350,6 +361,7 @@ class CourseSettingsTab(QWidget):
                     QMessageBox.Yes | QMessageBox.Cancel,
                     QMessageBox.Cancel) != QMessageBox.Yes:
                 return
+        # A3-허용: 전역 캐시 작업 — 어느 프로젝트에서 봐도 같은 결과·같은 안내다
         studio = self._make_studio()
         self.prefetch_btn.setEnabled(False)
         self.tts_state.setText(f"{n}종 만드는 중…")
@@ -374,6 +386,7 @@ class CourseSettingsTab(QWidget):
             return
         studio = self._make_studio()
         name = ref.split("/")[-1]
+        # A3-허용: 소재 재생만 — 대상 데이터를 기록하지 않는다
         run_bg(lambda: studio.asset_path("bgm", name),
                done=lambda path: self.audio.start(self.bgm_play, path),
                fail=lambda e: self.result.setText(error_text(e)))
@@ -389,6 +402,7 @@ class CourseSettingsTab(QWidget):
         # 삭제 중 잠금 (48회차 P18) — 성공하면 화면을 떠나므로 복원은 실패 시만
         self.delete_btn.setEnabled(False)
         self.result.setText("삭제 중…")
+        # A3-허용: 완료 동선이 화면 이탈(deleted.emit) — 되돌아갈 화면이 없다
         run_bg(lambda: studio.delete_course(cid),
                done=lambda _out: self.deleted.emit(),
                fail=lambda e: (self.result.setText(error_text(e)),
@@ -434,11 +448,18 @@ class CourseSettingsTab(QWidget):
         self._saving = True
         self.save_btn.setEnabled(False)
         self.result.setText("저장 중…")
+        def _done(out) -> None:
+            self._saving = False
+            self._sync_save_btn()   # 잠금·버튼 복원은 대상 무관 — 항상
+            if self.cid == cid:     # A3 — 옛 프로젝트의 etag·확인문을 새 폼에 쓰지 않는다
+                self._saved(out)
+
         run_bg(lambda: studio.put_course(cid, body, etag),
-               done=self._saved,
+               done=_done,
                fail=lambda e: (setattr(self, "_saving", False),
-                               self.result.setText(error_text(e)),
-                               self._sync_save_btn()))
+                               self._sync_save_btn(),
+                               self.cid == cid
+                               and self.result.setText(error_text(e))))
 
     def _saved(self, out: dict) -> None:
         self._saving = False

@@ -21,7 +21,7 @@ from core import kinds
 from core.plan_apply import parse_plan_rows
 
 from .. import theme
-from ..bridge import error_text, run_bg
+from ..bridge import error_text, guard, run_bg
 
 
 class PlanTab(QWidget):
@@ -114,8 +114,11 @@ class PlanTab(QWidget):
         m = re.search(r"([\d,]+)\s*자", budget_text or "")
         self._budget = int(m.group(1).replace(",", "")) if m else 1850
         studio = self._make_studio()
-        run_bg(lambda: studio.get_plan(eid), done=self._fill,
-               fail=lambda e: (self.raw.setPlainText(""), self.result.setText(error_text(e))))
+        # A3 가드 — 영상을 옮긴 뒤 도착한 옛 구성표가 새 화면을 덮지 않게
+        run_bg(lambda: studio.get_plan(eid), done=guard(self, "eid", eid, self._fill),
+               fail=guard(self, "eid", eid,
+                          lambda e: (self.raw.setPlainText(""),
+                                     self.result.setText(error_text(e)))))
 
     def _fill(self, body: dict) -> None:
         self._etag = body["etag"]
@@ -159,15 +162,22 @@ class PlanTab(QWidget):
         # (24회차 P18·P20 — ② 대본 저장과 같은 처방)
         self.save_btn.setEnabled(False)
         self.result.setText("저장 중…")
-        run_bg(lambda: studio.put_plan(eid, md, etag),
-               done=lambda out: (setattr(self, "_busy", False),
-                                 setattr(self, "_etag", out["etag"]),
-                                 setattr(self, "_dirty", False),
-                                 self.result.setText("저장됨 ✓"),
-                                 self.save_btn.setEnabled(True)),
-               fail=lambda e: (setattr(self, "_busy", False),
-                               self.result.setText(error_text(e)),
-                               self.save_btn.setEnabled(True)))
+        def _done(out) -> None:
+            self._busy = False
+            self.save_btn.setEnabled(True)   # 잠금·버튼 복원은 대상 무관 — 항상
+            if self.eid != eid:   # A3 — 옛 영상의 etag·확인문을 새 구성표에 쓰지 않는다
+                return
+            self._etag = out["etag"]
+            self._dirty = False
+            self.result.setText("저장됨 ✓")
+
+        def _failed(e) -> None:
+            self._busy = False
+            self.save_btn.setEnabled(True)
+            if self.eid == eid:   # A3 — 옛 영상의 오류를 새 화면에 붙이지 않는다
+                self.result.setText(error_text(e))
+
+        run_bg(lambda: studio.put_plan(eid, md, etag), done=_done, fail=_failed)
 
     def _apply(self) -> None:
         if getattr(self, "_busy", False):
@@ -176,10 +186,16 @@ class PlanTab(QWidget):
         eid, studio = self.eid, self._make_studio()
         self.apply_btn.setEnabled(False)
         self.result.setText("반영 중…")
-        run_bg(lambda: studio.plan_apply(eid), done=self._applied,
+        def _done(out) -> None:
+            self._busy = False
+            self.apply_btn.setEnabled(True)
+            if self.eid == eid:   # A3 — 옛 영상의 반영 결과 안내를 새 화면에 띄우지 않는다
+                self._applied(out)
+
+        run_bg(lambda: studio.plan_apply(eid), done=_done,
                fail=lambda e: (setattr(self, "_busy", False),
-                               self.result.setText(error_text(e)),
-                               self.apply_btn.setEnabled(True)))
+                               self.apply_btn.setEnabled(True),
+                               self.eid == eid and self.result.setText(error_text(e))))
 
     def _applied(self, out: dict) -> None:
         self._busy = False

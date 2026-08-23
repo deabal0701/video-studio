@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QFileDialog, QHBoxLayout, QLabel, QLineEdit,
 from core.status import OUT_ROOT
 
 from .. import theme
-from ..bridge import error_text, run_bg
+from ..bridge import error_text, guard, run_bg
 
 
 class DeployTab(QWidget):
@@ -130,8 +130,11 @@ class DeployTab(QWidget):
             return   # 문안을 고치는 중 — 탭 재진입이 편집을 덮으면 안 된다 (P0)
         self.eid = eid
         studio = self._make_studio()
-        run_bg(lambda: studio.deliverables(eid), done=self._fill,
-               fail=lambda e: self.result.setText(error_text(e)))
+        # A3 가드 — 영상을 옮긴 뒤 도착한 옛 문안이 새 화면을 덮지 않게 (58회차의
+        # 라벨 잔존 처방과 짝 — 그때는 남은 라벨만 지웠지 늦은 응답은 안 막았다)
+        run_bg(lambda: studio.deliverables(eid), done=guard(self, "eid", eid, self._fill),
+               fail=guard(self, "eid", eid,
+                          lambda e: self.result.setText(error_text(e))))
 
     def _fill(self, data: dict) -> None:
         self._data = data
@@ -201,14 +204,20 @@ class DeployTab(QWidget):
         # 처리 중 잠금 (P18) + 성공하면 편집 플래그 해제 — 이후 재진입은 새로 읽는다
         self.save_btn.setEnabled(False)
         self.result.setText("저장 중…")
+        def _done(out) -> None:
+            self._busy = False
+            self._sync_save_btn()   # 잠금·버튼 복원은 대상 무관 — 항상
+            if self.eid != eid:     # A3 — 옛 영상의 저장 확인을 새 화면에 남기지 않는다
+                return
+            self.result.setText(f"{out['file']} 저장됨 ✓")
+            self._dirty = False
+
         run_bg(lambda: studio.save_deliverables(eid, title=title, description=desc),
-               done=lambda out: (setattr(self, "_busy", False),
-                                 self.result.setText(f"{out['file']} 저장됨 ✓"),
-                                 setattr(self, "_dirty", False),
-                                 self._sync_save_btn()),
+               done=_done,
                fail=lambda e: (setattr(self, "_busy", False),
-                               self.result.setText(error_text(e)),
-                               self._sync_save_btn()))
+                               self._sync_save_btn(),
+                               self.eid == eid
+                               and self.result.setText(error_text(e))))
 
     def _save_srt(self) -> None:
         names = self._data.get("srt") or []

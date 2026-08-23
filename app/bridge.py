@@ -115,6 +115,21 @@ class JobEventPump(QObject):
                fail=lambda _e: self.finished.emit())
 
 
+def guard(owner, attr: str, value, cb):
+    """늦은 응답 차단 — 제출 시점의 대상(owner.<attr>)이 그대로일 때만 콜백을 부른다.
+
+    화면이 다른 프로젝트/영상으로 넘어간 뒤 도착한 응답이 새 화면을 **옛 대상의
+    데이터로 되덮는** 것을 막는다 (74회차 A3). 59·60회차의 토큰 가드(self._req)와
+    같은 처방을 대상 id 로 일반화한 관용구다 — 화면마다 사본을 두지 않는다.
+    사용: run_bg(get, done=guard(self, "eid", eid, self._fill),
+                 fail=guard(self, "eid", eid, self._fail))
+    """
+    def wrapped(arg=None):
+        if getattr(owner, attr, None) == value and cb is not None:
+            cb(arg)
+    return wrapped
+
+
 def agent_gate_failed(err: Exception) -> dict:
     """`agent_status` 조회가 실패했을 때 쓸 게이트 — **비활성 + 사유**.
 
