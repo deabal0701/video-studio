@@ -961,14 +961,23 @@ class ClipEditorTab(QWidget):
             return
         eid, studio = self.eid, self._make_studio()
         video, vs, cf = b["video"], b.get("videoStart", 0), c["file"]
+        # ffmpeg 추출은 수 초 — 잠그지 않으면 더블클릭이 중복 실행된다 (39회차 P18)
+        self.extract_btn.setEnabled(False)
+        self.extract_btn.setText("가져오는 중…")
+
+        def _extract_done() -> None:
+            self.extract_btn.setEnabled(True)
+            self.extract_btn.setText("B롤 프레임을 이미지(src)로 가져오기")
+
         run_bg(lambda: studio.bg_frame(eid, video=video, video_start=vs, clip_file=cf),
-               done=lambda out: (self._set_param("src", out["src"]),
+               done=lambda out: (_extract_done(),
+                                 self._set_param("src", out["src"]),
                                  self._render_params_form(),
                                  self.issues.setText(f"배경 프레임 가져옴 — 이미지(src)에 "
                                                      f"기입됨 (B롤 {vs}s 지점)"),
                                  self.issues.setProperty("chip", "ok"),
                                  self._repolish(self.issues), self.issues.show()),
-               fail=lambda e: self._show_issue(error_text(e)))
+               fail=lambda e: (_extract_done(), self._show_issue(error_text(e))))
 
     # ── B롤 재생 토글 (음성 미리듣기와 같은 문법 — 재생 중엔 "중지") ─────────
     def _toggle_broll(self) -> None:
