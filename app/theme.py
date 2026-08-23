@@ -55,6 +55,23 @@ def dot(color: str, size: int = 9) -> str:
             f" min-height: {size}px; max-height: {size}px;")
 
 
+def bar_chunk(done: int, total: int) -> str:
+    """카드 진행바 채움색 — 칩 규칙(08 §5)과 같은 맵핑: **색이 곧 상태다**.
+
+    초록 가득 = 완성 · 파랑 부분 = 진행 중 · 빈 트랙(0%) = 시작 전(채움이 없어 색 무관).
+    회색 채움은 쓰지 않는다 — 단발 카드가 종류 표시로 회색을 채웠을 때 "완성"(초록 텍스트)
+    옆의 회색 바가 죽은 바로 오독됐다 (2026-08-23 사용자: "완성인데 진행바가 왜 회색인가").
+    """
+    return SUCCESS if total and done >= total else ACCENT
+
+
+def bar_style(chunk: str) -> str:
+    """카드 진행바 QSS — 시리즈·단발이 같은 트랙 모양을 쓰고 채움색만 상태를 따른다."""
+    return (f"QProgressBar {{ background: {BG_PAGE};"
+            f" border: 1px solid {SEPARATOR}; border-radius: 3px; }}"
+            f" QProgressBar::chunk {{ background: {chunk}; border-radius: 3px; }}")
+
+
 def make_palette():
     """라이트 팔레트 명시 — OS 다크모드가 QSS 미적용 위젯을 오염시키는 것을 차단 (08 §1·§2).
 

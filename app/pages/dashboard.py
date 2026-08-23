@@ -51,7 +51,8 @@ class CourseCard(QFrame):
         if info.get("single") or info.get("soleEpisode"):
             # 단발(광고·홍보·매뉴얼 1편)에 시리즈 문법("영상 1개·완료 0/1")은 장황했다
             # (49회차 P12·P16). 다만 행 구성(부제·바·상태)은 시리즈와 똑같이 유지해
-            # 카드 높이를 맞춘다 — 바는 회색이라 시리즈 진행바와 헷갈리지 않는다
+            # 카드 높이를 맞춘다. 바 색은 종류가 아니라 **상태** — 처음엔 단발 표시로
+            # 회색을 채웠으나 "완성인데 왜 회색인가"로 오독됐다 (2026-08-23, theme.bar_chunk)
             kind_name = kinds_mod.label(info.get("kind")) if info.get("kind") else ""
             sub = QLabel(" · ".join(p for p in (kind_name, "단발 영상") if p))
             sub.setObjectName("caption")
@@ -59,11 +60,9 @@ class CourseCard(QFrame):
             bar = QProgressBar()
             bar.setTextVisible(False)
             bar.setFixedHeight(6)
-            bar.setValue(100 if info.get("done") else 0)
-            bar.setStyleSheet(
-                f"QProgressBar {{ background: {theme.BG_PAGE};"
-                f" border: 1px solid {theme.SEPARATOR}; border-radius: 3px; }}"
-                f" QProgressBar::chunk {{ background: {theme.INK_3}; border-radius: 3px; }}")
+            single_done = 1 if info.get("done") else 0
+            bar.setValue(100 if single_done else 0)
+            bar.setStyleSheet(theme.bar_style(theme.bar_chunk(single_done, 1)))
             lay.addWidget(bar)
             # 상태는 배지 정보가 있는 정식 단발 프로젝트만 — 구식 단독 폴더는 모른다
             # (그 경우도 빈 캡션으로 줄을 세워 카드 높이는 같게)
@@ -91,6 +90,8 @@ class CourseCard(QFrame):
             bar.setTextVisible(False)
             bar.setFixedHeight(6)
             bar.setValue(round(done / total * 100) if total else 0)
+            # 전부 완료면 초록 — 아래 "전부 완료" 초록 캡션·단발 카드와 같은 색 규칙
+            bar.setStyleSheet(theme.bar_style(theme.bar_chunk(done, total)))
             lay.addWidget(bar)
             # 진행을 숫자로도 — 바만으로는 "몇 편 남았나"를 못 읽는다.
             # 빈 프로젝트에는 진행 대신 **다음 행동**을 적는다 (P9·P1)

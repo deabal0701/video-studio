@@ -5,6 +5,7 @@ Qt 를 띄우지 않고 문구 규칙만 고정한다 — 카드가 쓰는 판�
 
 from __future__ import annotations
 
+from app import theme
 from core import kinds
 
 
@@ -28,3 +29,18 @@ def test_progress_and_completion_wording():
     assert card_progress(6, 1, "lecture") == "완료 1 / 6"
     assert card_progress(6, 6, "lecture") == "전부 완료 (6강)"
     assert card_progress(3, 3, "promo") == "전부 완료 (3편)"
+
+
+def test_bar_color_means_state_not_kind():
+    """바 색 = 상태 — 완성 초록·진행 파랑. 회색 채움 금지 (2026-08-23 "완성인데 왜 회색인가").
+
+    단발 카드는 (done, 1)로, 시리즈 카드는 (done, total)로 같은 규칙을 쓴다 —
+    단발 완성과 시리즈 전부 완료가 같은 초록이어야 범례 없이 읽힌다.
+    """
+    assert theme.bar_chunk(1, 1) == theme.SUCCESS      # 단발 완성
+    assert theme.bar_chunk(6, 6) == theme.SUCCESS      # 시리즈 전부 완료
+    assert theme.bar_chunk(1, 6) == theme.ACCENT       # 부분 진행 = 파랑
+    assert theme.bar_chunk(0, 1) == theme.ACCENT       # 0% — 채움이 없어 색은 안 보인다
+    assert theme.bar_chunk(0, 0) == theme.ACCENT       # 빈 프로젝트도 0%
+    assert theme.INK_3 not in {theme.bar_chunk(d, t)   # 어떤 조합도 회색을 채우지 않는다
+                               for d in range(3) for t in range(3)}
