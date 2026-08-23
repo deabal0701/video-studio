@@ -118,7 +118,8 @@ class EpisodePage(QWidget):
         self.deploy_tab = DeployTab(make_studio)
         self.tabs.addTab(self.plan_tab, "① 구성표")
         self.tabs.addTab(self.clip_tab, "② 대본")
-        self.tabs.addTab(self._make_review_tab(), "③ 검수")
+        self.review_tab = self._make_review_tab()
+        self.tabs.addTab(self.review_tab, "③ 검수")
         self.tabs.addTab(self.deploy_tab, "④ 배포")
         self.tabs.setCurrentIndex(1)
         self.tabs.currentChanged.connect(self._on_tab)
@@ -236,7 +237,27 @@ class EpisodePage(QWidget):
         self._open_ai_pending = True
         self.load(eid)
 
+    def stop_all_media(self) -> None:
+        """이 화면의 재생을 전부 멈춘다 — ② 대본의 B롤·음성 + ③ 검수의 완성본.
+
+        57회차 실측: ③ 검수에서 완성본을 재생한 채 ④ 배포로 옮기면 **소리를 낸 채
+        계속 재생됐다**(위치 4.7s→6.2s). 55회차에 클립 탭은 고쳤는데 이 플레이어는
+        사각이었다 — 이쪽은 QAudioOutput 이 붙어 있어 소리까지 따라 나온다.
+        """
+        from PySide6.QtMultimedia import QMediaPlayer
+
+        self.clip_tab.stop_media()
+        if self.player.playbackState() != QMediaPlayer.PlaybackState.StoppedState:
+            self.player.stop()
+            self.play_btn.setText("▶ 재생")
+
     def load(self, eid: str) -> None:
+        if eid != self.eid:
+            # 앞 영상의 검수 결과가 남아 있었다 — 빌드가 끝나 본문이 열리는 순간
+            # 옛 캡션·무음 리포트가 잠깐 보인다 (57회차 P19·P11. 52~56회차와 같은 처방)
+            self.media_label.setText("")
+            self.silence_label.setText("")
+            self.stop_all_media()
         self.eid = eid
         self.title.setText(eid)          # 즉시 표시 — 아래에서 사람 이름으로 바꾼다
         self._load_display_name(eid)
@@ -318,7 +339,7 @@ class EpisodePage(QWidget):
                     QMessageBox.Yes | QMessageBox.Cancel,
                     QMessageBox.Cancel) != QMessageBox.Yes:
                 return
-        self.clip_tab.stop_media()   # 미리듣기를 화면 밖으로 끌고 나가지 않는다 (55회차)
+        self.stop_all_media()   # 재생을 화면 밖으로 끌고 나가지 않는다 (55·57회차)
         self.back.emit(self.eid.rsplit("-", 1)[0])
 
     @staticmethod
@@ -417,10 +438,16 @@ class EpisodePage(QWidget):
         self.clip_tab.set_inspect(inspect)
 
     def _on_tab(self, idx: int) -> None:
-        # ② 대본을 떠나면 그 탭의 미리듣기도 멈춘다 (55회차 — 안 멈추면 ③ 검수에서
-        # 완성본을 재생하는 동안 B롤 소리가 겹친다)
+        # 탭을 옮기면 그 탭에서 틀던 것을 멈춘다 (55·57회차 — 안 멈추면 ④ 배포에서
+        # 문안을 고치는 동안 ③ 검수의 완성본 소리가 계속 난다)
         if self.tabs.widget(idx) is not self.clip_tab:
             self.clip_tab.stop_media()
+        if self.tabs.widget(idx) is not self.review_tab:
+            from PySide6.QtMultimedia import QMediaPlayer
+
+            if self.player.playbackState() != QMediaPlayer.PlaybackState.StoppedState:
+                self.player.stop()
+                self.play_btn.setText("▶ 재생")
         if idx == 3 and self.eid:
             self.deploy_tab.load(self.eid)
 
