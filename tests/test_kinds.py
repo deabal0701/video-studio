@@ -116,3 +116,26 @@ def test_user_picked_palette_can_fail_contrast():
     # 프리셋은 전부 통과한다 — 위 대비 표와 같은 기준
     for _name, pal in kinds.PRESET_PALETTES:
         assert kinds.contrast(pal["brand"], pal["bg"]) >= MIN_TEXT, _name
+
+
+# ── 역할 이름 (56회차 P2) ────────────────────────────────────────────────────
+def test_role_label_numbered_sections():
+    """`b1` 이 "b1" 로 떴다 — 꼬리를 떼던 `rstrip("0123456789ab")` 가 'b' 까지 지워
+
+    base 가 빈 문자열이 되는 바람에 B롤 분기가 한 번도 닿지 못했다.
+    plan.md 템플릿이 b1 행을 갖고 있어 **새 영상마다** 구성표 표에 "b1 (b1)" 로 떴다.
+    """
+    assert kinds.role_label("b1") == "B롤 1"
+    assert kinds.role_label("b2") == "B롤 2"
+    assert kinds.role_label("ch1") == "챕터 1"
+    assert kinds.role_label("ch12") == "챕터 12"
+    assert kinds.role_label("s1") == "본문 1"
+    assert kinds.role_label("s1a") == "본문 1a"
+    assert kinds.role_label("s1b") == "본문 1b"
+    # 사전에 있는 id 가 규칙보다 먼저다 — "broll" 은 "B롤 roll" 이 아니다
+    assert kinds.role_label("broll") == "실사 도입"
+    assert kinds.role_label("intro") == "도입"
+    # 모르는 id 는 그대로 (죽지 않는다)
+    assert kinds.role_label("zz9") == "zz9"
+    assert kinds.role_label("") == ""
+    assert kinds.role_label(None) == ""

@@ -124,19 +124,26 @@ ROLE_LABELS = {
 
 
 def role_label(clip_id: str | None) -> str:
-    """"도입 훅" 같은 역할 이름 — 모르는 id 는 그대로 돌려준다 (죽지 않는다)."""
+    """"도입 훅" 같은 역할 이름 — 모르는 id 는 그대로 돌려준다 (죽지 않는다).
+
+    번호 붙은 id 는 `ch1`·`s1`·`s1a`·`b1` 꼴이다. 예전엔 `rstrip("0123456789ab")` 로
+    꼬리를 떼었는데, **그 문자 집합이 'b' 를 포함해 `b1` 은 통째로 지워졌다** —
+    base 가 빈 문자열이 되어 B롤 분기가 한 번도 닿지 못했고, 구성표 표에 "b1 (b1)" 로
+    떴다(56회차 실측. plan.md 템플릿이 b1 행을 갖고 있어 **새 영상마다** 보인다).
+    떼는 규칙을 정규식으로 못 박는다.
+    """
+    import re as _re
+
     cid = str(clip_id or "")
     if cid in ROLE_LABELS:
         return ROLE_LABELS[cid]
-    base = cid.rstrip("0123456789ab")
-    num = cid[len(base):]
-    if base == "ch":
-        return f"챕터 {num}" if num else "챕터"
-    if base == "s":
-        return f"본문 {num}" if num else "본문"
-    if base == "b":
-        return f"B롤 {num}" if num else "B롤"
-    return cid
+    m = _re.fullmatch(r"(ch|s|b)(\d*)([ab]?)", cid)
+    if not m:
+        return cid
+    base, num, suffix = m.groups()
+    name = {"ch": "챕터", "s": "본문", "b": "B롤"}[base]
+    tail = f"{num}{suffix}"
+    return f"{name} {tail}" if tail else name
 
 
 # 템플릿 파라미터 키 → 한국어 라벨 (루프 6회차 P2 — "progress·wipe 가 뭔가").

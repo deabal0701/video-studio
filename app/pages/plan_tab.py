@@ -105,6 +105,11 @@ class PlanTab(QWidget):
         # 원문 편집 중엔 재로드가 덮지 않는다 (26·36회차와 같은 처방)
         if eid == self.eid and getattr(self, "_dirty", False):
             return
+        if eid != self.eid:
+            # "반영 3건"·"저장됨 ✓"이 **다른 영상**의 구성표에 그대로 남아 있었다
+            # (56회차 P19·P11 — 52·53·54회차와 같은 결함·같은 처방).
+            # 같은 영상 재로드에는 손대지 않는다 — 저장 직후 확인문이 사라지면 안 된다
+            self.result.setText("")
         self.eid = eid
         m = re.search(r"([\d,]+)\s*자", budget_text or "")
         self._budget = int(m.group(1).replace(",", "")) if m else 1850
@@ -143,6 +148,11 @@ class PlanTab(QWidget):
         self.budget_bar.setValue(min(100, pct))
 
     def _save(self) -> None:
+        # 버튼 비활성만으로는 버튼 밖 경로(단축키·프로그램 호출)를 못 막는다 —
+        # 옛 etag 로 두 번째 저장이 나간다 (52회차 설정 탭과 같은 처방)
+        if getattr(self, "_busy", False):
+            return
+        self._busy = True
         eid, etag, studio = self.eid, self._etag, self._make_studio()
         md = self.raw.toPlainText()
         # 처리 중 잠금 — 중복 클릭이 옛 etag 로 두 번째 저장을 보내 409 를 띄운다
@@ -150,22 +160,29 @@ class PlanTab(QWidget):
         self.save_btn.setEnabled(False)
         self.result.setText("저장 중…")
         run_bg(lambda: studio.put_plan(eid, md, etag),
-               done=lambda out: (setattr(self, "_etag", out["etag"]),
+               done=lambda out: (setattr(self, "_busy", False),
+                                 setattr(self, "_etag", out["etag"]),
                                  setattr(self, "_dirty", False),
                                  self.result.setText("저장됨 ✓"),
                                  self.save_btn.setEnabled(True)),
-               fail=lambda e: (self.result.setText(error_text(e)),
+               fail=lambda e: (setattr(self, "_busy", False),
+                               self.result.setText(error_text(e)),
                                self.save_btn.setEnabled(True)))
 
     def _apply(self) -> None:
+        if getattr(self, "_busy", False):
+            return   # 저장·반영은 같은 파일을 만진다 — 하나씩 (56회차)
+        self._busy = True
         eid, studio = self.eid, self._make_studio()
         self.apply_btn.setEnabled(False)
         self.result.setText("반영 중…")
         run_bg(lambda: studio.plan_apply(eid), done=self._applied,
-               fail=lambda e: (self.result.setText(error_text(e)),
+               fail=lambda e: (setattr(self, "_busy", False),
+                               self.result.setText(error_text(e)),
                                self.apply_btn.setEnabled(True)))
 
     def _applied(self, out: dict) -> None:
+        self._busy = False
         self.apply_btn.setEnabled(True)
         added = out.get("added") or []
         QMessageBox.information(
