@@ -107,6 +107,8 @@ class LibraryPage(QWidget):
         self.table.clearSelection()
         self.ref_label.setText("")
         self.play_btn.setEnabled(False)
+        # 사진·글꼴은 재생이 없다 — 회색 버튼 상주는 의미 없는 컨트롤 (43회차 P12·P25)
+        self.play_btn.setVisible(kind in ("bgm", "broll"))
         self.audio.stop_if_playing(self.play_btn)
         self.result.setText("불러오는 중…")
         run_bg(lambda: studio.assets(kind), done=self._fill,
