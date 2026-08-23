@@ -188,6 +188,13 @@ class NewCourseDialog(QDialog):
 
         self.course_id = QLineEdit()
         self.course_id.setPlaceholderText("비우면 자동 (예: summer-promo — 영문 소문자·붙임표, 폴더 이름)")
+        # 규약을 placeholder 로만 말하지 않는다 — 어긋난 글자는 입력 자체가 안 된다
+        # (50회차 P20. 폴더명은 경로 규약이라 사후 오류보다 사전 차단)
+        from PySide6.QtCore import QRegularExpression
+        from PySide6.QtGui import QRegularExpressionValidator
+
+        self.course_id.setValidator(
+            QRegularExpressionValidator(QRegularExpression(r"[a-z0-9-]*")))
         adv_form.addRow("폴더 이름", self.course_id)
 
         custom_row = QHBoxLayout()
