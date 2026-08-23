@@ -78,7 +78,13 @@ class CourseCard(QFrame):
             lay.addWidget(st)
         else:
             total, done = info["episodeCount"], info["done"]
-            sub = QLabel(f"영상 {total}개 · 만든 것 {info['scaffolded']}")
+            unit = kinds_mod.unit(info.get("kind"))
+            # 아직 영상이 없는 프로젝트 — 만들자마자가 그렇다 (시리즈는 위저드가 편을
+            # 만들지 않는다). 예전엔 `done < total` 이 False 라 **"전부 완료 (0강)"** 으로
+            # 떨어졌다: 아무것도 안 했는데 다 했다고 말한 것이다 (65회차 P9·P2 실측).
+            empty = total == 0
+            sub = QLabel("아직 영상이 없습니다" if empty
+                         else f"영상 {total}개 · 만든 것 {info['scaffolded']}")
             sub.setObjectName("caption")
             lay.addWidget(sub)
             bar = QProgressBar()
@@ -86,12 +92,14 @@ class CourseCard(QFrame):
             bar.setFixedHeight(6)
             bar.setValue(round(done / total * 100) if total else 0)
             lay.addWidget(bar)
-            # 진행을 숫자로도 — 바만으로는 "몇 편 남았나"를 못 읽는다
-            unit = kinds_mod.unit(info.get("kind"))
-            prog = QLabel(f"완료 {done} / {total}" if done < total
+            # 진행을 숫자로도 — 바만으로는 "몇 편 남았나"를 못 읽는다.
+            # 빈 프로젝트에는 진행 대신 **다음 행동**을 적는다 (P9·P1)
+            prog = QLabel("카드를 열어 첫 영상을 추가하세요" if empty
+                          else f"완료 {done} / {total}" if done < total
                           else f"전부 완료 ({total}{unit})")
             prog.setObjectName("caption")
-            prog.setStyleSheet(f"color: {theme.SUCCESS};" if done and done >= total else "")
+            prog.setStyleSheet(f"color: {theme.SUCCESS};"
+                               if not empty and done and done >= total else "")
             lay.addWidget(prog)
         self.setCursor(Qt.PointingHandCursor)
 
