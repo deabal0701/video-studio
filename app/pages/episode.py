@@ -290,12 +290,13 @@ class EpisodePage(QWidget):
         """[← 프로젝트] — 저장하지 않은 대본 변경이 있으면 확인을 거친다 (38회차 P20)."""
         if not self.eid:
             return
-        if self.clip_tab.has_unsaved():
+        if self.clip_tab.has_unsaved() or self.plan_tab.has_unsaved():
             from PySide6.QtWidgets import QMessageBox
 
+            what = "대본" if self.clip_tab.has_unsaved() else "구성표 원문"
             if QMessageBox.warning(
                     self, "저장하지 않은 변경",
-                    "대본에 저장하지 않은 변경이 있습니다 — 나가면 사라집니다.\n"
+                    f"{what}에 저장하지 않은 변경이 있습니다 — 나가면 사라집니다.\n"
                     "[저장]을 누른 뒤 나가는 것이 안전합니다. 그래도 나갈까요?",
                     QMessageBox.Yes | QMessageBox.Cancel,
                     QMessageBox.Cancel) != QMessageBox.Yes:

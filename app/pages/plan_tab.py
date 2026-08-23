@@ -68,6 +68,8 @@ class PlanTab(QWidget):
         # 마크다운 표는 고정폭이라야 열이 보인다
         self.raw.setStyleSheet("font-family: Consolas, 'D2Coding', monospace;")
         self.raw.textChanged.connect(self._on_edit)
+        # 로드는 blockSignals 로 걸러진다 — textChanged = 사용자 편집 (40회차 P20)
+        self.raw.textChanged.connect(self._mark_dirty)
         self.raw.setMinimumHeight(260)
         self.raw.hide()
         lay.addWidget(self.raw, 1)
@@ -93,7 +95,16 @@ class PlanTab(QWidget):
         self.save_btn.setVisible(on)
         self.raw_btn.setArrowType(Qt.DownArrow if on else Qt.RightArrow)
 
+    def _mark_dirty(self) -> None:
+        self._dirty = True
+
+    def has_unsaved(self) -> bool:
+        return bool(getattr(self, "_dirty", False))
+
     def load(self, eid: str, budget_text: str = "") -> None:
+        # 원문 편집 중엔 재로드가 덮지 않는다 (26·36회차와 같은 처방)
+        if eid == self.eid and getattr(self, "_dirty", False):
+            return
         self.eid = eid
         m = re.search(r"([\d,]+)\s*자", budget_text or "")
         self._budget = int(m.group(1).replace(",", "")) if m else 1850
@@ -108,6 +119,7 @@ class PlanTab(QWidget):
         self.raw.blockSignals(True)
         self.raw.setPlainText(body["markdown"])
         self.raw.blockSignals(False)
+        self._dirty = False
         self._on_edit()
 
     def _on_edit(self) -> None:
@@ -139,6 +151,7 @@ class PlanTab(QWidget):
         self.result.setText("저장 중…")
         run_bg(lambda: studio.put_plan(eid, md, etag),
                done=lambda out: (setattr(self, "_etag", out["etag"]),
+                                 setattr(self, "_dirty", False),
                                  self.result.setText("저장됨 ✓"),
                                  self.save_btn.setEnabled(True)),
                fail=lambda e: (self.result.setText(error_text(e)),
