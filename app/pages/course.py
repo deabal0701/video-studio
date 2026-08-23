@@ -139,6 +139,10 @@ class CoursePage(QWidget):
         outer.addWidget(self.tabs, 1)
         self._course: dict = {}
 
+    def unsaved_label(self) -> str:
+        """설정 탭에 저장 안 한 편집이 있으면 그 이름을 준다 (64회차 P20)."""
+        return "프로젝트 설정" if getattr(self.settings, "_dirty", False) else ""
+
     def stop_media(self) -> None:
         """설정 탭의 목소리·배경음악 미리듣기를 멈춘다 (내비가 화면을 떠날 때 부른다)."""
         self.settings.audio.stop()

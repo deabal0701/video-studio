@@ -156,22 +156,31 @@ class MainWindow(QMainWindow):
     def _nav_to(self, row: int) -> None:
         if row not in self.NAV_STACK:
             return
-        # 설정에서 키를 입력하다 다른 화면으로 — 저장 안 한 키가 조용히 사라진다
-        # (45회차 P20. [취소]면 설정에 머물고 내비 하이라이트를 되돌린다)
-        if (self.stack.currentWidget() is self.settings_page and row != 3
-                and self.settings_page.has_unsaved()):
-            from PySide6.QtWidgets import QMessageBox
+        # 내비로 화면을 떠날 때 저장 안 한 편집이 조용히 사라지던 구멍 — 45회차가
+        # **설정 화면에만** 가드를 뒀는데, 프로젝트 설정에서 이름을 고치다가도, ② 대본을
+        # 고치다가도 내비를 누르면 아무 말 없이 날아갔다 (64회차 P20 실측).
+        # 화면마다 배선하지 않고 여기서 묻는다 — 떠나는 화면이 "무엇을 잃는지" 만 답한다
+        # (`stop_media` 를 한 곳에 모은 59회차와 같은 방식)
+        leaving = self.stack.currentWidget()
+        if leaving is not self.stack.widget(self.NAV_STACK[row]):
+            what = getattr(leaving, "unsaved_label", lambda: "")()
+            if what:
+                from PySide6.QtWidgets import QMessageBox
 
-            if QMessageBox.warning(
-                    self, "저장하지 않은 변경",
-                    "설정에 저장하지 않은 변경이 있습니다 — 이동하면 사라집니다.\n"
-                    "[키 저장]을 누른 뒤 이동하는 것이 안전합니다. 그래도 이동할까요?",
-                    QMessageBox.Yes | QMessageBox.Cancel,
-                    QMessageBox.Cancel) != QMessageBox.Yes:
-                self.nav.blockSignals(True)
-                self.nav.setCurrentRow(3)
-                self.nav.blockSignals(False)
-                return
+                if QMessageBox.warning(
+                        self, "저장하지 않은 변경",
+                        f"{what}에 저장하지 않은 변경이 있습니다 — 이동하면 사라집니다.\n"
+                        "저장한 뒤 이동하는 것이 안전합니다. 그래도 이동할까요?",
+                        QMessageBox.Yes | QMessageBox.Cancel,
+                        QMessageBox.Cancel) != QMessageBox.Yes:
+                    # [취소]면 머물고 내비 하이라이트를 되돌린다
+                    back = next((r for r, i in self.NAV_STACK.items()
+                                 if self.stack.widget(i) is leaving), None)
+                    if back is not None:
+                        self.nav.blockSignals(True)
+                        self.nav.setCurrentRow(back)
+                        self.nav.blockSignals(False)
+                    return
         # 떠나는 화면이 틀던 소리를 멈춘다 — 라이브러리 미리듣기가 대시보드까지
         # 따라왔다 (59회차 P4. 55·57회차를 화면마다 배선하는 대신 여기 한 곳에서)
         self._stop_media_of(self.stack.currentWidget())

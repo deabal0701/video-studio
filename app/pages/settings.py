@@ -153,6 +153,10 @@ class SettingsPage(QWidget):
     def has_unsaved(self) -> bool:
         return bool(getattr(self, "_dirty", False))
 
+    def unsaved_label(self) -> str:
+        """내비가 떠날 때 무엇을 잃는지 — 빈 문자열이면 물어보지 않는다 (64회차)."""
+        return "설정" if self.has_unsaved() else ""
+
     def refresh(self) -> None:
         studio = self._make_studio()
         # 키를 입력하는 중이면 값은 안 덮는다 — 내비 재클릭이 refresh 를 부른다

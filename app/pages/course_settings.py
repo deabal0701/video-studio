@@ -349,13 +349,9 @@ class CourseSettingsTab(QWidget):
     # ── 삭제 ────────────────────────────────────────────────────────────────
     def _delete(self) -> None:
         title = self.title.text().strip() or self.cid
-        if QMessageBox.warning(
-                self, "프로젝트 삭제",
-                f'"{title}" 프로젝트를 삭제할까요?\n\n'
-                "영상·대본·설정·완성본(mp4)까지 전부 지워지고 되돌릴 수 없습니다.\n"
-                "완성본이 필요하면 먼저 ④ 배포에서 저장해 두세요.",
-                QMessageBox.Yes | QMessageBox.Cancel,
-                QMessageBox.Cancel) != QMessageBox.Yes:
+        from ..dialogs import confirm_delete_course
+
+        if not confirm_delete_course(self, title):   # 대시보드 카드와 같은 문구 (64회차 P11)
             return
         cid, studio = self.cid, self._make_studio()
         # 삭제 중 잠금 (48회차 P18) — 성공하면 화면을 떠나므로 복원은 실패 시만

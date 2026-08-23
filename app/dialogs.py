@@ -53,6 +53,23 @@ def _palette_icon(pal: dict, size: int = 22) -> QIcon:
     return QIcon(px)
 
 
+def confirm_delete_course(parent, title: str) -> bool:
+    """프로젝트 삭제 확인 — 대시보드 카드와 설정 탭이 **같은 말**을 쓴다 (64회차 P11).
+
+    같은 파괴적 동작인데 대시보드에는 "완성본이 필요하면 먼저 저장해 두세요"가 빠져
+    있었다. 기본 버튼은 [취소] (16회차 문법).
+    """
+    from PySide6.QtWidgets import QMessageBox
+
+    return QMessageBox.warning(
+        parent, "프로젝트 삭제",
+        f'"{title}" 프로젝트를 삭제할까요?\n\n'
+        "영상·대본·설정·완성본(mp4)까지 전부 지워지고 되돌릴 수 없습니다.\n"
+        "완성본이 필요하면 먼저 ④ 배포에서 저장해 두세요.",
+        QMessageBox.Yes | QMessageBox.Cancel,
+        QMessageBox.Cancel) == QMessageBox.Yes
+
+
 class NewCourseDialog(QDialog):
     """만들기 위저드 — 수락 시 create_course(+단발이면 영상 1편까지) 제출."""
 

@@ -175,12 +175,9 @@ class DashboardPage(QWidget):
     def _delete_course(self, cid: str, title: str) -> None:
         from PySide6.QtWidgets import QMessageBox
 
-        if QMessageBox.warning(
-                self, "프로젝트 삭제",
-                f'"{title}" 프로젝트를 삭제할까요?' + chr(10) + chr(10) +
-                "영상·대본·설정·완성본(mp4)까지 전부 지워지고 되돌릴 수 없습니다.",
-                QMessageBox.Yes | QMessageBox.Cancel,
-                QMessageBox.Cancel) != QMessageBox.Yes:
+        from ..dialogs import confirm_delete_course
+
+        if not confirm_delete_course(self, title):   # 설정 탭과 같은 문구 (64회차 P11)
             return
         if getattr(self, "_deleting", False):   # 확인 직후 재클릭 이중 삭제 방지 (P18)
             return

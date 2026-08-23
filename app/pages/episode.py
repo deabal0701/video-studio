@@ -321,17 +321,28 @@ class EpisodePage(QWidget):
         run_bg(lambda: studio.agent_submit("draft", eid, {"episodeId": eid, **payload}),
                done=submitted, fail=lambda e: (self._fail(e), self._set_building(False)))
 
+    def unsaved_label(self) -> str:
+        """저장 안 한 편집이 있으면 무엇인지 — [← 프로젝트]와 내비 이탈이 같이 쓴다.
+
+        예전엔 이 판단이 `_back_clicked` 안에만 있어, **내비로 나가면 아무 말 없이**
+        날아갔다 (64회차 P20).
+        """
+        if self.clip_tab.has_unsaved():
+            return "대본"
+        if self.plan_tab.has_unsaved():
+            return "구성표 원문"
+        if self.deploy_tab.has_unsaved():
+            return "배포 문안"
+        return ""
+
     def _back_clicked(self) -> None:
         """[← 프로젝트] — 저장하지 않은 대본 변경이 있으면 확인을 거친다 (38회차 P20)."""
         if not self.eid:
             return
-        if (self.clip_tab.has_unsaved() or self.plan_tab.has_unsaved()
-                or self.deploy_tab.has_unsaved()):
+        what = self.unsaved_label()
+        if what:
             from PySide6.QtWidgets import QMessageBox
 
-            what = ("대본" if self.clip_tab.has_unsaved()
-                    else "구성표 원문" if self.plan_tab.has_unsaved()
-                    else "배포 문안")
             if QMessageBox.warning(
                     self, "저장하지 않은 변경",
                     f"{what}에 저장하지 않은 변경이 있습니다 — 나가면 사라집니다.\n"
