@@ -992,7 +992,7 @@ class ClipEditorTab(QWidget):
         from PySide6.QtMultimedia import QMediaPlayer
 
         playing = state == QMediaPlayer.PlaybackState.PlayingState
-        self.broll_play_btn.setText("중지" if playing else "▶ B롤 재생")
+        self.broll_play_btn.setText("일시정지" if playing else "▶ B롤 재생")   # 영상 재생과 같은 말 (P11)
 
     # ── 프리뷰 (QWebEngineView — preview.js 문서 + 질의 params) ──────────────
     def _refresh_preview(self) -> None:

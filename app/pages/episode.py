@@ -203,9 +203,18 @@ class EpisodePage(QWidget):
             check_row.addWidget(cb)
         check_row.addStretch(1)
         lay.addLayout(check_row)
+        note_row = QHBoxLayout()
         self.check_note = QLabel("")
         self.check_note.setObjectName("caption")
-        lay.addWidget(self.check_note)
+        # 말로만 안내하지 않는다 — 가는 버튼을 준다 (41회차 P1, 5회차 브랜드 킷 문법)
+        self.goto_deploy_btn = QPushButton("④ 배포로 →")
+        self.goto_deploy_btn.setFlat(True)
+        self.goto_deploy_btn.clicked.connect(lambda: self.tabs.setCurrentIndex(3))
+        self.goto_deploy_btn.hide()
+        note_row.addWidget(self.check_note)
+        note_row.addWidget(self.goto_deploy_btn)
+        note_row.addStretch(1)
+        lay.addLayout(note_row)
 
         silence_head = QLabel("무음 리포트")
         silence_head.setObjectName("sectionTitle")
@@ -560,14 +569,16 @@ class EpisodePage(QWidget):
         done = sum(1 for k in CHECK_ITEMS
                    if self._checklist.get("items", {}).get(k))
         stamp = self._checklist.get("updatedAt", "")
-        if done == len(CHECK_ITEMS):
-            self.check_note.setText(f"검수 완료 — ④ 배포 탭으로 넘어가세요"
+        complete = done == len(CHECK_ITEMS)
+        if complete:
+            self.check_note.setText("검수 완료"
                                     + (f" (기록 {stamp})" if stamp else ""))
             self.check_note.setStyleSheet(f"color: {theme.SUCCESS};")
         else:
             self.check_note.setText(f"{done} / {len(CHECK_ITEMS)} 확인"
                                     + (f" · 기록 {stamp}" if stamp else ""))
             self.check_note.setStyleSheet("")
+        self.goto_deploy_btn.setVisible(complete)
 
     def _on_check(self, key: str, on: bool) -> None:
         """체크 즉시 로컬 반영 + 저장 코얼레싱.
