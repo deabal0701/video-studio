@@ -223,3 +223,39 @@ def test_no_capture_still_strips_scenes(tmp_path):
     scaffold.scaffold_episode(root, "plain", 1)
     sc = load_json(root / "plain-01" / "scenes.json")
     assert sc["scenes"] == [] and "baseUrl" not in sc
+
+
+@pytest.mark.parametrize("kind", ["promo", "ad", "manual", "general"])
+def test_single_kinds_never_say_gang(copy_root, kind):
+    """단발 종류의 **완성본에 "1강"이 찍히던** 결함 (51회차 P2).
+
+    화면 문구가 아니다 — `outro.subtitle` 은 아웃트로 자막으로, 일반 종류의
+    `title.num` 은 타이틀 카드 알약으로 그대로 렌더된다.
+    """
+    from core.facade import Studio
+
+    st = Studio(copy_root)
+    cid = f"solo-{kind}"
+    st.create_course({"course": cid, "title": f"{kind} 데모", "kind": kind})
+    st.create_episode(cid, 1, title=f"{kind} 데모")
+    scenes = schema.load_json(copy_root / f"{cid}-01" / "scenes.json")
+
+    for clip in scenes["render"]["motion"]["clips"]:
+        for key, value in (clip.get("params") or {}).items():
+            if isinstance(value, str):
+                assert "강" not in value, f"{clip['id']}.{key} = {value!r}"
+    assert "강" not in scenes.get("_읽어보기", "")
+    # 번호가 뜻이 없으므로 아예 비운다 — 엔진이 빈 값 요소를 지운다(_params.js)
+    clips = {c["id"]: c for c in scenes["render"]["motion"]["clips"]}
+    if "title" in clips:
+        assert clips["title"]["params"]["num"] == ""
+    assert clips["outro"]["params"]["subtitle"] == f"{kind} 데모"
+
+
+def test_lecture_keeps_gang(copy_root):
+    """강의는 그대로 "N강" — 회귀 방지 (deploy 유튜브 제목도 이 말을 쓴다)."""
+    ep_dir = scaffold_episode(copy_root, "hr-basics", 3)
+    clips = {c["id"]: c for c in schema.load_json(ep_dir / "scenes.json")
+             ["render"]["motion"]["clips"]}
+    assert clips["title"]["params"]["num"] == "3강"
+    assert clips["outro"]["params"]["subtitle"].endswith("· 3강")

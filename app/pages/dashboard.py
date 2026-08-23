@@ -6,6 +6,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QFrame, QGridLayout, QHBoxLayout, QLabel, QProgressBar,
                                QPushButton, QScrollArea, QVBoxLayout, QWidget)
 
+from core import kinds as kinds_mod
+
 from .. import icons, theme
 from ..bridge import error_text, run_bg
 
@@ -50,8 +52,6 @@ class CourseCard(QFrame):
             # 단발(광고·홍보·매뉴얼 1편)에 시리즈 문법("영상 1개·완료 0/1")은 장황했다
             # (49회차 P12·P16). 다만 행 구성(부제·바·상태)은 시리즈와 똑같이 유지해
             # 카드 높이를 맞춘다 — 바는 회색이라 시리즈 진행바와 헷갈리지 않는다
-            from core import kinds as kinds_mod
-
             kind_name = kinds_mod.label(info.get("kind")) if info.get("kind") else ""
             sub = QLabel(" · ".join(p for p in (kind_name, "단발 영상") if p))
             sub.setObjectName("caption")
@@ -87,7 +87,9 @@ class CourseCard(QFrame):
             bar.setValue(round(done / total * 100) if total else 0)
             lay.addWidget(bar)
             # 진행을 숫자로도 — 바만으로는 "몇 편 남았나"를 못 읽는다
-            prog = QLabel(f"완료 {done} / {total}" if done < total else f"전부 완료 ({total}편)")
+            unit = kinds_mod.unit(info.get("kind"))
+            prog = QLabel(f"완료 {done} / {total}" if done < total
+                          else f"전부 완료 ({total}{unit})")
             prog.setObjectName("caption")
             prog.setStyleSheet(f"color: {theme.SUCCESS};" if done and done >= total else "")
             lay.addWidget(prog)

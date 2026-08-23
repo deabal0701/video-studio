@@ -129,7 +129,11 @@ class BrandKitTab(QWidget):
                                    " border-radius: 12px; }")
         self.pv_kicker.setText(d.get("title", ""))
         self.pv_kicker.setStyleSheet(f"color: {soft}; font-size: 12px; letter-spacing: 2px;")
-        self.pv_title.setText("1강 — 영상 제목 자리")
+        # 견본도 그 프로젝트의 말로 — 홍보 프로젝트 미리보기가 "1강"이었다 (51회차 P2)
+        self.pv_title.setText(
+            " — ".join(p for p in (kinds.counter(1, d.get("kind"))
+                                   if kinds.get(d.get("kind"))["series"] else "",
+                                   "영상 제목 자리") if p))
         self.pv_title.setStyleSheet(
             f"color: white; font-size: 24px; font-weight: 700;"
             f"border-bottom: 2px solid {brand}; padding-bottom: 6px;")

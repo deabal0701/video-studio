@@ -84,3 +84,20 @@ def test_only_lecture_is_a_series():
     """시리즈는 강의뿐 — 홍보·광고를 '회차'로 묶으면 화면이 이상해진다."""
     series = [k for k, v in kinds.KINDS.items() if v["series"]]
     assert series == ["lecture"]
+
+
+# ── 세는 말 (51회차 P2·P11) ──────────────────────────────────────────────────
+def test_unit_is_lecture_only():
+    """"강"은 강의 시리즈의 말이다 — 홍보·광고 프로젝트를 "1강"이라 부르면 안 된다."""
+    assert kinds.unit("lecture") == "강"
+    for kind in ("promo", "ad", "manual", "general"):
+        assert kinds.unit(kind) == "편", kind
+    assert kinds.unit(None) == "강"      # 옛 프로젝트는 kind 가 없다 = 강의
+    assert kinds.unit("모르는값") == "강"  # get() 폴백과 같은 규칙
+
+
+def test_counter_needs_a_number():
+    assert kinds.counter(2, "lecture") == "2강"
+    assert kinds.counter(1, "promo") == "1편"
+    assert kinds.counter(None, "promo") == ""   # 번호 없는 자리는 빈 문자열
+    assert kinds.counter("", "lecture") == ""

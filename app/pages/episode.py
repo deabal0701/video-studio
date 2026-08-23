@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QCheckBox, QHBoxLayout, QLabel, QPlainTextEdit,
                                QPushButton, QScrollArea, QTabWidget, QVBoxLayout,
                                QWidget)
 
+from core import kinds
 from core.facade import NotBuilt
 from core.status import OUT_ROOT
 
@@ -460,11 +461,17 @@ class EpisodePage(QWidget):
         def get():
             course = studio.get_course(cid)["course"]
             entry = next((e for e in course.get("episodes", []) if e.get("id") == eid), {})
-            return course.get("title", cid), entry.get("n"), entry.get("title", "")
+            kind = course.get("kind")
+            # 보드 카드와 같은 규칙 — 셀 것이 하나뿐인 단발이면 번호를 붙이지 않는다
+            numbered = kinds.get(kind)["series"] or len(course.get("episodes", [])) > 1
+            return (course.get("title", cid), entry.get("n") if numbered else None,
+                    entry.get("title", ""), kind)
 
         def fill(r):
-            ctitle, n, etitle = r
-            label = ctitle + (f" — {n}편" if n else "")
+            ctitle, n, etitle, kind = r
+            # 세는 말은 종류가 정한다 — 보드 카드는 "2강"인데 여기만 "2편"이었다 (51회차 P11)
+            counter = kinds.counter(n, kind)
+            label = ctitle + (f" — {counter}" if counter else "")
             if etitle and etitle != ctitle:
                 label += f" {etitle}"
             # 긴 제목이 빌드 버튼을 밀어내면 상단 틀이 무너진다 — 말줄임 (10 지적)

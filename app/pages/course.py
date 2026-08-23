@@ -6,6 +6,8 @@ from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QInputDialog, QLabel, QPushButton,
                                QScrollArea, QTabWidget, QVBoxLayout, QWidget)
 
+from core import kinds
+
 from .. import theme
 from ..bridge import error_text, run_bg
 from .brandkit import BrandKitTab
@@ -23,7 +25,8 @@ class EpisodeCard(QFrame):
     ai_draft = Signal(int)  # n — [✨ AI 초안] (05: 미생성 영상은 스캐폴딩 후 제출)
     delete_requested = Signal(str, str)   # eid, 표시명 — 확인은 페이지가 맡는다
 
-    def __init__(self, entry: dict, badge: dict):
+    def __init__(self, entry: dict, badge: dict, kind: str | None = None,
+                 numbered: bool = True):
         super().__init__()
         self.setObjectName("card")
         self.eid = badge["id"]
@@ -31,7 +34,10 @@ class EpisodeCard(QFrame):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(14, 12, 14, 12)
         lay.setSpacing(6)
-        label = f"{entry.get('n', '?')}강 {entry.get('title', '')}"
+        # 세는 말은 종류가 정한다 — 홍보 프로젝트가 "1강"이라 불리던 결함 (51회차 P2).
+        # 영상이 하나뿐인 단발이면 번호 자체가 뜻이 없다 (49회차 단발 카드와 같은 원칙)
+        head_num = kinds.counter(entry.get("n"), kind) if numbered else ""
+        label = " ".join(p for p in (head_num, entry.get("title", "")) if p)
         title = QLabel(label)
         title.setWordWrap(True)
         title.setStyleSheet("font-weight: 600;")
@@ -211,10 +217,14 @@ class CoursePage(QWidget):
             wrap.setFixedWidth(theme.CARD_W + 24)
             self._lane_wraps.append(wrap)
             lanes[state] = lane
-        for entry in course.get("episodes", []):
+        entries = course.get("episodes", [])
+        kind = course.get("kind")
+        # 번호는 셀 것이 둘 이상일 때만 뜻이 있다 — 단발 1편짜리에는 붙이지 않는다
+        numbered = kinds.get(kind)["series"] or len(entries) > 1
+        for entry in entries:
             badge = body["episodes"].get(entry["id"],
                                          {"id": entry["id"], "state": "empty", "stale": False})
-            card = EpisodeCard(entry, badge)
+            card = EpisodeCard(entry, badge, kind=kind, numbered=numbered)
             card.opened.connect(self.open_episode.emit)
             card.create.connect(self._create_episode)
             card.ai_draft.connect(self._ai_draft)
@@ -309,7 +319,8 @@ class CoursePage(QWidget):
         # 정적 getText 는 창이 좁다 — 인스턴스로 만들어 폭을 준다 (10: "폭을 좀 크게")
         dlg = QInputDialog(self)
         dlg.setWindowTitle("영상 추가")
-        dlg.setLabelText(f"{n}편 제목")
+        # 보드 카드와 같은 말로 센다 — 카드는 "2강"인데 이 창만 "7편"이었다 (51회차 P11)
+        dlg.setLabelText(f"{kinds.counter(n, self._course.get('kind'))} 제목")
         dlg.setMinimumWidth(560)
         dlg.resize(560, dlg.sizeHint().height())
 

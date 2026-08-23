@@ -173,6 +173,8 @@ def _trim_clips(scenes: dict[str, Any], kind: str | None,
 def scaffold_episode(root: Path, course_id: str, n: int,
                      title: str | None = None, subtitle: str | None = None) -> Path:
     """영상 폴더를 만들고 scenes.json·plan.md 골격을 깐다. 반환: 영상 폴더 경로."""
+    from . import kinds as kinds_mod
+
     course_dir = root / course_id
     course = load_json(course_dir / "course.json")
     entry = next((e for e in course.get("episodes", []) if e.get("n") == n), None)
@@ -187,9 +189,14 @@ def scaffold_episode(root: Path, course_id: str, n: int,
     ep_title = title or (entry or {}).get("title", "")
     ep_subtitle = subtitle or (entry or {}).get("subtitle", "")
 
+    # 세는 말은 종류가 정한다 — 강의만 "강", 홍보·광고·매뉴얼·일반은 "편" (51회차 P2).
+    # 이 값들은 **완성본에 찍힌다**(아웃트로 자막·타이틀 카드 번호) — 화면 문구가 아니다
+    kind = course.get("kind")
+    counter = kinds_mod.counter(n, kind)
+    series = kinds_mod.get(kind)["series"]
     scenes["_읽어보기"] = (
-        f"{course.get('title', course_id)} {n}강 — {ep_title}. 구성표는 plan.md, "
-        f"강좌 정체성은 ../{course_id}/course.json. "
+        f"{course.get('title', course_id)} {counter} — {ep_title}. 구성표는 plan.md, "
+        f"{'강좌' if series else '프로젝트'} 정체성은 ../{course_id}/course.json. "
         f"실행(engine/ 에서): node build.js --scenes <이 파일 경로>"
     )
     scenes["id"] = eid
@@ -216,7 +223,9 @@ def scaffold_episode(root: Path, course_id: str, n: int,
             clip["params"].update({
                 "src": f"../{eid}/bg/[B롤과 같은 파일명].jpg",
                 "kicker": course.get("title", ""),
-                "num": f"{n}강",
+                # 단발은 셀 것이 하나뿐이라 번호 자체를 안 찍는다 — 빈 값이면 엔진이
+                # 그 요소를 지운다(_params.js: 값 없으면 remove) 라 빈 알약이 남지 않는다
+                "num": counter if series else "",
                 "title": ep_title,
                 "subtitle": ep_subtitle,
             })
@@ -228,7 +237,8 @@ def scaffold_episode(root: Path, course_id: str, n: int,
             })
         elif cid == "outro":
             clip["params"].update({
-                "subtitle": f"{course.get('title', '')} · {n}강",
+                "subtitle": " · ".join(p for p in (course.get("title", ""),
+                                                   counter if series else "") if p),
             })
         _inject_params(clip, palette, ep_dir)
 

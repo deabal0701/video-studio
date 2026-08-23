@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from . import engine_io
+from . import engine_io, kinds
 from .schema import load_json
 from .status import OUT_ROOT
 
@@ -40,7 +40,15 @@ def build(episode_dir: Path, projects_root: Path) -> dict[str, Any]:
         chapters_error = str(err)[-300:]  # 조용히 비면 배포물이 반쪽 — 화면이 사유를 보여준다 (07 결함 4)
 
     course_title = course.get("title", "")
-    title = f"[{course_title}] {n}강 — {ep_title}" if course_title else f"{eid} — {ep_title}"
+    # `[강좌명] N강 — 제목` 은 **시리즈**의 문법이다 (대괄호=재생목록, N강=회차).
+    # 단발 홍보·광고 영상에는 둘 다 뜻이 없고, 제목이 프로젝트 이름과 같은 것이 보통이라
+    # 그대로 두면 "[인사잇 소개] — 인사잇 소개" 처럼 겹쳐 나온다 (51회차 P2)
+    if not course_title:
+        title = f"{eid} — {ep_title}"
+    elif kinds.get(course.get("kind"))["series"]:
+        title = f"[{course_title}] {kinds.counter(n, course.get('kind'))} — {ep_title}"
+    else:
+        title = ep_title or course_title
     promise = next((c.get("narration", "") for c in
                     scenes.get("render", {}).get("motion", {}).get("clips", [])
                     if c.get("id") == "promise"), "")

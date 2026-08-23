@@ -211,6 +211,22 @@ def choices() -> list[tuple[str, str, str]]:
     return [(k, v["label"], v["desc"]) for k, v in KINDS.items()]
 
 
+def unit(kind: str | None) -> str:
+    """영상 한 편을 세는 말 — 강의만 "강", 나머지는 "편" (51회차 P2·P11).
+
+    보드 카드가 `f"{n}강"` 으로 굳어 있어 **홍보·광고 프로젝트도 "1강"** 이라 불렀다.
+    화면만의 문제가 아니었다 — `scaffold` 가 같은 말을 **완성본에 찍고 있었다**
+    (전 종류의 `outro.subtitle` = "제목 · 1강", 일반 종류는 타이틀 카드 `num` 까지).
+    세는 말은 여기 하나로 두고 화면·스캐폴딩·배포 문안이 같이 쓴다.
+    """
+    return "강" if get(kind)["series"] else "편"
+
+
+def counter(n: Any, kind: str | None) -> str:
+    """"2강"·"1편" — n 이 없으면 빈 문자열 (자리만 있고 번호가 없는 항목)."""
+    return f"{n}{unit(kind)}" if n not in (None, "") else ""
+
+
 # ── 대비 (팔레트를 고칠 때 이 함수로 먼저 재 본다) ───────────────────────────
 def _luminance(hex_color: str) -> float:
     h = hex_color.lstrip("#")
