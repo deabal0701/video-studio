@@ -1,5 +1,7 @@
 """템플릿 갤러리·프리뷰 — inspect.js --list-templates·preview.js 계약 + 화이트리스트."""
 
+from pathlib import Path
+
 import pytest
 
 from core.facade import NotFound
@@ -39,3 +41,27 @@ def test_preview_whitelist_blocks_arbitrary_paths(studio, tmp_path):
         studio.template_preview(str(secret))
     with pytest.raises(NotFound):
         studio.template_preview("../fixtures/projects/hr-basics/course.json")
+
+
+def test_preview_allows_project_own_html(studio, copy_root):
+    """타이틀 카드·로고 전환은 프로젝트 폴더에 있어 갤러리에 없다 — 그래도 프리뷰된다.
+
+    70회차: 갤러리 화이트리스트가 이 둘을 막아 **프리뷰가 영영 안 떴고** 실패는
+    조용히 삼켜졌다. 브랜드 킷이 "② 대본 탭 프리뷰에서 봅니다"라고 가리키는 그 둘이다.
+    """
+    studio.create_course({"course": "nc", "title": "새 강좌", "kind": "lecture"})
+    studio.create_episode("nc", 1, title="첫 영상")
+    gallery = {t["file"] for t in studio.templates(scope="nc-01")}
+    assert "../nc/course-intro.html" not in gallery      # 갤러리에는 여전히 없다
+    html = studio.template_preview("../nc/course-intro.html", scope="nc-01")
+    assert "<html" in html.lower() and len(html) > 500
+
+
+def test_preview_still_blocks_escapes(studio, copy_root):
+    """화이트리스트의 취지는 지킨다 — 절대경로·데이터 폴더 밖은 계속 거부."""
+    studio.create_course({"course": "nc2", "title": "새 강좌2", "kind": "lecture"})
+    studio.create_episode("nc2", 1, title="첫 영상")
+    for bad in ("../../engine/motion/_base.css", "../../../etc/passwd",
+                str(Path(__file__).resolve())):
+        with pytest.raises(NotFound):
+            studio.template_preview(bad, scope="nc2-01")

@@ -620,14 +620,35 @@ class Studio:
         return [{"file": name, "scope": t["scope"], "params": t["params"]}
                 for name, t in templates.items()]
 
+    def _own_html(self, file: str, project_dir: Path | None) -> bool:
+        """대본이 가리키는 **이 데이터 폴더 안의** html 인가 (70회차).
+
+        갤러리(엔진 모션 목록)에는 프로젝트가 제 폴더에 갖는 `course-intro.html`·
+        `course-stinger.html` 이 없다 — 그래서 **타이틀 카드·로고 전환은 프리뷰가
+        영영 뜨지 않았고**, 실패는 조용히 삼켜졌다. 브랜드 킷이 "엔진이 실제로 그리는
+        화면은 ② 대본 탭 프리뷰에서 봅니다"라고 가리키는 바로 그 둘이다.
+        엔진은 이 둘을 그릴 수 있다(실측: preview.js 가 html 5,013자·4,063자 반환) —
+        막고 있던 것은 앱의 화이트리스트뿐이었다.
+
+        화이트리스트의 취지(절대경로·데이터 폴더 밖 읽기 금지)는 그대로 지킨다.
+        """
+        if project_dir is None or Path(file).is_absolute():
+            return False
+        try:
+            target = (project_dir / file).resolve()
+        except OSError:
+            return False
+        return (target.is_relative_to(self.root.resolve())
+                and target.suffix == ".html" and target.is_file())
+
     def template_preview(self, file: str, scope: str = "common") -> str:
-        """preview.js 자체완결 html — **갤러리 목록의 파일명만 허용** (화이트리스트).
+        """preview.js 자체완결 html — 갤러리 목록 + **이 프로젝트의 html** 만 허용.
 
         preview.js 는 절대경로도 그대로 읽으므로(5-0 이전 HTTP 시절 실측 결함) 여기서 막는다.
         """
         project_dir = self._template_scope_dir(scope)
         allowed = set(engine_io.list_templates(project_dir))
-        if file not in allowed:
+        if file not in allowed and not self._own_html(file, project_dir):
             raise NotFound("template_not_found", file,
                            hint="갤러리 목록의 파일명만 허용됩니다")
         try:

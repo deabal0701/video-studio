@@ -34,6 +34,8 @@ from ..bridge import error_text, run_bg
 from ..widgets import AudioPreview
 
 SKELETON = ["broll", "title", "hook", "stinger", "promise"]
+# 골격이 넣어 둔 자리표시자 표식 — core.scaffold 와 같은 규약("[…]" 로 시작·포함)
+_PLACEHOLDER = "["
 # 프로젝트가 자동 주입하는 키 — 폼 비노출, "상속 중" 뱃지만 (03 ⑤ 표 · 결함 차단 ③)
 AUTO_KEYS = ("brand", "brandSoft", "bg", "fg", "font", "fontUrl",
              "wipeAt", "wipeColor")
@@ -418,6 +420,14 @@ class ClipEditorTab(QWidget):
         scrub_row.addWidget(self.scrub_label)
         scrub_row.addWidget(self.replay_btn)
         lay.addLayout(scrub_row)
+        # 프리뷰가 못 뜬 이유를 말한다 — 예전엔 `fail=lambda e: None` 로 삼켜서 **빈 화면만**
+        # 남았다 (70회차 P18. 갓 만든 영상은 화면이 대부분 자리표시자라 이 상태가 기본이다).
+        # 55회차 라이브러리와 같은 원칙: 못 읽었으면 못 읽었다고 말한다
+        self.preview_note = QLabel("")
+        self.preview_note.setObjectName("caption")
+        self.preview_note.setWordWrap(True)
+        self.preview_note.hide()
+        lay.addWidget(self.preview_note)
 
         from PySide6.QtMultimedia import QMediaPlayer
         from PySide6.QtMultimediaWidgets import QVideoWidget
@@ -1166,7 +1176,16 @@ class ClipEditorTab(QWidget):
         f = c.get("file")
         if not f:
             self.preview.setHtml("<body style='background:#111'></body>")
+            self._preview_note("아직 화면을 안 골랐습니다 — 오른쪽 [템플릿 선택…]으로 고르세요")
             return
+        if _PLACEHOLDER in f:
+            # 골격이 넣어 둔 자리표시자 파일명이다 — 그런 파일은 없으니 렌더도 없다.
+            # 예전엔 조용히 빈 화면이라 "왜 안 보이지"로 끝났다
+            self.preview.setHtml("<body style='background:#111'></body>")
+            self._preview_note("이 구간의 화면이 아직 정해지지 않았습니다 — "
+                               "오른쪽 [템플릿 선택…]으로 고르세요")
+            return
+        self._preview_note("")
         eid, studio = self.eid, self._make_studio()
         secs = clip_seconds(c, self.audio_cache)[0]
         self.scrub.setRange(0, max(10, int(secs * 10)))
@@ -1178,7 +1197,13 @@ class ClipEditorTab(QWidget):
             out.write_text(html, encoding="utf-8", newline="\n")
             return out
 
-        run_bg(build, done=lambda p: self._load_preview(p), fail=lambda e: None)
+        run_bg(build, done=lambda p: (self._preview_note(""), self._load_preview(p)),
+               fail=lambda e: self._preview_note(f"미리보기를 못 만들었습니다 — {error_text(e)}"))
+
+    def _preview_note(self, text: str) -> None:
+        """프리뷰가 못 뜬 이유 — 빈 문자열이면 감춘다 (70회차 P18)."""
+        self.preview_note.setText(text)
+        self.preview_note.setVisible(bool(text))
 
     def _load_preview(self, doc_path: Path) -> None:
         c = self.cur
