@@ -667,6 +667,7 @@ class ClipEditorTab(QWidget):
             # 52(설정)·53(브랜드 킷)과 같은 결함·같은 처방 — 대상이 바뀌면 결과를 지운다
             self.issues.setText("")
             self.issues.hide()
+        self.stop_media()
         self._loading = True
         self._dirty = False   # 새로 읽음 — 이전 편집 흔적 해제
         self.eid = eid
@@ -676,8 +677,10 @@ class ClipEditorTab(QWidget):
         m = re.search(r"([\d,]+)\s*자", budget_text or "")
         self._budget = int(m.group(1).replace(",", "")) if m else 1850
         studio = self._make_studio()
+        self._assets_ready = False
+        self._assets_error = ""   # 앞 영상의 실패 사유를 물려주지 않는다
         run_bg(lambda: (studio.templates(scope=eid), studio.assets("broll")),
-               done=self._assets_loaded, fail=lambda e: None)
+               done=self._assets_loaded, fail=self._assets_failed)
         self._refresh_list(select=0)
         self._loading = False
 
@@ -688,6 +691,15 @@ class ClipEditorTab(QWidget):
 
     def _assets_loaded(self, result) -> None:
         self._gallery, self._brolls = result
+        self._assets_ready = True
+        self._render_broll_check()
+
+    def _assets_failed(self, err) -> None:
+        """못 불러왔으면 **못 불러왔다고 말한다** — 예전엔 조용히 삼켜서 화면이
+        "라이브러리 로딩 중…"에 영원히 머물렀다 (55회차 P18)."""
+        self._gallery, self._brolls = [], []
+        self._assets_ready = True
+        self._assets_error = error_text(err)
         self._render_broll_check()
 
     @property
@@ -821,10 +833,27 @@ class ClipEditorTab(QWidget):
         g = next((x for x in self._gallery if x["file"] == f), None)
         return g.get("params", []) if g else []
 
+    def stop_media(self) -> None:
+        """B롤 영상·음성 미리듣기를 멈춘다.
+
+        55회차 실측: B롤을 재생한 채 다른 클립으로 옮기면 **영상 위젯만 숨고 재생은
+        계속됐다**(위치가 계속 늘었다). [← 프로젝트]로 화면을 떠나도 마찬가지 —
+        보이지도 않는 소재가 계속 돌고, 소리 있는 B롤이면 소리가 남는다.
+        음성 미리듣기(AudioPreview)도 같은 구멍이었다. 종류를 바꾸면 미리듣기를
+        초기화하는 라이브러리(11회차)와 같은 규칙을 여기에도 적용한다.
+        """
+        from PySide6.QtMultimedia import QMediaPlayer
+
+        if self.broll_player.playbackState() != QMediaPlayer.PlaybackState.StoppedState:
+            self.broll_player.stop()
+        self.audio.stop()
+
     def _render_clip(self) -> None:
         c = self.cur
         if c is None:
             return
+        # 다른 클립으로 옮기는 중 — 앞 클립의 소리·영상을 끌고 가지 않는다
+        self.stop_media()
         self._loading = True
         self.cur_id.setText(f'{kinds.role_label(c.get("id"))} ({c.get("id", "?")})')
         is_broll = "video" in c
@@ -1016,15 +1045,24 @@ class ClipEditorTab(QWidget):
         if c is None or "video" not in c:
             self.broll_check.setText("")
             return
-        if not self._brolls:
-            self.broll_check.setText("라이브러리 로딩 중…")  # 오탐 방지 (3단계 실측 메모)
+        if not getattr(self, "_assets_ready", False):
+            self.broll_check.setText("라이브러리 불러오는 중…")  # 오탐 방지 (3단계 실측 메모)
             self.broll_check.setStyleSheet("")
             return
         src = next((a for a in self._brolls if a["ref"] == c.get("video")), None)
         duration = (src or {}).get("duration") or \
             ((self._inspect.get("media") or {}).get(c.get("video"), {}) or {}).get("duration", 0)
         if not duration:
-            self.broll_check.setText("소재 길이를 모릅니다 — 경로를 확인하세요")
+            # 예전엔 소재가 하나도 없는 라이브러리(새 클론·새 설치가 그렇다 — 미디어는
+            # 커밋되지 않는다)를 **"로딩 중"으로 영원히** 표시했다 (55회차 P9·P18).
+            # 왜 비었는지에 따라 할 일이 다르므로 셋을 구분해 말한다
+            if getattr(self, "_assets_error", ""):
+                self.broll_check.setText(f"라이브러리를 못 읽었습니다 — {self._assets_error}")
+            elif not self._brolls:
+                self.broll_check.setText("라이브러리에 B롤 소재가 없습니다 — "
+                                         "[라이브러리] 화면에서 받아 오세요")
+            else:
+                self.broll_check.setText("소재 길이를 모릅니다 — 경로를 확인하세요")
             self.broll_check.setStyleSheet(f"color: {theme.DANGER};")
             return
         need = clip_seconds(c, self.audio_cache)[0]

@@ -60,6 +60,10 @@ class EpisodePage(QWidget):
         head.addWidget(self.stale)
         self.consistency_chip = QLabel("")
         self.consistency_chip.setProperty("chip", "warn")
+        # 주의(55회차 실측): 이 라벨은 줄바꿈이 없어 **창 최소폭을 501px 밀어올린다** —
+        # 헤더가 통째로 한 줄에 들어가려 해서 영상 화면은 1782px 밑으로 줄지 않는다.
+        # setWordWrap 만 켜면 최소폭은 1404 로 내려가지만 넓은 창에서도 일곱 줄로 접혀
+        # 보기 흉하다(P25) — 헤더를 두 줄로 재배치해야 풀린다. 10_ux-plan 추가 지적 12.
         self.consistency_chip.hide()
         head.addWidget(self.consistency_chip)
         self.sync_btn = QPushButton("프로젝트 값으로 맞추기")
@@ -314,6 +318,7 @@ class EpisodePage(QWidget):
                     QMessageBox.Yes | QMessageBox.Cancel,
                     QMessageBox.Cancel) != QMessageBox.Yes:
                 return
+        self.clip_tab.stop_media()   # 미리듣기를 화면 밖으로 끌고 나가지 않는다 (55회차)
         self.back.emit(self.eid.rsplit("-", 1)[0])
 
     @staticmethod
@@ -412,6 +417,10 @@ class EpisodePage(QWidget):
         self.clip_tab.set_inspect(inspect)
 
     def _on_tab(self, idx: int) -> None:
+        # ② 대본을 떠나면 그 탭의 미리듣기도 멈춘다 (55회차 — 안 멈추면 ③ 검수에서
+        # 완성본을 재생하는 동안 B롤 소리가 겹친다)
+        if self.tabs.widget(idx) is not self.clip_tab:
+            self.clip_tab.stop_media()
         if idx == 3 and self.eid:
             self.deploy_tab.load(self.eid)
 
