@@ -916,9 +916,14 @@ class ClipEditorTab(QWidget):
         self.params_form_holder.setVisible(has_form)
         self.params_title.setText(
             "화면 문구 — 적은 글이 그대로 화면에 나옵니다" if has_form else "")
-        self.extract_btn.setVisible(
-            has_form and "src" in accepted
-            and any(x.get("video") for x in self.clips))
+        # 자리표시자뿐이면 누를 것이 없다 — 눌린 뒤 실패하게 두지 않는다 (71회차 P20)
+        real_broll = any(x.get("video") and _PLACEHOLDER not in str(x["video"])
+                         for x in self.clips)
+        self.extract_btn.setVisible(has_form and "src" in accepted
+                                    and any(x.get("video") for x in self.clips))
+        self.extract_btn.setEnabled(real_broll)
+        self.extract_btn.setToolTip("" if real_broll else
+                                    "B롤을 먼저 고르세요 — 가져올 소재가 없습니다")
         if not has_form:
             self.inherit_label.setText("")
             return
@@ -1078,6 +1083,14 @@ class ClipEditorTab(QWidget):
             self.broll_check.setText("라이브러리 불러오는 중…")  # 오탐 방지 (3단계 실측 메모)
             self.broll_check.setStyleSheet("")
             return
+        if _PLACEHOLDER in str(c.get("video") or ""):
+            # 골격이 넣어 둔 자리표시자다 — 사용자가 아직 안 골랐을 뿐인데 예전엔
+            # "소재 길이를 모릅니다 — 경로를 확인하세요"라고 했다. 확인할 경로가 없다
+            # (71회차 P2). 고르라는 안내는 **빈 영상 상자를 대신해 프리뷰 열이** 하고,
+            # 이 줄은 잰 것이 없으므로 비운다 — 같은 말을 두 곳에 쓰지 않는다 (P12)
+            self.broll_check.setText("")
+            self.broll_check.setStyleSheet("")
+            return
         src = next((a for a in self._brolls if a["ref"] == c.get("video")), None)
         duration = (src or {}).get("duration") or \
             ((self._inspect.get("media") or {}).get(c.get("video"), {}) or {}).get("duration", 0)
@@ -1158,20 +1171,30 @@ class ClipEditorTab(QWidget):
         self.scrub.setVisible(not is_broll)
         self.scrub_label.setVisible(not is_broll)   # 템플릿 프리뷰 전용 컨트롤 —
         self.replay_btn.setVisible(not is_broll)    # B롤에선 죽은 버튼이라 숨긴다
-        self.broll_video.setVisible(is_broll)
-        self.broll_play_btn.setVisible(is_broll)
+        # B롤 위젯은 **소재가 실제로 있을 때만** 편다 (아래에서 판정)
+        self.broll_video.setVisible(False)
+        self.broll_play_btn.setVisible(False)
         if c is None:
             return
         if is_broll:
-            if c.get("video"):
-                p = paths.invert(paths.RefKind.BROLL, c["video"])
-                if p.exists():
-                    self.broll_player.setSource(QUrl.fromLocalFile(str(p)))
-                    # 재생 전에도 소재가 보이게 — 시작 지점 프레임에서 멈춰 둔다
-                    self.broll_player.play()
-                    self.broll_player.setPosition(
-                        int(float(c.get("videoStart") or 0) * 1000))
-                    QTimer.singleShot(150, self.broll_player.pause)
+            ref = str(c.get("video") or "")
+            source = None
+            if ref and _PLACEHOLDER not in ref:
+                cand = paths.invert(paths.RefKind.BROLL, ref)
+                source = cand if cand.exists() else None
+            # 소재가 없으면 빈 검은 상자와 [▶ B롤 재생]은 죽은 컨트롤이다 —
+            # 사진·글꼴에서 미리듣기를 숨긴 43회차와 같은 원칙 (71회차 P12·P25)
+            self.broll_video.setVisible(bool(source))
+            self.broll_play_btn.setVisible(bool(source))
+            self._preview_note("" if source else
+                               "아직 B롤을 안 골랐습니다 — 오른쪽 [B롤 선택…]으로 고르세요")
+            if source is not None:
+                self.broll_player.setSource(QUrl.fromLocalFile(str(source)))
+                # 재생 전에도 소재가 보이게 — 시작 지점 프레임에서 멈춰 둔다
+                self.broll_player.play()
+                self.broll_player.setPosition(
+                    int(float(c.get("videoStart") or 0) * 1000))
+                QTimer.singleShot(150, self.broll_player.pause)
             return
         f = c.get("file")
         if not f:
