@@ -46,9 +46,19 @@ class CourseCard(QFrame):
             self.info["id"], self.info.get("title", self.info["id"])))
         head.addWidget(del_btn, 0, Qt.AlignTop)
         lay.addLayout(head)
-        if info.get("single"):
-            sub = QLabel("단발 영상")
+        if info.get("single") or info.get("soleEpisode"):
+            # 단발(광고·홍보·매뉴얼 1편)에 시리즈 문법("영상 1개·완료 0/1"+진행바)은
+            # 무의미하게 장황하고 종류도 안 보였다 (49회차 P12·P16) — 종류·상태 한 줄
+            from core import kinds as kinds_mod
+
+            kind_name = kinds_mod.label(info.get("kind")) if info.get("kind") else ""
+            # 상태는 배지 정보가 있는 정식 단발 프로젝트만 — 구식 단독 폴더는 모른다
+            state = ("완성" if info.get("done") else "제작 중") if info.get("soleEpisode") else ""
+            parts = [p for p in (kind_name, "단발 영상", state) if p]
+            sub = QLabel(" · ".join(parts))
             sub.setObjectName("caption")
+            if info.get("done"):
+                sub.setStyleSheet(f"color: {theme.SUCCESS};")
             lay.addWidget(sub)
         else:
             total, done = info["episodeCount"], info["done"]
