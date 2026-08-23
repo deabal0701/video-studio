@@ -433,6 +433,12 @@ class EpisodePage(QWidget):
             self.player.setSource(QUrl.fromLocalFile(str(mp4)))
             self.media_label.setText(f"완성본 {finals[0]}")
             self._load_review()
+        # ④ 배포만 **탭을 누를 때** 읽는다(_on_tab). 그래서 그 탭을 켜 둔 채 다른 영상으로
+        # 옮기면 setCurrentIndex 가 안 바뀌어 신호가 안 나고 **앞 영상의 문안이 그대로
+        # 남았다** — 머리글은 "2강"인데 제목·설명·썸네일은 1강이고, [문안 저장]은
+        # 1강 파일에 쓴다 (58회차 P0 실측). 지금 보고 있는 탭이면 여기서 다시 읽는다
+        if self.tabs.currentWidget() is self.deploy_tab:
+            self.deploy_tab.load(self.eid)
 
     def _fill_inspect(self, inspect: dict) -> None:
         self.clip_tab.set_inspect(inspect)
