@@ -15,7 +15,7 @@ from core.facade import NotBuilt
 from core.status import OUT_ROOT
 
 from .. import theme
-from ..bridge import JobEventPump, error_text, run_bg
+from ..bridge import JobEventPump, agent_gate_failed, error_text, run_bg
 from .clip_editor import ClipEditorTab
 from .deploy_tab import DeployTab
 from .jobs import STATE_LABEL as JOB_STATE_LABEL   # 상태 한국어 — 작업 큐와 같은 말 (P11)
@@ -280,9 +280,12 @@ class EpisodePage(QWidget):
         run_bg(get, done=self._fill, fail=self._fail)
         # inspect 는 최대 60초(엔진 subprocess) — 별도 워커로 늦게 도착해도 무방
         run_bg(lambda: studio.inspect(eid), done=self._fill_inspect,
+               # A1-허용: 실측을 못 얻으면 추정으로 계속 쓴다 — 클립 라벨의 "?" 가 추정임을
+               # 표시하고, 부품 문제 자체는 [설정]의 환경 점검이 말한다
                fail=lambda _e: self._fill_inspect({}))
         # 에이전트 게이트 — 키 없으면 버튼 비활성 + 사유 툴팁 (05: 메뉴 통째로 비활성)
-        run_bg(studio.agent_status, done=self._fill_agent, fail=lambda _e: None)
+        run_bg(studio.agent_status, done=self._fill_agent,
+               fail=lambda e: self._fill_agent(agent_gate_failed(e)))
 
     def _fill_agent(self, gate: dict) -> None:
         self.ai_review_btn.setEnabled(bool(gate.get("enabled")))
@@ -387,7 +390,16 @@ class EpisodePage(QWidget):
                 # 실패 사유가 시작 패널에도 남아야 한다 — 로그만 보면 놓친다 (P18)
                 self.clip_tab.ai_progress_end(self._fail_text(state))
 
-        run_bg(check, done=decide, fail=lambda _e: None)
+        def check_failed(err) -> None:
+            # 이 조회가 실패하면 decide 가 아예 안 돈다 — 빌드도 안 잇고 진행 패널이
+            # **"AI 작업 중"에 멈춘 채** 남아 사용자가 무한정 기다렸다 (72회차 A1)
+            self._ai_streaming = False
+            self.log.appendPlainText(f"대본 잡 상태를 못 읽어 빌드를 잇지 않습니다 — {error_text(err)}")
+            self.clip_tab.ai_progress_end(
+                f"대본은 끝났지만 상태를 확인하지 못해 빌드를 잇지 못했습니다 — "
+                f"{error_text(err)}. 위의 [빌드]로 직접 이어가세요")
+
+        run_bg(check, done=decide, fail=check_failed)
 
     def _ai_review(self) -> None:
         """AI 평가 — 같은 잡 큐·같은 진행 로그 (05: kind=agent)."""
@@ -518,6 +530,8 @@ class EpisodePage(QWidget):
             self.title.setText(fm.elidedText(label, Qt.ElideRight, 620))
             self.title.setToolTip(f"{label}  ·  폴더: {eid}")
 
+        # A1-허용: 표시명을 못 만들면 제목이 폴더 id 로 남는다 — 그 값은 툴팁에도 있는
+        # 것이라 오해를 낳지 않고, facade 쪽이 이미 id 로 후퇴한다
         run_bg(lambda: studio.episode_display_name(eid), done=fill, fail=lambda _e: None)
 
     def _load_review(self) -> None:
@@ -723,6 +737,7 @@ class EpisodePage(QWidget):
                 self.tabs.setCurrentIndex(2)   # 한 번에 모드 — 완성본을 바로 보여준다
             eid, studio = self.eid, self._studio
             run_bg(lambda: studio.inspect(eid), done=self._fill_inspect,
+                   # A1-허용: 빌드 뒤 실측 갱신 실패 — 위와 같이 추정 라벨로 남는다
                    fail=lambda _e: None)
 
     def _on_event(self, ev: dict) -> None:

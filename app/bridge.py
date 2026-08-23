@@ -110,7 +110,21 @@ class JobEventPump(QObject):
             return None
 
         run_bg(consume, done=lambda _r: self.finished.emit(),
+               # A1-허용: 이벤트 스트림이 끊겨도 finished 를 내보내 화면이 "진행 중"에서
+               # 빠져나온다. 잡 자체의 실패 사유는 잡 이벤트·상태 칩이 말한다
                fail=lambda _e: self.finished.emit())
+
+
+def agent_gate_failed(err: Exception) -> dict:
+    """`agent_status` 조회가 실패했을 때 쓸 게이트 — **비활성 + 사유**.
+
+    72회차 A1(조용한 실패) 전수 감사: 세 화면(보드 2곳·영상 화면)이 이 조회를
+    `fail=lambda _e: None` 로 삼켰다. 그러면 [AI 초안]·[AI 평가]가 **이유 없이 회색**으로
+    남는다 — 키가 없는 것인지, 못 물어본 것인지 화면이 구분해 주지 않았다.
+    판단과 문구를 여기 하나로 두고 세 화면이 제 `_apply_gate`/`_fill_agent` 를 그대로 쓴다.
+    """
+    return {"enabled": False,
+            "reason": f"AI 사용 가능 여부를 확인하지 못했습니다 — {error_text(err)}"}
 
 
 def error_text(err: Exception) -> str:

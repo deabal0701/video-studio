@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QInputDialog, QLabel, QPushB
 from core import kinds
 
 from .. import theme
-from ..bridge import error_text, run_bg
+from ..bridge import agent_gate_failed, error_text, run_bg
 from .brandkit import BrandKitTab
 from .course_settings import CourseSettingsTab
 
@@ -246,7 +246,8 @@ class CoursePage(QWidget):
             self.board_scroll.setWidget(wrap)
             self._lane_wraps = []
             studio = self._make_studio()
-            run_bg(studio.agent_status, done=self._apply_gate, fail=lambda _e: None)
+            run_bg(studio.agent_status, done=self._apply_gate,
+                   fail=lambda e: self._apply_gate(agent_gate_failed(e)))
             return
         # 번호는 셀 것이 둘 이상일 때만 뜻이 있다 — 단발 1편짜리에는 붙이지 않는다
         numbered = kinds.get(kind)["series"] or len(entries) > 1
@@ -266,7 +267,8 @@ class CoursePage(QWidget):
         self._reflow_board()
         # 에이전트 게이트 — 키 없으면 버튼 비활성 + 사유 툴팁
         studio = self._make_studio()
-        run_bg(studio.agent_status, done=self._apply_gate, fail=lambda _e: None)
+        run_bg(studio.agent_status, done=self._apply_gate,
+                   fail=lambda e: self._apply_gate(agent_gate_failed(e)))
 
     def _apply_gate(self, gate: dict) -> None:
         for card in self._ai_cards:

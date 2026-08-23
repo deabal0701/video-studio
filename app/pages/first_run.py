@@ -268,7 +268,10 @@ class _AssetsPage(QWizardPage):
                                   self.voice_state.setText(
                                       f"준비됨 {sum(1 for v in info['voices'] if v.get('cached'))}"
                                       f" / {len(info['voices'])}종")),
-               fail=lambda _e: None)
+               # 못 읽었으면 못 읽었다고 말한다 — 빈 줄로 두면 "아직 안 만들어졌나"로
+               # 읽힌다 (72회차 A1)
+               fail=lambda e: self.voice_state.setText(
+                   f"목소리 목록을 못 읽었습니다 — {error_text(e)}"))
 
 
 class FirstRunWizard(QWizard):
