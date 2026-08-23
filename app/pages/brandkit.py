@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (QFormLayout, QFrame, QHBoxLayout, QLabel, QMessageBox,
                                QPushButton, QVBoxLayout, QWidget)
 
-from core import kinds
+from core import kinds, paths
 
 from ..bridge import error_text, run_bg
 
@@ -154,8 +154,13 @@ class BrandKitTab(QWidget):
             chip.setStyleSheet(f"#swatch {{ background: {value};"
                                " border: 1px solid #d7dae0; border-radius: 4px; }")
             code.setText(value)
+        # "프로젝트 기본 글꼴"이라고만 해서 **무슨 글꼴인지 끝내 알 수 없었다** — 게다가
+        # 이 값은 프로젝트마다 다르지 않다(앱이 동봉한 하나). 이름과 범위를 함께 말한다
+        # (69회차 P2·P16). course.json 이 따로 글꼴을 들면 그 이름이 이긴다
         font = d.get("fontUrl") or d.get("font") or ""
-        self.font_label.setText(font.rsplit("/", 1)[-1] if font else "프로젝트 기본 글꼴")
+        self.font_label.setText(
+            font.rsplit("/", 1)[-1] if font
+            else f"{paths.BUNDLED_FONT_NAME} — 앱에 동봉된 기본 글꼴 (모든 프로젝트 공통)")
         self._show_contrast(bg, brand, soft)
 
     def _show_contrast(self, bg: str, brand: str, soft: str) -> None:

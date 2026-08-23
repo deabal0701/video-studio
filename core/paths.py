@@ -23,6 +23,9 @@ from . import ENGINE_DIR
 
 COMMON_MOTION_DIR = ENGINE_DIR / "motion"
 BUNDLED_FONT = ENGINE_DIR / "fonts" / "PretendardVariable.woff2"
+# 화면이 글꼴을 **이름으로** 말할 수 있게 (69회차 P2·P16 — 브랜드 킷이 "프로젝트 기본
+# 글꼴"이라고만 해서 무슨 글꼴인지 끝내 알 수 없었다). 파일명에서 추측하지 않는다
+BUNDLED_FONT_NAME = "Pretendard"
 
 
 class RefKind(str, Enum):
