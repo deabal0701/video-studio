@@ -220,6 +220,12 @@ class Studio:
             raise Invalid("invalid_course", str(err.errors()[:3])) from err
         if model.course != cid:
             raise Invalid("id_mismatch", f"course '{model.course}' ≠ 폴더명 '{cid}'")
+        # 개설(create_course)은 이름을 요구하는데 수정은 빈 이름을 그대로 받았다 (52회차 P20).
+        # 빈 이름이 저장되면 대시보드 카드·프로젝트 헤더·삭제 확인이 전부 이름 없이 뜨고
+        # render.watermark.text 까지 빈 문자열이 된다 — **완성본 워터마크가 사라진다**.
+        # 읽기는 계속 관대하게(파일이 SSOT — 옛 파일도 열려야 한다), 쓰기에서만 막는다
+        if not str(model.title or "").strip():
+            raise Invalid("bad_request", "프로젝트 이름을 넣으세요")
         new_etag = self._save_with_etag(file, body, etag)
         problems = {}
         for ep in body.get("episodes", []):

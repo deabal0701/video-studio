@@ -61,6 +61,15 @@ class CourseSettingsTab(QWidget):
         form.addRow("태그라인", self.tagline)
         form.addRow("대상", self.audience)
 
+        # 종류는 화면 어디에도 없었다 — 위저드에서 고른 뒤로는 확인할 길이 없는데
+        # 골격·기본 길이·색·세는 말("N강"/"N편")이 전부 여기서 갈린다 (52회차 P16).
+        # 읽기 전용 — 만든 뒤 바꾸면 이미 깔린 대본 골격과 어긋난다
+        self.kind_note = QLabel("")
+        self.kind_note.setObjectName("caption")
+        self.kind_note.setWordWrap(True)
+        self.kind_note.setMaximumWidth(theme.RD_FIELD)
+        form.addRow("종류", self.kind_note)
+
         # 제공자 — 엔진은 edge·azure·eleven 을 다 지원하는데 화면은 edge 2종만 내보내고
         # 있었다 (2026-08-22). 키를 받아 두고 쓸 길이 없던 것이 결함이었다.
         prov_row = QHBoxLayout()
@@ -162,6 +171,10 @@ class CourseSettingsTab(QWidget):
         # 사용자 편집 감지 — 탭 재진입이 편집을 덮지 않게 (36회차 P0.
         # textEdited 는 사용자 입력만, 나머지는 _loading 가드가 로드를 걸러낸다)
         self.title.textEdited.connect(self._mark_dirty)
+        # 이름을 비우고도 저장이 됐다 — 저장된 뒤엔 대시보드 카드·프로젝트 헤더·삭제
+        # 확인이 전부 이름 없이 뜨고 **완성본 워터마크까지 빈 문자열**이 된다 (52회차 P20).
+        # 위저드 [만들기](34회차)·라이브러리 [받기](27회차)와 같은 문법 — 비활성 primary
+        self.title.textEdited.connect(self._sync_save_btn)
         self.tagline.textEdited.connect(self._mark_dirty)
         self.audience.textChanged.connect(self._mark_dirty)
         self.length.currentTextChanged.connect(self._mark_dirty)
@@ -172,6 +185,13 @@ class CourseSettingsTab(QWidget):
             btn.changed.connect(self._mark_dirty)
 
     # ── 로드 ────────────────────────────────────────────────────────────────
+    def _sync_save_btn(self, *_a) -> None:
+        if getattr(self, "_saving", False):
+            return   # 저장 중 잠금이 이긴다 (36회차 P18)
+        ok = bool(self.title.text().strip())
+        self.save_btn.setEnabled(ok)
+        self.save_btn.setToolTip("" if ok else "프로젝트 이름을 넣으세요 — 빈 이름으로는 저장할 수 없습니다")
+
     def _mark_dirty(self, *_a) -> None:
         if not getattr(self, "_loading", False):
             self._dirty = True
@@ -181,6 +201,13 @@ class CourseSettingsTab(QWidget):
         # 같은 결함·같은 처방. 저장하거나 다른 프로젝트를 열면 새로 읽는다)
         if cid == self.cid and getattr(self, "_dirty", False):
             return
+        if cid != self.cid:
+            # 다른 프로젝트로 옮기면 앞 프로젝트의 상태 글을 지운다 — 안 지우면
+            # "저장됨 — 일관성 어긋난 영상 1개: insait-promo-01" 이 **다른 프로젝트**
+            # 화면에 그대로 남는다 (52회차 P19·P11, 캡처에서 발견).
+            # 같은 프로젝트 재로드(저장 직후)에는 손대지 않는다 — "저장됨 ✓"이 남아야 한다
+            self.result.setText("")
+            self.tts_state.setText("")
         self.cid = cid
         studio = self._make_studio()
         run_bg(lambda: (studio.get_course(cid), studio.assets("bgm")),
@@ -207,6 +234,11 @@ class CourseSettingsTab(QWidget):
         self.c_brand.set_value(pal.get("brand", _P["brand"]))
         self.c_soft.set_value(pal.get("brandSoft", _P["brandSoft"]))
         self.c_bg.set_value(pal.get("bg", _P["bg"]))
+        kind = d.get("kind")
+        spec = kinds.get(kind)
+        self.kind_note.setText(
+            f"{spec['label']} · {'여러 편을 담는 시리즈' if spec['series'] else '단발 영상'}"
+            f" — 만들 때 정해집니다 (골격·기본 길이·색이 여기서 따라옵니다)")
         self.bgm.clear()
         for a in bgms:
             self.bgm.addItem(a["name"], a["ref"])
@@ -216,6 +248,7 @@ class CourseSettingsTab(QWidget):
             self.bgm.setCurrentIndex(idx)
         self._loading = False
         self._dirty = False
+        self._sync_save_btn()
 
     def _sync_length_note(self, *_a) -> None:
         chars = kinds.length_to_chars(self.length.currentText())
@@ -335,6 +368,14 @@ class CourseSettingsTab(QWidget):
 
     # ── 저장 (etag) ──────────────────────────────────────────────────────────
     def _save(self) -> None:
+        # 잠금은 버튼만이 아니라 **동작 자체**가 건다 — 버튼을 비활성으로 두는 것만으로는
+        # 버튼 밖 경로(단축키·프로그램 호출)가 옛 etag 로 두 번째 저장을 보낸다
+        # (52회차 실측. 보드 생성 3경로의 _begin_create 와 같은 문법 — 35회차)
+        if getattr(self, "_saving", False):
+            return
+        if not self.title.text().strip():
+            self.result.setText("프로젝트 이름을 넣으세요")
+            return
         body = dict(self._doc)
         body["title"] = self.title.text().strip()
         body["tagline"] = self.tagline.text().strip()
@@ -362,15 +403,18 @@ class CourseSettingsTab(QWidget):
 
         cid, etag, studio = self.cid, self._etag, self._make_studio()
         # 처리 중 잠금 (P18 공통 문법) — 중복 클릭이 옛 etag 로 409 를 낸다
+        self._saving = True
         self.save_btn.setEnabled(False)
         self.result.setText("저장 중…")
         run_bg(lambda: studio.put_course(cid, body, etag),
                done=self._saved,
-               fail=lambda e: (self.result.setText(error_text(e)),
-                               self.save_btn.setEnabled(True)))
+               fail=lambda e: (setattr(self, "_saving", False),
+                               self.result.setText(error_text(e)),
+                               self._sync_save_btn()))
 
     def _saved(self, out: dict) -> None:
-        self.save_btn.setEnabled(True)
+        self._saving = False
+        self._sync_save_btn()
         self._dirty = False   # 저장됨 — 다음 재진입은 새로 읽는다
         self._etag = out["etag"]
         problems = out.get("consistency", {})

@@ -57,3 +57,22 @@ def test_put_course_reconsistency(studio):
     # 회차가 실존하는 hr-basics-01 만 검사 대상 — 기존 bgm 어긋남이 배지 재료로 나온다
     assert "hr-basics-01" in out["consistency"]
     assert any("bgm" in p for p in out["consistency"]["hr-basics-01"])
+
+
+def test_put_course_rejects_empty_title(studio):
+    """빈 이름 저장 금지 (52회차 P20).
+
+    개설은 이름을 요구하는데 수정만 빈 이름을 받아들였다 — 저장되면 대시보드 카드·
+    프로젝트 헤더·삭제 확인이 이름 없이 뜨고 `render.watermark.text` 까지 비어
+    **완성본 워터마크가 사라진다**. 읽기는 계속 관대하다(옛 파일도 열려야 한다).
+    """
+    body = studio.get_course("hr-basics")
+    doc, etag = body["course"], body["etag"]
+    for bad in ("", "   "):
+        with pytest.raises(Invalid) as e:
+            studio.put_course("hr-basics", {**doc, "title": bad}, etag)
+        assert e.value.code == "bad_request"
+    # 이름이 있으면 그대로 저장된다 — 가드가 정상 저장을 막지 않는다
+    out = studio.put_course("hr-basics", {**doc, "title": "이름 있음"}, etag)
+    assert out["etag"] != etag
+    assert studio.get_course("hr-basics")["course"]["title"] == "이름 있음"
