@@ -151,9 +151,11 @@ def _trim_clips(scenes: dict[str, Any], kind: str | None,
     recording = bool(capture and str(capture.get("baseUrl") or "").strip())
     if not spec["series"] and not recording:
         scenes["scenes"] = []
-        # 녹화를 안 하면 템플릿이 들고 온 `baseUrl: localhost:3000`·capture 도 뜻이 없다 —
-        # 남겨 두면 "이 앱을 찍는다"로 읽혀 혼란만 준다. 씬과 함께 지운다.
-        scenes.pop("baseUrl", None)
+        # 녹화를 안 하면 capture 는 뜻이 없다 — 씬과 함께 지운다.
+        # 단 baseUrl 은 **지우면 안 된다**: 엔진 build.js 48행이 녹화 여부와 무관하게
+        # `config.baseUrl.replace(...)` 로 읽어, 키가 없으면 TypeError 로 즉사한다
+        # (2026-08-23 위저드→일반 영상→[빌드] 실측. 엔진은 수정 금지 — D14).
+        # 템플릿이 들고 온 값을 그대로 둔다 — 녹화 씬이 없으면 접속하지 않는 값이다.
         scenes.pop("capture", None)
         # 녹화 씬을 지웠으면 **거기 묶여 있던 클립을 풀어 준다.**
         # compose.js 는 클립을 `before` 가 가리키는 씬 앞에 끼우고(339행), 가리키는 씬이

@@ -214,7 +214,13 @@ def test_capture_keeps_recording_scenes(tmp_path):
 
 
 def test_no_capture_still_strips_scenes(tmp_path):
-    """주소가 없으면 종전대로 — 녹화할 앱이 없는데 남기면 빌드가 죽는다."""
+    """주소가 없으면 녹화 씬·capture 는 지우되 **baseUrl 은 남긴다**.
+
+    엔진 build.js 48행은 녹화 여부와 무관하게 `config.baseUrl.replace(...)` 로 읽는다 —
+    키를 지우면 위저드로 만든 단발 영상의 [빌드]가 TypeError 로 즉사한다
+    (2026-08-23 실측. 엔진은 수정 금지 — D14). 값은 템플릿 것이 그대로 남고,
+    녹화 씬이 없으므로 실제로 접속하지는 않는다.
+    """
     from core.schema import load_json
 
     root = tmp_path / "projects"
@@ -222,7 +228,8 @@ def test_no_capture_still_strips_scenes(tmp_path):
     scaffold.scaffold_course(root, "plain", title="일반", kind="promo")
     scaffold.scaffold_episode(root, "plain", 1)
     sc = load_json(root / "plain-01" / "scenes.json")
-    assert sc["scenes"] == [] and "baseUrl" not in sc
+    assert sc["scenes"] == [] and "capture" not in sc
+    assert isinstance(sc.get("baseUrl"), str) and sc["baseUrl"]
 
 
 @pytest.mark.parametrize("kind", ["promo", "ad", "manual", "general"])
