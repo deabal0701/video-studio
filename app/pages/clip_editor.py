@@ -44,14 +44,26 @@ PARAM_ORDER = ("title", "subtitle", "kicker", "num", "value", "unit",
                "text", "caption", "label", "src", "progress")
 
 
+def spoken(clip: dict) -> str:
+    """실제로 말할 내레이션 — 골격의 "[…]" 안내문은 **아직 쓴 글이 아니다**.
+
+    54회차 P11: 시작 패널은 이 규칙(`_script_unwritten`)으로 "대본이 아직 비어 있습니다"
+    라고 하는데 예산 게이지만 자리표시자까지 세서 같은 화면이 "232자 (13%)"라고 했다.
+    규칙을 하나로 모아 패널·게이지·길이 추정이 같은 말을 하게 한다.
+    """
+    n = (clip.get("narration") or "").strip()
+    return "" if n.startswith("[") else n
+
+
 def clip_seconds(clip: dict, audio_cache: dict) -> tuple[float, bool]:
     """(길이 s, 실측 여부) — TTS 캐시 있으면 실측, 없으면 추정 (03 ⑤ 리스트 라벨)."""
     measured = audio_cache.get(clip.get("id"))
     if measured:
         return max(clip.get("duration") or 0, measured + 0.5), True
-    if clip.get("narration"):
+    narration = spoken(clip)
+    if narration:
         return max(clip.get("duration") or 0,
-                   len(clip["narration"]) / PACE + 0.5), False
+                   len(narration) / PACE + 0.5), False
     return clip.get("duration") or 0, True
 
 
@@ -155,6 +167,11 @@ class ClipEditorTab(QWidget):
         split.addWidget(self._make_center())
         split.addWidget(self._make_right())
         split.setSizes([260, 520, 420])
+        # 고정 픽셀 합(1200)이 창보다 넓으면 세 열이 비례로 눌리는데, **글 쓰는 가운데
+        # 열이 먼저 무너졌다** — 1180px 실측에서 뷰포트 317 < 내용 최소 464 라 오른쪽이
+        # 잘렸다(가로 스크롤은 금지 정책이라 그냥 사라진다). 가운데는 내용 최소폭을
+        # 보장하고, 남는 폭을 줄일 곳은 프리뷰(오른쪽)로 (54회차 P6)
+        split.setCollapsible(1, False)
 
     # ══ 좌: 클립 리스트 + 예산 ═══════════════════════════════════════════════
     def _make_left(self) -> QWidget:
@@ -168,6 +185,11 @@ class ClipEditorTab(QWidget):
 
         self.clip_list = QListWidget()
         self.clip_list.setDragDropMode(QAbstractItemView.InternalMove)  # 드래그 정렬 = 배열 순서
+        # 골격의 자리표시자 이름("[회차 훅 도식 — 콜드 오픈. 구체…")이 길어 목록 아래에
+        # 가로 스크롤바가 생겼다 (54회차 P6 — 좁은 창에서 가로 스크롤 금지).
+        # 잘린 라벨은 툴팁이 통째로 보여 준다
+        self.clip_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.clip_list.setTextElideMode(Qt.ElideRight)
         self.clip_list.currentRowChanged.connect(self._on_select)
         self.clip_list.model().rowsMoved.connect(self._on_reorder)
         lay.addWidget(self.clip_list, 1)
@@ -210,6 +232,10 @@ class ClipEditorTab(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)   # 화면은 가로 스크롤 금지 (09 G2)
+        # 가로 스크롤을 끈 채로 폭이 모자라면 내용이 **그냥 잘린다** — 스플리터에게
+        # 이 열의 최소폭을 알려 남는 부족분이 프리뷰 열로 가게 한다 (54회차 P6 실측:
+        # 1180px 에서 뷰포트 317 < 내용 최소 464 라 오른쪽 절반이 사라졌다)
+        scroll.setMinimumWidth(490)   # 세로 스크롤바(약 14px)까지 감안한 값
         w = QWidget()
         scroll.setWidget(w)
         lay = QVBoxLayout(w)
@@ -285,6 +311,7 @@ class ClipEditorTab(QWidget):
         lay.addWidget(self.narration, 1)   # 남는 높이는 글 쓰는 칸이 먹는다 (09 G3)
         self.narr_info = QLabel("")
         self.narr_info.setObjectName("caption")
+        self.narr_info.setWordWrap(True)
         lay.addWidget(self.narr_info)
         # 발화시각 계산기 — 구절 선택 → 글자수÷페이스 → tN 원클릭 기입 (03 ⑤)
         self.spoken_row = QHBoxLayout()
@@ -308,6 +335,7 @@ class ClipEditorTab(QWidget):
 
         pick_row = QHBoxLayout()
         self.screen_label = QLabel("—")   # 표시명이 본문이다 — 파일명은 괄호 보조 (10 #8)
+        self.screen_label.setWordWrap(True)
         self.tpl_btn = QPushButton("템플릿 선택…")
         self.tpl_btn.clicked.connect(self._pick_template)
         self.broll_btn = QPushButton("B롤 선택…")
@@ -428,13 +456,7 @@ class ClipEditorTab(QWidget):
     # ── 시작 안내 (10 P1) ───────────────────────────────────────────────────
     def _script_unwritten(self) -> bool:
         """모든 내레이션이 비었거나 골격의 "[…]" 안내문 그대로면 아직 안 쓴 것이다."""
-        wrote = False
-        for c in self.clips:
-            n = (c.get("narration") or "").strip()
-            if n and not n.startswith("["):
-                wrote = True
-                break
-        return not wrote
+        return not any(spoken(c) for c in self.clips)
 
     def _sync_start_panel(self) -> None:
         # 실패 안내가 떠 있는 동안엔 늦게 도착한 비동기 콜백이 패널을 되접으면
@@ -639,6 +661,12 @@ class ClipEditorTab(QWidget):
 
     def load(self, eid: str, scenes: dict, etag: str, inspect: dict,
              budget_text: str) -> None:
+        if eid != getattr(self, "eid", None):
+            # 앞 영상의 저장 결과가 그대로 남아 **다른 영상의 화면에서 그 영상의 결함처럼**
+            # 읽혔다 — "저장됨 — 경로 문제: broll: B롤 없음 …" (54회차 P19·P11 실측).
+            # 52(설정)·53(브랜드 킷)과 같은 결함·같은 처방 — 대상이 바뀌면 결과를 지운다
+            self.issues.setText("")
+            self.issues.hide()
         self._loading = True
         self._dirty = False   # 새로 읽음 — 이전 편집 흔적 해제
         self.eid = eid
@@ -679,9 +707,11 @@ class ClipEditorTab(QWidget):
             role = kinds.role_label(c.get("id"))
             screen = (kinds.screen_name(c["file"]) if c.get("file")
                       else str(c.get("video") or "—").split("/")[-1])
-            item = QListWidgetItem(f"≡ {role} ({c.get('id', '?')}) · {screen}"
-                                   f"  {secs:.1f}s{'' if measured else '?'}")
-            item.setToolTip(c.get("narration", ""))
+            label = (f"≡ {role} ({c.get('id', '?')}) · {screen}"
+                     f"  {secs:.1f}s{'' if measured else '?'}")
+            item = QListWidgetItem(label)
+            # 라벨이 말줄임되므로 툴팁이 전문을 갖는다 (내레이션은 그 아래)
+            item.setToolTip("\n\n".join(p for p in (label, spoken(c)) if p))
             self.clip_list.addItem(item)
         self.clip_list.blockSignals(False)
         self._sync_start_panel()
@@ -693,9 +723,13 @@ class ClipEditorTab(QWidget):
         self._render_skeleton_warn()
 
     def _render_budget(self) -> None:
-        total = sum(len(c.get("narration", "")) for c in self.clips)
+        total = sum(len(spoken(c)) for c in self.clips)
         secs = sum(clip_seconds(c, self.audio_cache)[0] for c in self.clips)
-        measured_all = all(clip_seconds(c, self.audio_cache)[1] for c in self.clips)
+        # "실측"은 TTS 캐시로 잰 것만 — 아직 안 쓴 대본은 골격 duration 의 합일 뿐이라
+        # 실측이라 부르면 안 된다 (54회차: 자리표시자를 안 세게 바꾸자 전 클립이 '잴 것
+        # 없음'이 되어 빈 대본이 "실측"으로 뒤집혔다)
+        measured_all = (any(spoken(c) for c in self.clips)
+                        and all(clip_seconds(c, self.audio_cache)[1] for c in self.clips))
         pct = round(total / self._budget * 100) if self._budget else 0
         self.budget_label.setText(f"전체 대본 {total:,}자 / 목표 {self._budget:,}자 ({pct}%)")
         self.budget_bar.setValue(min(100, pct))
@@ -763,7 +797,7 @@ class ClipEditorTab(QWidget):
         c = self.cur
         if not c:
             return
-        narr = len((c.get("narration") or "").strip())
+        narr = len(spoken(c))
         msg = f"{kinds.role_label(c.get('id'))} ({c.get('id')}) 클립을 삭제할까요?"
         if narr:
             msg += f"\n\n쓴 내레이션 {narr}자도 함께 지워집니다."
@@ -903,8 +937,14 @@ class ClipEditorTab(QWidget):
         c = self.cur
         if c is None:
             return
-        n = len(c.get("narration", ""))
         measured = self.audio_cache.get(c.get("id"))
+        text = spoken(c)
+        if not text and (c.get("narration") or "").strip():
+            # 칸에 글은 있는데 0자라고만 하면 왜 그런지 모른다 — 자리표시자라고 말한다
+            self.narr_info.setText("골격 안내문입니다 — 아직 쓴 글로 세지 않습니다"
+                                   " (지우고 할 말을 쓰세요)")
+            return
+        n = len(text)
         self.narr_info.setText(
             f"{n}자 · " + (f"음성 실측 {measured:.1f}초" if measured
                            else f"음성 추정 {n / PACE:.1f}초"))
