@@ -472,8 +472,13 @@ class ClipEditorTab(QWidget):
                 docs.append(d)
             _sync()
 
+        def clear_docs():
+            docs.clear()
+            _sync()
+
         def _sync():
             docs_label.setText("근거: " + " · ".join(docs) if docs else "")
+            clear_btn.setVisible(bool(docs))
 
         doc_row = QHBoxLayout()
         f_btn = QPushButton("근거 문서 추가…")
@@ -482,8 +487,14 @@ class ClipEditorTab(QWidget):
         d_btn.clicked.connect(add_dir)
         doc_hint = QLabel("(선택 — AI 가 여기 있는 내용만으로 씁니다. 지어내지 않게)")
         doc_hint.setObjectName("caption")
+        # 잘못 넣은 근거를 뺄 길 — 없으면 취소하고 처음부터였다 (47회차 P21)
+        clear_btn = QPushButton("근거 비우기")
+        clear_btn.setFlat(True)
+        clear_btn.clicked.connect(clear_docs)
+        clear_btn.hide()
         doc_row.addWidget(f_btn)
         doc_row.addWidget(d_btn)
+        doc_row.addWidget(clear_btn)
         doc_row.addWidget(doc_hint)
         doc_row.addStretch(1)
         lay.addLayout(doc_row)
@@ -534,7 +545,8 @@ class ClipEditorTab(QWidget):
     def _clear_ai_error(self) -> None:
         self._ai_error = None
 
-    def ai_progress_start(self, msg: str = "AI 가 대본을 쓰는 중입니다 — 몇 분 걸립니다."
+    def ai_progress_start(self, msg: str = "AI 가 대본을 쓰는 중입니다 — 몇 분 걸립니다. "
+                                           "위의 [중단]으로 멈출 수 있습니다."
                           ) -> None:
         self._ai_error = None   # 새 시도 — 이전 실패 안내 해제
         self._panel_collapsed = False
