@@ -275,10 +275,18 @@ class ClipEditorTab(QWidget):
         # 진행 모드 — [시작] 뒤에 아무 일도 안 보이면 죽은 줄 안다 (10: "프로그레스바가
         # 가면서 대본이 생성되어야 하는 거 아닌가"). 같은 카드가 진행 표시로 변신한다.
         self.ai_bar = QProgressBar()
-        self.ai_bar.setRange(0, 0)          # 불확정 — 흐르는 바
+        # 불확정(0,0) 바는 전역 QSS 아래서 스타일 애니메이션이 멎어 **꽉 찬 정지 막대**로
+        # 보인다 (2026-08-23 실측: LLM 응답을 기다리는 수십 초가 "멈춘 화면"으로 읽혔다).
+        # 확정 범위를 두고 타이머(_ai_tick)가 값을 돌려 눈에 보이는 움직임을 만든다.
+        self.ai_bar.setRange(0, 100)
+        self.ai_bar.setTextVisible(False)   # 물결은 진행률이 아니다 — % 표기 금지
         self.ai_bar.setFixedHeight(8)
         self.ai_bar.hide()
         sp.addWidget(self.ai_bar)
+        self._ai_ticks = 0
+        self._ai_timer = QTimer(self)
+        self._ai_timer.setInterval(120)
+        self._ai_timer.timeout.connect(self._ai_tick)
         self.ai_line = QLabel("")
         self.ai_line.setObjectName("caption")
         self.ai_line.setWordWrap(True)
@@ -628,6 +636,15 @@ class ClipEditorTab(QWidget):
         self.ai_bar.show()
         self.ai_line.clear()
         self.ai_line.show()
+        self._ai_ticks = 0
+        self.ai_bar.setValue(0)
+        self._ai_timer.start()
+
+    def _ai_tick(self) -> None:
+        """살아있음 표시 — 바 물결 + 제목 점. 진행률 정보는 아니다 (단계는 ai_line 이 말한다)."""
+        self._ai_ticks += 1
+        self.ai_bar.setValue(self._ai_ticks * 3 % 101)
+        self._sp_head.setText("AI 작업 중 " + "·" * (self._ai_ticks // 5 % 4 + 1))
 
     def ai_progress_line(self, line: str) -> None:
         if line.strip():
@@ -637,6 +654,7 @@ class ClipEditorTab(QWidget):
         self._sp_desc.setText(msg)
 
     def ai_progress_end(self, error: str | None = None) -> None:
+        self._ai_timer.stop()    # 먼저 멈춘다 — 늦은 틱이 끝난 제목을 되덮지 않게
         self._ai_error = error   # None 이면 해제 — _sync_start_panel 이 존중한다
         self._sp_head.setText("대본이 아직 비어 있습니다")
         self._sp_desc.setText("대본을 쓰면 위의 [빌드]가 영상으로 만듭니다. 셋 중 하나로 시작하세요:")

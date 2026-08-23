@@ -27,6 +27,25 @@ CHECK_ITEMS = ["밝은 프레임 워터마크", "어두운 프레임 자막", "�
                "마지막 프레임", "무음 리포트 확인"]
 
 
+class _ReviewVideo(QVideoWidget):
+    """검수 플레이어 — 더블클릭으로 전체 화면, Esc·더블클릭으로 복귀.
+
+    검수는 자막 가독·워터마크 같은 세부를 보는 일이라 크게 볼 길이 반드시 필요하다
+    (2026-08-23 사용자 보고: "화면이 작아서 볼 수도 없다").
+    """
+
+    def mouseDoubleClickEvent(self, event) -> None:  # noqa: N802 — Qt 오버라이드
+        self.setFullScreen(not self.isFullScreen())
+        event.accept()
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802 — Qt 오버라이드
+        if event.key() == Qt.Key_Escape and self.isFullScreen():
+            self.setFullScreen(False)
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+
 class EpisodePage(QWidget):
     job_started = Signal(str)
     back = Signal(str)   # cid — [← 프로젝트] (①②③ 탭으로 되돌아간다)
@@ -94,6 +113,12 @@ class EpisodePage(QWidget):
         self.state_chip.setProperty("chip", "info")
         self.state_chip.hide()
         outer.addWidget(self.state_chip, alignment=Qt.AlignLeft)
+        # 작업 중 점 애니메이션 — LLM 응답 대기처럼 이벤트가 몇십 초 없는 구간에서
+        # 문구가 그대로면 멈춘 줄 안다 (2026-08-23 사용자 보고). 칩이 살아있음을 말한다.
+        self._chip_dots = 0
+        self._chip_timer = QTimer(self)
+        self._chip_timer.setInterval(600)
+        self._chip_timer.timeout.connect(self._chip_tick)
 
         self.log = QPlainTextEdit()
         self.log.setObjectName("log")
@@ -142,9 +167,11 @@ class EpisodePage(QWidget):
         shell.addWidget(self.review_body, 1)
         lay = QVBoxLayout(self.review_body)
         lay.setContentsMargins(0, 0, 0, 0)
-        self.video = QVideoWidget()
-        # 재생을 눌러야 펼친다 — 빈 영상 위젯이 화면 상단 1/3 을 먹고 있었다 (09 G1·G3)
-        self.video.setFixedHeight(theme.VIDEO_H)
+        self.video = _ReviewVideo()
+        # 재생을 눌러야 펼친다 — 빈 영상 위젯이 화면 상단 1/3 을 먹고 있었다 (09 G1·G3).
+        # 높이는 _fit_video 가 창 크기에 맞춰 잡는다 — 고정 300px 는 큰 모니터에서
+        # 검수(자막 가독·워터마크)가 불가능한 크기였다 (2026-08-23 사용자 보고)
+        self.video.setMinimumHeight(theme.VIDEO_H)
         self.video.hide()
         self.player = QMediaPlayer()
         self.audio_out = QAudioOutput()
@@ -479,7 +506,7 @@ class EpisodePage(QWidget):
         if finals:
             mp4 = OUT_ROOT / self.eid / "final" / finals[0]
             self.player.setSource(QUrl.fromLocalFile(str(mp4)))
-            self.media_label.setText(f"완성본 {finals[0]}")
+            self.media_label.setText(f"완성본 {finals[0]} — 영상을 더블클릭하면 전체 화면")
             self._load_review()
         # ④ 배포만 **탭을 누를 때** 읽는다(_on_tab). 그래서 그 탭을 켜 둔 채 다른 영상으로
         # 옮기면 setCurrentIndex 가 안 바뀌어 신호가 안 나고 **앞 영상의 문안이 그대로
@@ -528,7 +555,7 @@ class EpisodePage(QWidget):
             if finals:
                 mp4 = OUT_ROOT / self.eid / "final" / finals[0]
                 self.player.setSource(QUrl.fromLocalFile(str(mp4)))
-                self.media_label.setText(f"완성본 {finals[0]}")
+                self.media_label.setText(f"완성본 {finals[0]} — 영상을 더블클릭하면 전체 화면")
 
         run_bg(get, done=guard(self, "eid", eid, fill),
                fail=guard(self, "eid", eid, self._fail))
@@ -735,9 +762,25 @@ class EpisodePage(QWidget):
             self.player.pause()
             self.play_btn.setText("▶ 재생")
         else:
+            self._fit_video()
             self.video.show()   # 여기서 처음 펼친다 (09 G1)
             self.player.play()
             self.play_btn.setText("일시정지")
+
+    def _fit_video(self) -> None:
+        """검수 영상을 창에 맞춰 크게 — 16:9 폭 기준, 탭 높이의 7할을 상한으로.
+
+        QVideoWidget 이 비율은 스스로 지키므로(레터박스) 여기서는 자리만 크게 잡는다.
+        상한을 안 두면 넓은 창에서 폭 기준 높이가 뷰포트를 넘어 스크롤로 밀려난다.
+        """
+        w = max(self.review_body.width(), 1)
+        self.video.setFixedHeight(max(theme.VIDEO_H,
+                                      min(w * 9 // 16, int(self.tabs.height() * 0.7))))
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 — Qt 오버라이드
+        super().resizeEvent(event)
+        if self.video.isVisible() and not self.video.isFullScreen():
+            self._fit_video()
 
     # ── 빌드 ────────────────────────────────────────────────────────────────
     def _build(self, only: str | None) -> None:
@@ -773,6 +816,14 @@ class EpisodePage(QWidget):
             jid = self._job_id
             run_bg(lambda: self._studio.cancel_job(jid), fail=self._fail)
 
+    def _chip_tick(self) -> None:
+        # 진행 칩(run)일 때만 — 종료 상태 라벨("완료"·"실패")에 점을 붙이면 안 된다
+        if self.state_chip.property("chip") != "run":
+            return
+        base = self.state_chip.text().rstrip(" ·")
+        self._chip_dots = self._chip_dots % 3 + 1
+        self.state_chip.setText(base + " " + "·" * self._chip_dots)
+
     def _set_building(self, on: bool) -> None:
         # 클립 탭 [음성 다시 만들기]도 함께 — 안 잠그면 작업 중 재클릭이
         # 중복 TTS 잡을 큐에 쌓는다 (22회차 P18·P20)
@@ -780,6 +831,12 @@ class EpisodePage(QWidget):
                   self.ai_review_btn, self.clip_tab.tts_btn):
             b.setEnabled(not on)
         self.cancel_btn.setVisible(on)
+        if on:
+            self._chip_timer.start()
+        else:
+            self._chip_timer.stop()
+            # 마지막 틱이 남긴 점을 걷는다 — 종료 라벨은 점 없이 남아야 한다
+            self.state_chip.setText(self.state_chip.text().rstrip(" ·"))
         if not on and self.eid:
             # 편집 중인 ⑤ 를 덮지 않는다 — 파생 상태·검수 자료·TTS 실측만 갱신
             # (구 웹 구현은 여기서 에디터를 리마운트해 미저장 편집이 사라졌다)

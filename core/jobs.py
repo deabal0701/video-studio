@@ -18,6 +18,7 @@ from __future__ import annotations
 import itertools
 import threading
 import time
+import traceback
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -242,6 +243,11 @@ class JobQueue:
                 self._set(job, JobState.CANCELED)
                 return
             job.error = str(err)
+            # 사유가 **로그 이벤트로도** 남아야 한다 — job.error 만 채우면 화면은
+            # "failed"라고만 말하고 사유는 아무 데도 안 보인다 (2026-08-23 실측:
+            # 에이전트 draft 실패 사유가 화면·로그 어디에도 없었다. 72회차 A1 삼킴 계열)
+            self._emit(job, {"kind": "log", "line": "실패 사유:\n"
+                             + "".join(traceback.format_exception(err)).strip()})
             self._set(job, JobState.FAILED)
         finally:
             with self._lock:

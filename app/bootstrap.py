@@ -19,5 +19,15 @@ import os
 _FLAGS = "--disable-gpu --no-sandbox --disable-gpu-compositing"
 os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", _FLAGS)
 
+# 죽은 경로를 가리키는 SSL 인증서 변수는 걷어낸다 — conda activate 가 셸에 남긴
+# `SSL_CERT_FILE=<env>\Library\ssl\cacert.pem` 이 그 env 삭제 뒤에도 살아남아,
+# httpx(anthropic·openai)·aiohttp(edge-tts) 가 **연결 시도조차 못 하고** 죽는다
+# (2026-08-23 실측: AI 대본쓰기가 FileNotFoundError 로 즉사 — 앱 밖 재현은 정상).
+# 없는 파일은 어차피 인증서로 못 쓰니, 지우고 기본 신뢰 저장소로 돌아가는 쪽이 맞다.
+for _cert_var in ("SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE"):
+    _p = os.environ.get(_cert_var)
+    if _p and not os.path.exists(_p):
+        del os.environ[_cert_var]
+
 # QApplication 보다 먼저 — 임포트 자체가 목적 (AA_ShareOpenGLContexts)
 from PySide6.QtWebEngineWidgets import QWebEngineView  # noqa: E402,F401
