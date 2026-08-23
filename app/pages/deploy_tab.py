@@ -96,6 +96,9 @@ class DeployTab(QWidget):
     def _mark_dirty(self, *_a) -> None:
         self._dirty = True
 
+    def has_unsaved(self) -> bool:
+        return bool(self._dirty)
+
     def load(self, eid: str) -> None:
         if eid == self.eid and self._dirty:
             return   # 문안을 고치는 중 — 탭 재진입이 편집을 덮으면 안 된다 (P0)
