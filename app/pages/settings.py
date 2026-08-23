@@ -133,6 +133,12 @@ class SettingsPage(QWidget):
         lay.addWidget(self.diag_table)
         lay.addStretch(1)
 
+        # 사용자 편집 감지 — 재클릭 refresh·내비 이탈이 편집을 덮지 않게 (45회차 P20.
+        # 키 필드는 _fill 에서 생성되며 그때 연결된다)
+        self.provider.currentIndexChanged.connect(self._mark_dirty)
+        self.test_mode.toggled.connect(self._mark_dirty)
+        self.openai_model.textEdited.connect(self._mark_dirty)
+
     def _sync_provider_rows(self) -> None:
         """제공자가 openai 일 때만 OpenAI 모델 칸을 보여준다 (09 G3)."""
         on = self.provider.currentData() == "openai"
@@ -140,13 +146,24 @@ class SettingsPage(QWidget):
         self.openai_model.setVisible(on)
 
     # ── 로드 ────────────────────────────────────────────────────────────────
+    def _mark_dirty(self, *_a) -> None:
+        if not getattr(self, "_loading", False):
+            self._dirty = True
+
+    def has_unsaved(self) -> bool:
+        return bool(getattr(self, "_dirty", False))
+
     def refresh(self) -> None:
         studio = self._make_studio()
-        run_bg(lambda: (studio.settings(), studio.agent_status()), done=self._fill,
-               fail=lambda e: self.result.setText(error_text(e)))
+        # 키를 입력하는 중이면 값은 안 덮는다 — 내비 재클릭이 refresh 를 부른다
+        # (45회차 P20. 진단은 값과 무관하니 항상 다시 돈다)
+        if not self.has_unsaved():
+            run_bg(lambda: (studio.settings(), studio.agent_status()), done=self._fill,
+                   fail=lambda e: self.result.setText(error_text(e)))
         self._diagnose()
 
     def _fill(self, result) -> None:
+        self._loading = True
         cfg, agent = result
         values, sources = cfg["values"], cfg["sources"]
         if not self._fields:  # 폼은 한 번만 짓는다
@@ -157,6 +174,7 @@ class SettingsPage(QWidget):
                     field.setEchoMode(QLineEdit.Password)
                 field.setToolTip(label)
                 self._fields[name] = field
+                field.textEdited.connect(self._mark_dirty)
                 self.key_form.addRow(label.split(" — ")[0], field)
         for name, field in self._fields.items():
             field.setText(values.get(name, ""))
@@ -184,6 +202,8 @@ class SettingsPage(QWidget):
                 f"다음 값은 {', '.join(sorted({sources[n] for n in overrides}))} 에 설정돼 "
                 f"있어 그 값이 우선 적용됩니다 — 여기서 바꾸려면 그 파일에서 지우세요: "
                 f"{', '.join(overrides)}")
+        self._loading = False
+        self._dirty = False
         self._loaded = True
 
     # ── 저장 ────────────────────────────────────────────────────────────────

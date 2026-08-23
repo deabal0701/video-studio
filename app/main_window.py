@@ -156,6 +156,22 @@ class MainWindow(QMainWindow):
     def _nav_to(self, row: int) -> None:
         if row not in self.NAV_STACK:
             return
+        # 설정에서 키를 입력하다 다른 화면으로 — 저장 안 한 키가 조용히 사라진다
+        # (45회차 P20. [취소]면 설정에 머물고 내비 하이라이트를 되돌린다)
+        if (self.stack.currentWidget() is self.settings_page and row != 3
+                and self.settings_page.has_unsaved()):
+            from PySide6.QtWidgets import QMessageBox
+
+            if QMessageBox.warning(
+                    self, "저장하지 않은 변경",
+                    "설정에 저장하지 않은 변경이 있습니다 — 이동하면 사라집니다.\n"
+                    "[키 저장]을 누른 뒤 이동하는 것이 안전합니다. 그래도 이동할까요?",
+                    QMessageBox.Yes | QMessageBox.Cancel,
+                    QMessageBox.Cancel) != QMessageBox.Yes:
+                self.nav.blockSignals(True)
+                self.nav.setCurrentRow(3)
+                self.nav.blockSignals(False)
+                return
         self.stack.setCurrentIndex(self.NAV_STACK[row])
         if row == 0:
             self.dashboard.refresh()
