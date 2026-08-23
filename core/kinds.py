@@ -143,8 +143,9 @@ def role_label(clip_id: str | None) -> str:
 # 키 이름은 엔진 계약이라 못 바꾼다 — 화면이 뜻을 함께 말한다. 모르는 키는 그대로.
 PARAM_LABELS = {
     "title": "제목", "subtitle": "부제", "kicker": "상단 소제목", "num": "번호",
-    "src": "이미지", "progress": "진행 표시", "shade": "어둡기", "wipe": "와이프 전환",
+    "src": "이미지", "progress": "진행 표시", "shade": "어둡기", "wipe": "장면 전환 효과",
     "caption": "캡션", "label": "라벨", "text": "본문", "videoStart": "시작 지점(초)",
+    "value": "숫자", "unit": "단위", "cta": "행동 유도 문구", "url": "표시 주소",
 }
 
 
@@ -174,6 +175,7 @@ def render_label(key: str) -> str:
 TEMPLATE_LABELS = {
     "intro.html": "타이틀 카드", "chapter.html": "챕터 카드", "outro.html": "마무리 카드",
     "course-intro.html": "프로젝트 타이틀 카드", "course-stinger.html": "로고 전환",
+    "stat.html": "숫자 카드", "photo.html": "사진 카드",
 }
 
 
@@ -183,6 +185,15 @@ def screen_label(text: str | None) -> str:
     for fname, label in TEMPLATE_LABELS.items():
         if t == fname or t.endswith("/" + fname):
             return f"{label} ({fname})"
+    return t
+
+
+def screen_name(text: str | None) -> str:
+    """클립 리스트처럼 좁은 곳 — 표시명만, 모르는 파일명은 그대로."""
+    t = str(text or "").strip()
+    for fname, label in TEMPLATE_LABELS.items():
+        if t == fname or t.endswith("/" + fname):
+            return label
     return t
 
 

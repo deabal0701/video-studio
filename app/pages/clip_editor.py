@@ -38,6 +38,10 @@ SKELETON = ["broll", "title", "hook", "stinger", "promise"]
 AUTO_KEYS = ("brand", "brandSoft", "bg", "fg", "font", "fontUrl",
              "wipeAt", "wipeColor")
 TIME_KEY_RE = re.compile(r"^t\d|^tterm|At$|Time$", re.I)
+# 화면 문구 폼의 표시 순서 — 제목이 맨 위 (10 지적 11: 템플릿 내부 순서 그대로면
+# 제목이 맨 아래로 밀린다). 목록에 없는 키는 템플릿 순서대로 뒤에 붙는다.
+PARAM_ORDER = ("title", "subtitle", "kicker", "num", "value", "unit",
+               "text", "caption", "label", "src", "progress")
 
 
 def clip_seconds(clip: dict, audio_cache: dict) -> tuple[float, bool]:
@@ -266,14 +270,48 @@ class ClipEditorTab(QWidget):
         self.cur_id.setObjectName("sectionTitle")
         lay.addWidget(self.cur_id)
 
+        # ── 묶음 1: 할 말 — 대본 화면의 본업이라 내레이션이 맨 위다 (10 지적 11).
+        # 예전에는 화면 선택(위)과 화면 문구 폼(아래)이 내레이션을 사이에 두고
+        # 갈라져 있어 "무엇이 어디 것인지" 읽히지 않았다.
+        narr_head = QLabel("할 말 — 내레이션")
+        narr_head.setObjectName("caption")
+        lay.addWidget(narr_head)
+
+        self.narration = QPlainTextEdit()
+        self.narration.setMinimumHeight(96)
+        self.narration.setMaximumHeight(320)
+        self.narration.textChanged.connect(self._on_narration)
+        self.narration.selectionChanged.connect(self._on_narr_select)
+        lay.addWidget(self.narration, 1)   # 남는 높이는 글 쓰는 칸이 먹는다 (09 G3)
+        self.narr_info = QLabel("")
+        self.narr_info.setObjectName("caption")
+        lay.addWidget(self.narr_info)
+        # 발화시각 계산기 — 구절 선택 → 글자수÷페이스 → tN 원클릭 기입 (03 ⑤)
+        self.spoken_row = QHBoxLayout()
+        self.spoken_label = QLabel("")
+        self.spoken_label.setObjectName("caption")
+        self.spoken_row.addWidget(self.spoken_label)
+        self.spoken_row.addStretch(1)
+        lay.addLayout(self.spoken_row)
+
+        # ── 묶음 2: 보이는 것 — 화면 고르기와 화면 문구를 한 자리에
+        self.params_head = QHBoxLayout()
+        screen_head = QLabel("보이는 것 — 화면")
+        screen_head.setObjectName("caption")
+        self.extract_btn = QPushButton("B롤 프레임을 이미지(src)로 가져오기")
+        self.extract_btn.clicked.connect(self._extract_frame)
+        self.params_head.addWidget(screen_head)
+        self.params_head.addStretch(1)
+        self.params_head.addWidget(self.extract_btn)
+        lay.addSpacing(theme.GAP_STACK)
+        lay.addLayout(self.params_head)
+
         pick_row = QHBoxLayout()
-        self.screen_label = QLabel("—")
-        self.screen_label.setObjectName("caption")
+        self.screen_label = QLabel("—")   # 표시명이 본문이다 — 파일명은 괄호 보조 (10 #8)
         self.tpl_btn = QPushButton("템플릿 선택…")
         self.tpl_btn.clicked.connect(self._pick_template)
         self.broll_btn = QPushButton("B롤 선택…")
         self.broll_btn.clicked.connect(self._pick_broll)
-        pick_row.addWidget(QLabel("화면"))
         pick_row.addWidget(self.screen_label, 1)
         pick_row.addWidget(self.tpl_btn)
         pick_row.addWidget(self.broll_btn)
@@ -305,34 +343,9 @@ class ClipEditorTab(QWidget):
         self.broll_check.setWordWrap(True)
         lay.addWidget(self.broll_check)
 
-        lay.addWidget(QLabel("내레이션"))
-        self.narration = QPlainTextEdit()
-        self.narration.setMinimumHeight(96)
-        self.narration.setMaximumHeight(320)
-        self.narration.textChanged.connect(self._on_narration)
-        self.narration.selectionChanged.connect(self._on_narr_select)
-        lay.addWidget(self.narration, 1)   # 남는 높이는 글 쓰는 칸이 먹는다 (09 G3)
-        self.narr_info = QLabel("")
-        self.narr_info.setObjectName("caption")
-        lay.addWidget(self.narr_info)
-        # 발화시각 계산기 — 구절 선택 → 글자수÷페이스 → tN 원클릭 기입 (03 ⑤)
-        self.spoken_row = QHBoxLayout()
-        self.spoken_label = QLabel("")
-        self.spoken_label.setObjectName("caption")
-        self.spoken_row.addWidget(self.spoken_label)
-        self.spoken_row.addStretch(1)
-        lay.addLayout(self.spoken_row)
-
-        self.params_head = QHBoxLayout()
-        self.params_title = QLabel("")
-        self.params_title.setObjectName("sectionTitle")
-        self.extract_btn = QPushButton("B롤 프레임을 이미지(src)로 가져오기")
-        self.extract_btn.clicked.connect(self._extract_frame)
-        self.params_head.addWidget(self.params_title)
-        self.params_head.addStretch(1)
-        self.params_head.addWidget(self.extract_btn)
-        lay.addLayout(self.params_head)
-
+        self.params_title = QLabel("")   # 폼 안내 — 폼이 있을 때만 렌더가 채운다
+        self.params_title.setObjectName("caption")
+        lay.addWidget(self.params_title)
         self.params_form_holder = QWidget()
         self.params_form = QFormLayout(self.params_form_holder)
         self.params_form.setLabelAlignment(Qt.AlignRight)
@@ -344,6 +357,9 @@ class ClipEditorTab(QWidget):
         lay.addWidget(self.inherit_label)
         self.unknown_box = QVBoxLayout()
         lay.addLayout(self.unknown_box)
+        # 남는 세로 공간은 맨 아래로 — 내레이션 칸이 최대 높이에 걸리면 남는 공간이
+        # 두 묶음 사이에 끼어 화면이 두 동강 나 보인다 (08 §4-1·6)
+        lay.addStretch(1)
         return scroll
 
     # ══ 우: 프리뷰 (D10 — 같은 문서·같은 시킹이라 프리뷰가 곧 실물) ═══════════
@@ -353,6 +369,9 @@ class ClipEditorTab(QWidget):
         # QApplication 이전 임포트·GPU 폴백은 app.bootstrap 이 담당 (호출자가 임포트했어야 함)
         from PySide6.QtWebEngineWidgets import QWebEngineView
 
+        preview_head = QLabel("미리보기")
+        preview_head.setObjectName("sectionTitle")
+        lay.addWidget(preview_head)
         self.preview = QWebEngineView()
         self.preview.setMinimumHeight(240)
         w.preview = self.preview        # 폭이 바뀌면 16:9 로 다시 잡는다
@@ -380,7 +399,7 @@ class ClipEditorTab(QWidget):
         self.broll_video.hide()
         self.broll_player = QMediaPlayer()
         self.broll_player.setVideoOutput(self.broll_video)
-        lay.insertWidget(0, self.broll_video)
+        lay.insertWidget(1, self.broll_video)   # [미리보기] 헤더 아래, 템플릿 프리뷰 자리
         self.broll_play_btn = QPushButton("▶ B롤 재생")
         self.broll_play_btn.clicked.connect(self._toggle_broll)
         self.broll_player.playbackStateChanged.connect(self._sync_broll_btn)
@@ -655,10 +674,12 @@ class ClipEditorTab(QWidget):
         self.clip_list.clear()
         for c in self.clips:
             secs, measured = clip_seconds(c, self.audio_cache)
-            # 역할을 한국어로 먼저 — id 는 괄호 보조 (10 #8)
+            # 역할을 한국어로 먼저 — id 는 괄호 보조 (10 #8). 파일명 대신 표시명 —
+            # "intro.html" 이 아니라 "타이틀 카드"가 읽혀야 한다 (10 지적 11)
             role = kinds.role_label(c.get("id"))
-            label = f"{role} ({c.get('id', '?')})"
-            item = QListWidgetItem(f"≡ {label:<16} {c.get('file') or c.get('video') or '—'}"
+            screen = (kinds.screen_name(c["file"]) if c.get("file")
+                      else str(c.get("video") or "—").split("/")[-1])
+            item = QListWidgetItem(f"≡ {role} ({c.get('id', '?')}) · {screen}"
                                    f"  {secs:.1f}s{'' if measured else '?'}")
             item.setToolTip(c.get("narration", ""))
             self.clip_list.addItem(item)
@@ -676,14 +697,15 @@ class ClipEditorTab(QWidget):
         secs = sum(clip_seconds(c, self.audio_cache)[0] for c in self.clips)
         measured_all = all(clip_seconds(c, self.audio_cache)[1] for c in self.clips)
         pct = round(total / self._budget * 100) if self._budget else 0
-        self.budget_label.setText(f"내레이션 {total:,} / {self._budget:,}자 · {pct}%")
+        self.budget_label.setText(f"전체 대본 {total:,}자 / 목표 {self._budget:,}자 ({pct}%)")
         self.budget_bar.setValue(min(100, pct))
         over = pct > 100
         self.budget_label.setStyleSheet(
             f"color: {theme.DANGER}; font-weight: 700;" if over else "")
-        note = f"{'실측' if measured_all else '추정'} {int(secs // 60)}:{int(secs % 60):02d}"
+        note = (f"영상 길이 {'실측' if measured_all else '추정'} "
+                f"{int(secs // 60)}:{int(secs % 60):02d}")
         if over:
-            note += " — 넘치면 압축이 아니라 영상 분할"
+            note += " — 목표를 넘으면 말을 빠르게 하지 않고 영상을 나눕니다"
         self.budget_note.setText(note)
 
     def _render_skeleton_warn(self) -> None:
@@ -772,7 +794,9 @@ class ClipEditorTab(QWidget):
         self._loading = True
         self.cur_id.setText(f'{kinds.role_label(c.get("id"))} ({c.get("id", "?")})')
         is_broll = "video" in c
-        self.screen_label.setText(c.get("file") or c.get("video") or "(미선택)")
+        self.screen_label.setText(
+            kinds.screen_label(c["file"]) if c.get("file")
+            else c.get("video") or "(미선택 — 오른쪽 버튼으로 고르세요)")
         self.tpl_btn.setVisible(not is_broll)
         self.broll_btn.setVisible(is_broll)
         self.broll_row.setVisible(is_broll)
@@ -798,23 +822,35 @@ class ClipEditorTab(QWidget):
         accepted = self._accepted_keys()
         has_form = bool(c and c.get("file") and accepted)
         self.params_form_holder.setVisible(has_form)
-        self.params_title.setText("화면 값 — 이 템플릿이 받는 키만" if has_form else "")
+        self.params_title.setText(
+            "화면 문구 — 적은 글이 그대로 화면에 나옵니다" if has_form else "")
         self.extract_btn.setVisible(
             has_form and "src" in accepted
             and any(x.get("video") for x in self.clips))
         if not has_form:
             self.inherit_label.setText("")
             return
-        editable = [k for k in accepted if k not in AUTO_KEYS and k != "wipe"]
+        # 제목이 맨 아래로 밀리지 않게 뜻 순서로 정렬 — 템플릿 내부 순서는 구현이다
+        # (10 지적 11). 목록에 없는 키(t1 등)는 템플릿 순서 그대로 뒤에 붙는다.
+        editable = sorted(
+            (k for k in accepted if k not in AUTO_KEYS and k != "wipe"),
+            key=lambda k: PARAM_ORDER.index(k) if k in PARAM_ORDER else len(PARAM_ORDER))
         params = c.get("params") or {}
         for k in editable:  # ① 받는 키만 폼 생성 — 자유 키 입력 자체가 없음
             field = QLineEdit(str(params.get(k, "")))
             field.setMaximumWidth(420)
+            # 빈 칸이 무슨 뜻인지 칸이 스스로 말한다 — _params.js 는 빈 값이면 그 줄을 지운다
+            if k == "src":
+                field.setPlaceholderText("이미지 경로 — 위의 [B롤 프레임 가져오기]가 채워 줍니다")
+            elif TIME_KEY_RE.match(k):
+                field.setPlaceholderText("등장 시각(초) — 내레이션 구절을 드래그하면 계산해 줍니다")
+            else:
+                field.setPlaceholderText("비우면 이 줄은 화면에 나오지 않습니다")
             field.textEdited.connect(lambda v, key=k: self._set_param(key, v))
             self.params_form.addRow(kinds.param_label(k), field)
         wipe = QComboBox()
-        wipe.addItem("off (모션 전용 기본)", "off")
-        wipe.addItem("on (밝은 앱 화면 전환 시)", "on")
+        wipe.addItem("끔 (기본)", "off")
+        wipe.addItem("켬 — 다음 장면이 밝을 때 흰 면으로 덮으며 전환", "on")
         wipe.setCurrentIndex(1 if params.get("wipe") == "on" else 0)
         wipe.currentIndexChanged.connect(
             lambda i, w=wipe: self._set_param("wipe", w.currentData()))
@@ -870,7 +906,8 @@ class ClipEditorTab(QWidget):
         n = len(c.get("narration", ""))
         measured = self.audio_cache.get(c.get("id"))
         self.narr_info.setText(
-            f"{n}자 · " + (f"실측 {measured:.1f}s" if measured else f"추정 {n / PACE:.1f}s"))
+            f"{n}자 · " + (f"음성 실측 {measured:.1f}초" if measured
+                           else f"음성 추정 {n / PACE:.1f}초"))
 
     def _on_narr_select(self) -> None:
         cur = self.narration.textCursor()
