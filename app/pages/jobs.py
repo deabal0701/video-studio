@@ -109,7 +109,13 @@ class JobsPage(QWidget):
                                         state, QTableWidgetItem(j.get("error") or "")]):
                 self.table.setItem(i, col, item)
         cost = usage.get("totalCostUsd") or 0
-        self.usage.setText(f"AI 사용 {usage.get('count', 0)}회 · ${cost:.4f}"
+        tokens = usage.get("totalTokens") or 0
+        parts = [f"AI 사용 {usage.get('count', 0)}회"]
+        if tokens:
+            parts.append(f"토큰 {tokens:,}")   # D18 HTTP 기록 — 비용 대신 토큰이 미터
+        if cost:
+            parts.append(f"${cost:.4f}")       # 구 기록의 실측 비용이 있으면 함께
+        self.usage.setText(" · ".join(parts)
                            if usage.get("count") else "AI 사용 기록 없음")
         active = sum(1 for j in jobs if j["state"] in ACTIVE)
         self.result.setText(

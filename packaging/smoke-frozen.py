@@ -6,6 +6,7 @@ PATH 를 System32 만 남기고 실행한다. 화면은 offscreen 으로 띄우�
   1. 앱이 뜬다 (플랫폼 플러그인 로드 — conda 동결이 깨지던 지점)
   2. 대시보드가 강좌를 읽는다 (core·엔진 경로가 설치 배치에서 맞다)
   3. **프리뷰가 로드된다** (QtWebEngineProcess·pak·icudtl + bootstrap 플래그 — 08 §9)
+  3b. **AI 규약(.claude/skills)이 동봉돼 절이 뽑힌다** (D18)
   4. 프리뷰 픽셀이 잡힌다 (offscreen grab — 08 §6)
 
 사용:  conda run -n penv3.13-video python packaging\smoke-frozen.py   (판정 로직만 호스트에서)
@@ -100,11 +101,14 @@ def main() -> int:
           and result.get("preview_loaded") and result.get("preview_anims", 0) > 0
           and result.get("preview_colors", 0) > 1 and not writes
           and result.get("voices_edge", 0) > 0
-          and result.get("voice_cache_writable"))
+          and result.get("voice_cache_writable")
+          and result.get("skills_ok"))
     if writes:
         print(f"실패: 설치 폴더에 쓰기 {len(writes)}건 — 데이터 폴더로 가야 한다")
     if result.get("preview_colors", 0) <= 1:
         print("실패: 프리뷰가 단색 — WebEngine 자산 또는 bootstrap 플래그 확인")
+    if not result.get("skills_ok"):
+        print(f"실패: AI 규약 발췌 불가 — {result.get('skills_detail', '.claude/skills 미동봉')}")
     print("PASS" if ok else "FAIL")
     return 0 if ok else 1
 

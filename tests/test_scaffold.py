@@ -1,9 +1,12 @@
 """회차 스캐폴딩 — course 주입·경로 기입·일관성 0건 (2단계)."""
 
+import json
+
 import pytest
 
 from core import schema, validate
 from core.facade import Conflict, Invalid
+from core import scaffold
 from core.scaffold import scaffold_episode
 
 
@@ -152,3 +155,71 @@ def test_delete_episode_keeps_project_slot(tmp_path, monkeypatch):
     board = s.course_board("del-y")
     assert any(b["id"] == "del-y-01" and b["state"] == "empty" for b in board)
     s.create_episode("del-y", 1)   # 자리가 남았으니 다시 만들 수 있다
+
+
+def test_single_video_clips_are_reanchored_to_end(tmp_path):
+    """단발은 녹화 씬을 걷어내므로 거기 묶인 클립을 풀어 줘야 한다.
+
+    compose.js 는 `before` 가 가리키는 씬이 없으면 클립을 **오류 없이 버린다**.
+    풀어 주지 않으면 promo 는 intro·proof 가, manual 은 4개가 사라지고
+    `before:"end"` 인 outro 한 장짜리 3.2초 영상이 나온다 (2026-08-23 화면 실측).
+    """
+    from core.schema import load_json
+
+    root = tmp_path / "projects"
+    root.mkdir()
+    for kind, cid in (("promo", "p"), ("manual", "m")):
+        scaffold.scaffold_course(root, cid, title=f"{kind} 테스트", kind=kind)
+        scaffold.scaffold_episode(root, cid, 1)
+        scenes = load_json(root / f"{cid}-01" / "scenes.json")
+        assert scenes["scenes"] == []          # 녹화 씬은 걷어낸 채로
+        clips = scenes["render"]["motion"]["clips"]
+        assert len(clips) > 1, f"{kind}: 클립이 남아 있어야 한다"
+        assert all(c["before"] == "end" for c in clips),             f"{kind}: 사라진 씬에 묶인 클립이 있다 — 빌드에서 조용히 버려진다"
+
+
+def test_series_before_anchors_untouched(tmp_path):
+    """강의 골격은 처음부터 전부 end 다 — 손대지 않는다."""
+    from core.schema import load_json
+
+    root = tmp_path / "projects"
+    root.mkdir()
+    scaffold.scaffold_course(root, "lec", title="강의", kind="lecture",
+                             episodes=[{"n": 1, "id": "lec-01", "title": "1강"}])
+    scaffold.scaffold_episode(root, "lec", 1)
+    clips = load_json(root / "lec-01" / "scenes.json")["render"]["motion"]["clips"]
+    assert all(c["before"] == "end" for c in clips)
+
+
+def test_capture_keeps_recording_scenes(tmp_path):
+    """앱 주소가 있으면 녹화 씬을 살린다 (I-2) — 없으면 지금까지처럼 걷어낸다."""
+    from core.schema import load_json
+
+    root = tmp_path / "projects"
+    root.mkdir()
+    scaffold.scaffold_course(root, "cap", title="녹화", kind="promo",
+                             capture={"baseUrl": "http://app.example.com:8080",
+                                      "login": {"user": "admin",
+                                                "passwordEnv": "APP_PW"}})
+    scaffold.scaffold_episode(root, "cap", 1)
+    sc = load_json(root / "cap-01" / "scenes.json")
+    assert sc["scenes"], "녹화 씬이 사라졌다 — 그러면 화면을 못 찍는다"
+    assert sc["baseUrl"] == "http://app.example.com:8080"   # 엔진이 읽는 자리
+    assert sc["capture"]["width"] == 1920
+    # 비밀번호 자체는 어디에도 없다 (I-5) — 이름만
+    course = load_json(root / "cap" / "course.json")
+    assert course["capture"]["login"]["passwordEnv"] == "APP_PW"
+    assert "password" not in json.dumps(course, ensure_ascii=False).lower().replace(
+        "passwordenv", "")
+
+
+def test_no_capture_still_strips_scenes(tmp_path):
+    """주소가 없으면 종전대로 — 녹화할 앱이 없는데 남기면 빌드가 죽는다."""
+    from core.schema import load_json
+
+    root = tmp_path / "projects"
+    root.mkdir()
+    scaffold.scaffold_course(root, "plain", title="일반", kind="promo")
+    scaffold.scaffold_episode(root, "plain", 1)
+    sc = load_json(root / "plain-01" / "scenes.json")
+    assert sc["scenes"] == [] and "baseUrl" not in sc

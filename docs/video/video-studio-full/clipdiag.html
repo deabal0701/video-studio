@@ -1,0 +1,131 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>클립 하나 = 화면 + 말</title>
+<!-- 대본의 편집 단위가 "클립"이라는 것을 그림으로 세운다.
+
+     요점은 **한 칸이 두 짝**이라는 것 — 위는 보이는 것(화면), 아래는 들리는 것(내레이션).
+     둘이 한 몸이라 화면만 고르고 말을 안 쓰면 그 칸은 비어 있는 것이고, 말만 쓰고
+     화면을 안 고르면 검은 화면이 된다. 그래서 카드를 위·아래로 갈라 그리고,
+     마지막에 그 카드가 줄지어 영상이 되는 것을 보여 준다.
+
+     타이밍: 카드 틀(0.2s) → 위 칸(1.4s) → 아래 칸(3.6s) → 줄(6.4s)
+     내레이션이 "위는 화면"이라고 말하는 시각에 위 칸이 뜨도록 맞춘 값이다.
+
+     params:
+       title   상단 문구
+       top     위 칸 이름표
+       topsub  위 칸 보조
+       bot     아래 칸 이름표
+       botsub  아래 칸 보조 (실제 내레이션 예시)
+       note    하단 문구
+       wipe=off
+
+     주의: `animation:` 단축 속성을 쓰지 않는다. -->
+<link rel="stylesheet" href="../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 5vh 7% 17vh; justify-content: center; gap: 3vh; }
+
+  .head {
+    font-size: 4.6vh; font-weight: 800; letter-spacing: -0.03em; line-height: 1.25;
+    animation-name: fadeUp; animation-duration: 0.7s;
+    animation-timing-function: cubic-bezier(0.2,0.7,0.2,1);
+  }
+
+  /* 클립 카드 — 위·아래 두 칸 */
+  .card {
+    width: 62%; border-radius: 1.4vh; overflow: hidden;
+    border: 0.28vh solid #2b3a63; background: #121a30;
+    box-shadow: 0 2vh 5vh rgb(0 0 0 / 0.5);
+    animation-name: fadeUp; animation-duration: 0.7s; animation-delay: 0.2s;
+    animation-timing-function: cubic-bezier(0.2,0.7,0.2,1);
+  }
+  .cell { display: flex; align-items: center; gap: 2.2vh; padding: 2.6vh 3vh; text-align: left; }
+  .cell + .cell { border-top: 0.28vh dashed #2b3a63; }
+
+  .tag {
+    flex: 0 0 auto; font-size: 2.1vh; font-weight: 800; letter-spacing: -0.02em;
+    padding: 0.8vh 1.8vh; border-radius: 999px;
+  }
+  .tag-top { background: linear-gradient(#5aa9ff, #2f7fe0); color: #06182e; }
+  .tag-bot { background: linear-gradient(#ffcf6e, #f0a83c); color: #33230a; }
+
+  .lbl { font-size: 2.9vh; font-weight: 800; letter-spacing: -0.02em; line-height: 1.3; }
+  .sub { font-size: 2.1vh; color: #8ea0c8; margin-top: 0.5vh; line-height: 1.35; }
+
+  .up   { animation-name: fadeUp; animation-duration: 0.6s; animation-delay: 1.4s;
+          animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .down { animation-name: fadeUp; animation-duration: 0.6s; animation-delay: 3.6s;
+          animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+
+  /* 줄지어 영상이 된다 */
+  .strip { display: flex; gap: 0.9vh; width: 62%; align-items: stretch;
+           animation-name: fadeUp; animation-duration: 0.8s; animation-delay: 6.4s;
+           animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .u { flex: 1; height: 5.4vh; border-radius: 0.6vh; overflow: hidden;
+       border: 0.2vh solid #2b3a63; background: #16203c; }
+  .u i { display: block; height: 55%; background: #23386b; }
+  .u b { display: block; height: 45%; background: #3a2f16; }
+  .u.on { border-color: var(--brand-soft); }
+  .u.on i { background: #2f7fe0; }
+  .u.on b { background: #f0a83c; }
+
+  .note { font-size: 2.5vh; color: #93a4cc; line-height: 1.5;
+          animation-name: fadeUp; animation-duration: 0.7s; animation-delay: 7.4s;
+          animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+</style>
+
+<div class="stage">
+  <div class="head animated" data-p="title"></div>
+
+  <div class="card animated">
+    <div class="cell animated up">
+      <span class="tag tag-top">화면</span>
+      <span>
+        <span class="lbl" data-p="top"></span>
+        <span class="sub" data-p="topsub"></span>
+      </span>
+    </div>
+    <div class="cell animated down">
+      <span class="tag tag-bot">말</span>
+      <span>
+        <span class="lbl" data-p="bot"></span>
+        <span class="sub" data-p="botsub"></span>
+      </span>
+    </div>
+  </div>
+
+  <div class="strip animated">
+    <div class="u"><i></i><b></b></div>
+    <div class="u"><i></i><b></b></div>
+    <div class="u on"><i></i><b></b></div>
+    <div class="u"><i></i><b></b></div>
+    <div class="u"><i></i><b></b></div>
+    <div class="u"><i></i><b></b></div>
+    <div class="u"><i></i><b></b></div>
+    <div class="u"><i></i><b></b></div>
+    <div class="u"><i></i><b></b></div>
+    <div class="u"><i></i><b></b></div>
+  </div>
+
+  <div class="note animated" data-p="note"></div>
+  <div class="wipe animated"></div>
+</div>
+<script src="../../../engine/motion/_params.js"></script>
+<script>
+  // 등장 시각은 **대본이 정한다.** CSS 에 박아 두면 내레이션 길이가 바뀔 때마다 어긋난다 —
+  // 실제로 첫 TTS 에서 그림이 4초에 다 떠 있고 말은 27초에 그 얘기를 했다.
+  // 키를 리터럴로 한 번씩 적는다: 0단계 사전 점검은 리터럴 `.get('키')` 만 본다.
+  (() => {
+    const q = new URLSearchParams(location.search);
+    const P = { t1: q.get('t1'), t2: q.get('t2'), t3: q.get('t3'), t4: q.get('t4'), t5: q.get('t5') };
+    const at = (sel, k, d) => {
+      const el = document.querySelector(sel);
+      if (el) el.style.animationDelay = `${P[k] ?? d}s`;
+    };
+    at('.card', 't1', 0.2);
+    at('.up', 't2', 1.4);
+    at('.down', 't3', 3.6);
+    at('.strip', 't4', 6.4);
+    at('.note', 't5', 7.4);
+  })();
+</script>

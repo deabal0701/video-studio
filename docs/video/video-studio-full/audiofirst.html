@@ -1,0 +1,130 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>소리가 길이를 정한다</title>
+<!-- 이 파이프라인에서 가장 중요한 규칙 하나를 그림으로 세운다: **오디오가 기준이다.**
+
+     담당자가 궁금해하는 "화면 길이는 누가 정하나"의 답이 여기 있다 —
+     글자수가 음성 길이를 낳고, 음성 길이가 그 구간의 길이가 되고, 그 길이가
+     찍어야 할 그림 장수를 정한다. 위에서 아래로 떨어지는 사슬로 그린다.
+
+     맨 아래 필름 띠는 **장면이 아니라 장수**를 말한다 — 30fps 라는 말이
+     "1초에 서른 장"이라는 그림으로 보여야 한다.
+
+     타이밍: 글자(0.4s) → 소리(2.0s) → 장수(4.0s) → 문구(6.0s)
+
+     params:
+       title  상단 문구
+       quote  내레이션 예시
+       chars  글자수 뱃지 (예: 57자)
+       secs   음성 길이 (예: 8.3초)
+       lbl1   첫 화살표 이름표 (예: 목소리로 만든다)
+       lbl2   둘째 화살표 이름표 (예: 1초에 30장)
+       frames 장수 (예: 249장)
+       note   하단 문구
+       wipe=off
+
+     주의: `animation:` 단축 속성을 쓰지 않는다. -->
+<link rel="stylesheet" href="../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 5vh 9% 17vh; justify-content: center; gap: 1.6vh; }
+
+  .head {
+    font-size: 4.4vh; font-weight: 800; letter-spacing: -0.03em; line-height: 1.25;
+    margin-bottom: 1.4vh;
+    animation-name: fadeUp; animation-duration: 0.7s;
+    animation-timing-function: cubic-bezier(0.2,0.7,0.2,1);
+  }
+
+  .band { width: 100%; display: flex; align-items: center; gap: 1.8vh;
+          background: #16203c; border: 0.25vh solid #2b3a63;
+          border-radius: 1.2vh; padding: 2vh 2.4vh; text-align: left; }
+  .band .q { flex: 1; font-size: 2.4vh; line-height: 1.4; color: #dfe8fb; }
+  .pill { flex: 0 0 auto; font-size: 2.2vh; font-weight: 800; border-radius: 999px;
+          padding: 0.8vh 1.8vh; letter-spacing: -0.02em; }
+  .pill.c { background: #23386b; color: #cfe0ff; }
+  .pill.s { background: linear-gradient(#ffcf6e, #f0a83c); color: #33230a; }
+  .pill.f { background: linear-gradient(#5aa9ff, #2f7fe0); color: #06182e; }
+
+  /* 화살표 + 이름표 */
+  .down { display: flex; align-items: center; gap: 1.2vh; color: #5aa9ff; font-size: 2.1vh; font-weight: 700; }
+  .down b { font-size: 2.8vh; }
+
+  /* 파형 — 소리를 그림으로 */
+  .wave { flex: 1; display: flex; align-items: center; gap: 0.32vh; height: 5vh; }
+  .wave i { flex: 1; background: linear-gradient(#ffcf6e, #f0a83c); border-radius: 0.2vh; }
+
+  /* 필름 띠 — 장수를 그림으로 */
+  .film { flex: 1; display: flex; gap: 0.22vh; height: 5vh; }
+  .film i { flex: 1; background: #2f7fe0; border-radius: 0.15vh; opacity: 0.85; }
+
+  .b1 { animation-name: fadeUp; animation-duration: 0.6s; animation-delay: 0.40s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .d1 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 1.50s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .b2 { animation-name: fadeUp; animation-duration: 0.6s; animation-delay: 2.00s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .d2 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 3.50s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .b3 { animation-name: fadeUp; animation-duration: 0.6s; animation-delay: 4.00s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+
+  .note { font-size: 2.7vh; color: #93a4cc; line-height: 1.5; margin-top: 1.4vh;
+          animation-name: fadeUp; animation-duration: 0.7s; animation-delay: 6.0s;
+          animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+</style>
+
+<div class="stage">
+  <div class="head animated" data-p="title"></div>
+
+  <div class="band animated b1">
+    <span class="q" data-p="quote"></span>
+    <span class="pill c" data-p="chars"></span>
+  </div>
+
+  <div class="down animated d1"><b>▼</b><span data-p="lbl1"></span></div>
+
+  <div class="band animated b2">
+    <span class="wave">
+      <i style="height:22%"></i><i style="height:58%"></i><i style="height:34%"></i><i style="height:78%"></i>
+      <i style="height:46%"></i><i style="height:90%"></i><i style="height:38%"></i><i style="height:66%"></i>
+      <i style="height:28%"></i><i style="height:72%"></i><i style="height:50%"></i><i style="height:84%"></i>
+      <i style="height:30%"></i><i style="height:62%"></i><i style="height:44%"></i><i style="height:76%"></i>
+      <i style="height:36%"></i><i style="height:54%"></i><i style="height:24%"></i><i style="height:68%"></i>
+      <i style="height:42%"></i><i style="height:88%"></i><i style="height:32%"></i><i style="height:56%"></i>
+      <i style="height:26%"></i><i style="height:70%"></i><i style="height:48%"></i><i style="height:80%"></i>
+    </span>
+    <span class="pill s" data-p="secs"></span>
+  </div>
+
+  <div class="down animated d2"><b>▼</b><span data-p="lbl2"></span></div>
+
+  <div class="band animated b3">
+    <span class="film">
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    </span>
+    <span class="pill f" data-p="frames"></span>
+  </div>
+
+  <div class="note animated" data-p="note"></div>
+  <div class="wipe animated"></div>
+</div>
+<script src="../../../engine/motion/_params.js"></script>
+<script>
+  // 등장 시각은 대본이 정한다. 이 도식이 특히 중요하다 — 사슬이 말보다 먼저 떨어지면
+  // "장수"라는 결론이 내레이션보다 20초 앞서 나와 설명이 죽는다 (첫 TTS 실측).
+  // t1=글자, t2=첫 화살표, t3=소리, t4=둘째 화살표, t5=장수, t6=하단 문구.
+  (() => {
+    const q = new URLSearchParams(location.search);
+    const P = { t1: q.get('t1'), t2: q.get('t2'), t3: q.get('t3'),
+                t4: q.get('t4'), t5: q.get('t5'), t6: q.get('t6') };
+    const at = (sel, k, d) => {
+      const el = document.querySelector(sel);
+      if (el) el.style.animationDelay = `${P[k] ?? d}s`;
+    };
+    at('.b1', 't1', 0.4);
+    at('.d1', 't2', 1.5);
+    at('.b2', 't3', 2.0);
+    at('.d2', 't4', 3.5);
+    at('.b3', 't5', 4.0);
+    at('.note', 't6', 6.0);
+  })();
+</script>

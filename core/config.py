@@ -153,6 +153,15 @@ def diagnose() -> list[dict[str, Any]]:
                    "detail": f"projects={env.projects_root()} · out={env.out_root()}",
                    "hint": ""})
 
+    # AI 규약 — 스킬 md 동봉·발췌 성공 여부 (D18: 프롬프트 조립 원천이 빠지면 AI 3종이 죽는다)
+    from .agents import skill_prompts
+
+    sk = skill_prompts.health()
+    checks.append({"name": "AI 규약(스킬)", "ok": sk["ok"], "detail": sk["detail"],
+                   "hint": "" if sk["ok"] else
+                   "설치본 동봉물이 없거나 절 제목이 어긋납니다 — 재설치하거나 "
+                   ".claude\\skills 를 복원하세요"})
+
     values = read_all()["values"]
     for label, name in (("Claude 키", "ANTHROPIC_API_KEY"), ("OpenAI 키", "OPENAI_API_KEY"),
                         ("Azure 키", "AZURE_SPEECH_KEY")):

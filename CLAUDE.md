@@ -24,7 +24,7 @@
 
 - **설치형 데스크톱 앱** (D12) — UI **PySide6**(D13, HTTP 계층 없음 — core 직접 호출) · 로직 Python 3.12+ (core/) · DB 없음(파일 SSOT, SQLite 는 파생 캐시만). FastAPI(`api/`)·Vue(`web/`) 는 삭제 완료(2026-08-21)
 - 렌더 엔진 = `engine/` Node CLI — **수정 금지·포팅 금지**(D14 — 설치본에 Node·ffmpeg·Chromium 동봉), subprocess 호출. 고칠 일이 생기면 [engine/ENGINE_VERSION.md](engine/ENGINE_VERSION.md) 규칙
-- 에이전트 = **Claude Agent SDK 기본 + OpenAI 선택**(D15 — `AGENT_PROVIDER`, 테스트는 `AGENT_TEST_MODE`=최저가 모델), **저작·평가만**(LangChain/LangGraph 미채택). 키 없이도 앱 완결 동작
+- 에이전트 = **순수 HTTP 구조화 생성 — Claude·OpenAI 이중 제공자**(D15·D18 — `AGENT_PROVIDER`, 테스트는 `AGENT_TEST_MODE`=최저가 모델). CLI·SDK 하네스 없음 — **API 키 하나로 독립 동작**, 규약은 `.claude/skills` 발췌 주입(skill_prompts)·파일 기입은 결정적·품질은 검증/렌더 루프. **저작·평가만**(LangChain/LangGraph 미채택). 키 없이도 앱 완결 동작
 - 빌드는 처음부터 잡 큐, 스토리지 접근은 처음부터 추상화 계층(상용 전환 대비)
 - 키(.env — Azure·Eleven·Anthropic 실키 확보 2026-08-21): 셸 → 저장소 `.env` → `~/.claude/develop-video.env` 순. 커밋 금지
 
@@ -34,6 +34,7 @@
 - **경로 문자열을 손으로 만들지 않는다** — 상대경로 기준이 5종([02](docs/design/02_data-model.md)). 경로는 `core/paths.py` 계산기가 기입하고, 그 실측 5행이 단위 테스트다.
 - 제작 규약(대본 문법·도식 규칙·검증 절차)의 정본 = [.claude/skills/](.claude/skills/) 의 develop-video·develop-lecture. 코드로 복제하지 말고 기계화 가능한 검증만 옮긴다.
 - 픽스처 = `fixtures/projects/hr-basics*`. 경로 이전 완료(2026-08-14) — 이 저장소 단독으로 재현 빌드된다. 미디어 파일(bgm·broll)은 커밋 안 되므로 새 클론에서는 engine/assets/CATALOG.md 출처에서 다시 받는다.
+- 결함·한계 목록 = [docs/ISSUES.md](docs/ISSUES.md) — 열린 이슈를 먼저 본다
 - 구현 진행의 SSOT = [docs/BUILD_LOOP.md](docs/BUILD_LOOP.md) — 세션을 새로 열면 이 파일의 루프 프로토콜대로 다음 미완 단계를 이어간다. Python 은 conda `penv3.13-video`.
 - 커밋은 사용자가 요청할 때만.
 

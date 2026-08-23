@@ -7,6 +7,7 @@
   2. core → 엔진 경로 — 프로젝트 목록·템플릿 갤러리가 설치 배치에서 읽히는가
   3. **프리뷰 로드** — QtWebEngineProcess·pak·icudtl + bootstrap 플래그가 동결본에 살아 있는가
   4. 프리뷰 픽셀 — offscreen grab 으로 고유색 수 (08 §6: 로드 실패면 1색)
+  5. **AI 규약 발췌** — 동봉된 .claude/skills 에서 절이 실제로 뽑히는가 (D18)
 """
 
 from __future__ import annotations
@@ -51,6 +52,14 @@ def run_probe(app, win) -> int:
         out["voice_cache_writable"] = probe.is_file()
         out["voice_cache_dir"] = str(probe.parent)
         probe.unlink()
+
+        # AI 규약 — 스킬 md 동봉 + 절 발췌 (D18). 파일만 있고 제목이 어긋나도 여기서 잡힌다.
+        # 키 없이 검사된다 — 발췌는 로컬 문서 읽기라 모델 호출이 아니다.
+        from core.agents import skill_prompts
+
+        health = skill_prompts.health()
+        out["skills_ok"] = health["ok"]
+        out["skills_detail"] = health["detail"][:200]
 
         courses = studio.list_courses()
         out["courses"] = len(courses)

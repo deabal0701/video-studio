@@ -81,23 +81,100 @@ def build_stream(scenes_file: Path, *, only: str | None = None,
     on_proc: Popen 을 넘겨받는 콜백 — 잡 큐가 취소(SIGTERM→SIGKILL)에 쓴다.
     (엔진 .lock 은 SIGTERM 을 받으면 스스로 정리한다 — util.js lockVideoDir.)
     """
-    args = [env.node_exe(), "build.js", "--scenes", str(scenes_file),
+    resolved = _resolve_secrets(scenes_file)
+    args = [env.node_exe(), "build.js", "--scenes", str(resolved or scenes_file),
             "--out", str(env.out_root())]
     if only:
         args += ["--only", only]
     if variant:
         args += ["--variant", variant]
-    with subprocess.Popen(
-        args, cwd=ENGINE_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, bufsize=1, env=env.child_env(), **_POPEN_KW,
-    ) as proc:
-        if on_proc is not None:
-            on_proc(proc)
-        assert proc.stdout is not None
-        for line in proc.stdout:
-            yield parse_build_line(line.rstrip("\n"))
-        if proc.wait() != 0:
-            raise RuntimeError(f"build.js exit {proc.returncode}")
+    try:
+        with subprocess.Popen(
+            args, cwd=ENGINE_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, bufsize=1, env=env.child_env(), **_POPEN_KW,
+        ) as proc:
+            if on_proc is not None:
+                on_proc(proc)
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                yield parse_build_line(line.rstrip("\n"))
+            if proc.wait() != 0:
+                raise RuntimeError(f"build.js exit {proc.returncode}")
+    finally:
+        if resolved is not None:
+            resolved.unlink(missing_ok=True)
+
+
+def _resolve_secrets(scenes_file: Path) -> Path | None:
+    """녹화 액션의 `textEnv` → `text` 로 풀어 **임시 대본**을 만든다 (없으면 None).
+
+    로그인이 필요한 앱을 녹화하려면 record.js 의 `type` 액션에 비밀번호가 들어가야 하는데,
+    대본(scenes.json)은 공유·커밋 대상이라 평문을 둘 수 없다 (I-5). 그래서 대본에는
+    **환경변수 이름만**(`{"type": sel, "textEnv": "INSAIT_PW"}`) 적고, 값은 빌드 순간에만
+    임시 파일로 풀어 엔진에 넘긴다 — 끝나면 지운다(엔진 무수정).
+    """
+    import json as _json
+
+    from .agents.runner import _env_value
+
+    data = _json.loads(scenes_file.read_text(encoding="utf-8"))
+    hit = _refresh_session(data)
+    for scene in data.get("scenes", []) or []:
+        for action in scene.get("actions", []) or []:
+            name = action.pop("textEnv", None)
+            if name:
+                action["text"] = _env_value(str(name)) or ""
+                hit = True
+    if not hit:
+        return None
+    out = env.cache_dir() / f"build-{data.get('id', 'scenes')}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(_json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8",
+                   newline="\n")
+    return out
+
+
+def _refresh_session(data: dict) -> bool:
+    """녹화 로그인 세션(storageState)을 **빌드 직전에 새로 딴다**.
+
+    세션은 만료된다 — 초안 때 딴 것을 그대로 쓰면 며칠 뒤 재빌드에서 로그인 화면이 찍힌다.
+    비밀번호는 여기서도 파일이 아니라 .env 에서 읽는다 — 대본에는 이름만 있다 (I-5).
+    """
+    cap = data.get("capture") or {}
+    login = cap.get("login") or {}
+    if not (cap.get("storageState") and login.get("user") and data.get("baseUrl")):
+        return False
+    from .agents.runner import _env_value
+
+    try:
+        probe(str(data["baseUrl"]), routes=["/"], login_user=str(login["user"]),
+              login_pass=_env_value(str(login.get("passwordEnv") or "")) or "",
+              save_state=Path(cap["storageState"]), timeout=180)
+    except Exception:  # noqa: BLE001 — 앱이 안 떠 있으면 옛 세션으로라도 굽는다
+        return False
+    return True
+
+
+def probe(url: str, *, routes: list[str] | None = None,
+          login_user: str | None = None, login_pass: str | None = None,
+          save_state: Path | None = None, timeout: int = 180) -> dict:
+    """probe.js — 녹화 대상 앱의 **실제 조작 가능한 요소**를 훑는다 (AI 가 셀렉터를 고를 재료).
+
+    모델에게 브라우저가 없으므로 셀렉터를 지어내면 녹화가 조용히 건너뛴다 — 소재 목록에서만
+    B롤을 고르게 하듯, 여기서 뽑은 목록에서만 고르게 한다.
+
+    save_state: 로그인 성공 시 그 세션을 파일로 남긴다 — 녹화가 이어받아 **로그인된 화면**을
+    찍는다(record.js storageState). 이러면 비밀번호가 대본에도 녹화에도 안 들어간다.
+    """
+    args = ["probe.js", "--url", url, "--routes", ",".join(routes or ["/"])]
+    if login_user:
+        args += ["--login-user", login_user]
+    if login_pass:
+        args += ["--login-pass", login_pass]
+    if save_state is not None:
+        save_state.parent.mkdir(parents=True, exist_ok=True)
+        args += ["--save-state", str(save_state)]
+    return json.loads(_node(args, timeout=timeout))
 
 
 def list_templates(project_dir: Path | None = None) -> dict:
@@ -114,6 +191,23 @@ def preview(file: str, project_dir: Path | None = None) -> str:
     if project_dir is not None:
         args += ["--project", str(project_dir)]
     return _node(args)
+
+
+def snapshot(file: str, project_dir: Path | None, out_png: Path, *,
+             at: float = 3.0, width: int = 1920, height: int = 1080,
+             params: str | None = None) -> Path:
+    """snapshot.js — 모션 html 을 at 초로 시킹한 정지 프레임 png 1장 (AI 도식 렌더 확인).
+
+    크로미움 기동이 수 초 걸린다 — 잡 워커 스레드에서만 부른다.
+    """
+    args = ["snapshot.js", "--file", file, "--out", str(out_png),
+            "--at", f"{at:.2f}", "--width", str(width), "--height", str(height)]
+    if project_dir is not None:
+        args += ["--project", str(project_dir)]
+    if params:
+        args += ["--params", params]
+    _node(args, timeout=120)
+    return out_png
 
 
 def tts_sample(text: str, *, lang: str = "ko", gender: str = "female",

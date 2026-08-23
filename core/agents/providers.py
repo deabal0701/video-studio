@@ -1,4 +1,7 @@
-"""providers — 에이전트 제공자 선택·모델 해석 (D15, 05_agent "제공자 이중화").
+"""providers — 에이전트 제공자 선택·모델 해석 (D15·D18, 05_agent "제공자 이중화").
+
+D18(순수 HTTP 전환) 이후 두 경로 모두 키만 있으면 동작한다 — 키만 검사하는
+이 게이트가 곧 실행 가능성 검사다 (CLI 존재 확인 같은 추가 게이트 불요).
 
     AGENT_PROVIDER=claude|openai     기본 claude
     AGENT_TEST_MODE=1                제공자 불문 **최저가 모델 강제** ("테스트는 싸게")

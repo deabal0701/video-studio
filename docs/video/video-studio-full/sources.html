@@ -1,0 +1,129 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>내가 넣은 것이 어디로 들어가나</title>
+<!-- 사용자가 물은 "내가 넣은 이미지·참조" 가 이 그림이다.
+
+     담당자가 실제로 손에 쥐고 있는 것은 넷뿐이다 — 그림 · 실사 영상 · 음악 · 색과 글꼴.
+     넷이 각각 **어디서 고르는지**를 오른쪽에 적어 두는 것이 요점이다.
+     "어디에 넣나"를 모르면 소재가 있어도 못 쓴다.
+
+     네 갈래가 하나로 모여 완성본이 되는 깔때기 모양이라, 소리를 꺼도
+     "이것들이 합쳐져 영상이 된다"가 읽힌다.
+
+     타이밍: 0.5s 부터 0.9s 간격으로 네 줄 → 결과 4.6s → 문구 6.2s
+
+     params:
+       title  상단 문구
+       k1 n1 w1   1행 종류 · 무엇 · 어디서
+       k2 n2 w2   2행
+       k3 n3 w3   3행
+       k4 n4 w4   4행
+       out    결과 카드 제목
+       outsub 결과 카드 보조
+       note   하단 문구
+       wipe=off
+
+     주의: `animation:` 단축 속성을 쓰지 않는다. -->
+<link rel="stylesheet" href="../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 6vh 6% 17vh; justify-content: center; gap: 3.4vh; }
+
+  .head {
+    font-size: 4.4vh; font-weight: 800; letter-spacing: -0.03em; line-height: 1.25;
+    animation-name: fadeUp; animation-duration: 0.7s;
+    animation-timing-function: cubic-bezier(0.2,0.7,0.2,1);
+  }
+
+  .wrap { display: flex; align-items: center; gap: 2vh; width: 100%; }
+
+  .list { flex: 1.55; display: flex; flex-direction: column; gap: 1.2vh; }
+  .src { display: flex; align-items: center; gap: 1.6vh; text-align: left;
+         background: #16203c; border: 0.25vh solid #2b3a63;
+         border-radius: 1.1vh; padding: 1.7vh 2vh; }
+  .kind { flex: 0 0 auto; font-size: 1.9vh; font-weight: 800; border-radius: 0.7vh;
+          padding: 0.7vh 1.3vh; background: #23386b; color: #9ecbff; letter-spacing: -0.01em; }
+  .what { flex: 1; font-size: 2.4vh; font-weight: 700; letter-spacing: -0.02em; line-height: 1.3; }
+  .where { flex: 0 0 auto; font-size: 1.95vh; color: #8ea0c8; line-height: 1.3; text-align: right; }
+
+  .funnel { flex: 0 0 auto; width: 5vh; display: flex; align-items: center;
+            justify-content: center; font-size: 3.6vh; color: #5aa9ff; font-weight: 800; }
+
+  .out { flex: 1; border-radius: 1.4vh; padding: 3.4vh 2.4vh;
+         background: linear-gradient(#1e3358, #16264a);
+         border: 0.3vh solid var(--brand-soft);
+         display: flex; flex-direction: column; gap: 1.2vh; align-items: center; }
+  .out .t { font-size: 3.4vh; font-weight: 800; letter-spacing: -0.03em; line-height: 1.25; }
+  .out .s { font-size: 2vh; color: #a8b8dc; line-height: 1.4; }
+
+  .r1 { animation-name: fadeUp; animation-duration: 0.55s; animation-delay: 0.50s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .r2 { animation-name: fadeUp; animation-duration: 0.55s; animation-delay: 1.40s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .r3 { animation-name: fadeUp; animation-duration: 0.55s; animation-delay: 2.30s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .r4 { animation-name: fadeUp; animation-duration: 0.55s; animation-delay: 3.20s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .rf { animation-name: fadeUp; animation-duration: 0.5s;  animation-delay: 4.20s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .ro { animation-name: fadeUp; animation-duration: 0.7s;  animation-delay: 4.60s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+
+  .note { font-size: 2.7vh; color: #93a4cc; line-height: 1.5;
+          animation-name: fadeUp; animation-duration: 0.7s; animation-delay: 6.2s;
+          animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+</style>
+
+<div class="stage">
+  <div class="head animated" data-p="title"></div>
+
+  <div class="wrap">
+    <div class="list">
+      <div class="src animated r1">
+        <span class="kind" data-p="k1"></span>
+        <span class="what" data-p="n1"></span>
+        <span class="where" data-p="w1"></span>
+      </div>
+      <div class="src animated r2">
+        <span class="kind" data-p="k2"></span>
+        <span class="what" data-p="n2"></span>
+        <span class="where" data-p="w2"></span>
+      </div>
+      <div class="src animated r3">
+        <span class="kind" data-p="k3"></span>
+        <span class="what" data-p="n3"></span>
+        <span class="where" data-p="w3"></span>
+      </div>
+      <div class="src animated r4">
+        <span class="kind" data-p="k4"></span>
+        <span class="what" data-p="n4"></span>
+        <span class="where" data-p="w4"></span>
+      </div>
+    </div>
+
+    <div class="funnel animated rf">▶</div>
+
+    <div class="out animated ro">
+      <span class="t" data-p="out"></span>
+      <span class="s" data-p="outsub"></span>
+    </div>
+  </div>
+
+  <div class="note animated" data-p="note"></div>
+  <div class="wipe animated"></div>
+</div>
+<script src="../../../engine/motion/_params.js"></script>
+<script>
+  // 등장 시각은 대본이 정한다 — 네 소재를 말하는 순간에 한 줄씩.
+  // 깔때기 화살표는 넷째 줄과 결과 사이에 저절로 놓는다.
+  (() => {
+    const q = new URLSearchParams(location.search);
+    const P = { t1: q.get('t1'), t2: q.get('t2'), t3: q.get('t3'),
+                t4: q.get('t4'), t5: q.get('t5'), tn: q.get('tn') };
+    const n = (v, d) => (v === null || v === undefined || v === '' ? d : Number(v));
+    const ts = [n(P.t1, 0.5), n(P.t2, 1.4), n(P.t3, 2.3), n(P.t4, 3.2)];
+    document.querySelectorAll('.list .src').forEach((el, i) => {
+      if (ts[i] !== undefined) el.style.animationDelay = `${ts[i]}s`;
+    });
+    const out = n(P.t5, 4.6);
+    const f = document.querySelector('.funnel');
+    if (f) f.style.animationDelay = `${((ts[3] + out) / 2).toFixed(2)}s`;
+    const o = document.querySelector('.out');
+    if (o) o.style.animationDelay = `${out}s`;
+    const note = document.querySelector('.note');
+    if (note) note.style.animationDelay = `${n(P.tn, 6.2)}s`;
+  })();
+</script>

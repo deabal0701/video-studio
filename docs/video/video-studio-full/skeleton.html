@@ -1,0 +1,109 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>골격 — 빈 칸이 있는 양식</title>
+<!-- "대본을 어떻게 시작하나"의 답은 **이미 시작돼 있다**는 것이다.
+
+     회차를 만들면 아홉 칸이 순서대로 깔린다. 시청자가 얻어야 할 인상은
+     "빈 종이 앞에 앉는 게 아니라, 칸이 그려진 양식을 채우는 일"이다.
+     그래서 칸(역할)은 또렷하게 그리고, 그 아래 내레이션 자리는 **점선 빈 줄**로 둔다 —
+     비어 있다는 것이 그림으로 보여야 한다.
+
+     타이밍: 칸이 왼쪽부터 0.35s 간격으로 깔리고(총 3.1s), 빈 줄은 4.4s, 문구는 6.2s.
+
+     params:
+       title  상단 문구
+       note   하단 문구
+       empty  빈 줄 위 이름표
+       wipe=off
+
+     주의: `animation:` 단축 속성을 쓰지 않는다. -->
+<link rel="stylesheet" href="../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 6vh 5% 17vh; justify-content: center; gap: 3.4vh; }
+
+  .head {
+    font-size: 4.6vh; font-weight: 800; letter-spacing: -0.03em; line-height: 1.25;
+    animation-name: fadeUp; animation-duration: 0.7s;
+    animation-timing-function: cubic-bezier(0.2,0.7,0.2,1);
+  }
+
+  .row { display: flex; gap: 0.9vh; width: 100%; align-items: stretch; }
+  .b {
+    flex: 1; border-radius: 0.9vh; padding: 1.6vh 0.5vh;
+    background: #16203c; border: 0.22vh solid #2b3a63;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5vh;
+  }
+  /* 도입·마무리는 한 번뿐, 가운데(챕터·본문)는 반복되는 자리라 색으로 가른다 */
+  .b.rep { background: #1b2a4e; border-color: #3b5390; }
+  .n { font-size: 2.1vh; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; }
+  .i { font-size: 1.55vh; color: #7f91ba; letter-spacing: 0; }
+
+  .k1 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 0.30s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .k2 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 0.65s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .k3 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 1.00s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .k4 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 1.35s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .k5 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 1.70s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .k6 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 2.05s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .k7 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 2.40s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .k8 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 2.75s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .k9 { animation-name: fadeUp; animation-duration: 0.5s; animation-delay: 3.10s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+
+  /* 비어 있는 내레이션 자리 */
+  .slotwrap { width: 100%;
+    animation-name: fadeUp; animation-duration: 0.7s; animation-delay: 4.4s;
+    animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .slotcap { font-size: 2.1vh; color: #ffcf6e; font-weight: 700; margin-bottom: 1vh; }
+  .slots { display: flex; gap: 0.9vh; width: 100%; }
+  .s { flex: 1; height: 5.6vh; border-radius: 0.9vh;
+       border: 0.25vh dashed #6b5a2e; background: #221c0c; }
+
+  .note { font-size: 2.6vh; color: #93a4cc; line-height: 1.5;
+          animation-name: fadeUp; animation-duration: 0.7s; animation-delay: 6.2s;
+          animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+</style>
+
+<div class="stage">
+  <div class="head animated" data-p="title"></div>
+
+  <div class="row">
+    <div class="b animated k1"><span class="n">실사 도입</span><span class="i">broll</span></div>
+    <div class="b animated k2"><span class="n">타이틀</span><span class="i">title</span></div>
+    <div class="b animated k3"><span class="n">도입 훅</span><span class="i">hook</span></div>
+    <div class="b animated k4"><span class="n">로고 전환</span><span class="i">stinger</span></div>
+    <div class="b animated k5"><span class="n">오늘의 약속</span><span class="i">promise</span></div>
+    <div class="b rep animated k6"><span class="n">챕터</span><span class="i">ch1 · ch2 · ch3</span></div>
+    <div class="b rep animated k7"><span class="n">본문</span><span class="i">s1 · s2 · s3</span></div>
+    <div class="b animated k8"><span class="n">정리</span><span class="i">recap</span></div>
+    <div class="b animated k9"><span class="n">마무리</span><span class="i">outro</span></div>
+  </div>
+
+  <div class="slotwrap animated">
+    <div class="slotcap" data-p="empty"></div>
+    <div class="slots">
+      <div class="s"></div><div class="s"></div><div class="s"></div>
+      <div class="s"></div><div class="s"></div><div class="s"></div>
+      <div class="s"></div><div class="s"></div><div class="s"></div>
+    </div>
+  </div>
+
+  <div class="note animated" data-p="note"></div>
+  <div class="wipe animated"></div>
+</div>
+<script src="../../../engine/motion/_params.js"></script>
+<script>
+  // 등장 시각은 대본이 정한다 (clipdiag 와 같은 이유). t1=첫 칸, tg=칸 간격,
+  // ts=빈 줄, tn=하단 문구. 키는 리터럴로 — 사전 점검이 리터럴만 본다.
+  (() => {
+    const q = new URLSearchParams(location.search);
+    const P = { t1: q.get('t1'), tg: q.get('tg'), ts: q.get('ts'), tn: q.get('tn') };
+    const n = (v, d) => (v === null || v === undefined || v === '' ? d : Number(v));
+    const t1 = n(P.t1, 0.3), tg = n(P.tg, 0.35);
+    document.querySelectorAll('.row .b').forEach((el, i) => {
+      el.style.animationDelay = `${(t1 + i * tg).toFixed(2)}s`;
+    });
+    const slot = document.querySelector('.slotwrap');
+    if (slot) slot.style.animationDelay = `${n(P.ts, 4.4)}s`;
+    const note = document.querySelector('.note');
+    if (note) note.style.animationDelay = `${n(P.tn, 6.2)}s`;
+  })();
+</script>

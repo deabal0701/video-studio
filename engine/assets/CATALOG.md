@@ -72,6 +72,7 @@ node assets/fetch.js list
 | `photo/hangang-aerial.jpg` | https://www.pexels.com/photo/34554596/ | Pexels License | 한강·다리 항공샷 (Chhabiraj Adhikari). 강폭·둔치 위치 설명용 |
 | `photo/hangang-cloudy.jpg` | https://www.pexels.com/photo/19222549/ | Pexels License | 흐린 하늘 아래 한강과 다리 (Muneeb Babar). 장마·먹구름 톤 |
 | `photo/hangang-mapo.jpg` | https://www.pexels.com/photo/25244824/ | Pexels License | 석양의 마포대교와 열차 (Mocchi NO). 마무리 컷 |
+| `photo/team-meeting.jpg` | https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg | Pexels License |  |
 
 ## 받아 둔 B롤 영상 (클립 `video`)
 
@@ -90,6 +91,9 @@ node assets/fetch.js list
 | `broll/office-talk.mp4` | 18.9초 · 1920×1080 · 25fps | https://www.pexels.com/video/8033300/ (직접링크 https://videos.pexels.com/video-files/8033300/8033300-hd_1920_1080_25fps.mp4) | Pexels License | 사무실 회의 테이블 **부감(탑다운)** — 네 사람이 둘러앉아 노트북 작업. hr-basics 1강 인트로 채택(`videoStart 5`): 얼굴이 정면으로 크게 잡히지 않고 **가운데가 테이블이라 제목이 설 자리가 있다** |
 | `broll/office-meeting.mp4` | 15.0초 · 1920×1080 · 25fps | https://www.pexels.com/video/3246669/ (직접링크 https://videos.pexels.com/video-files/3246669/3246669-hd_1920_1080_25fps.mp4) | Pexels License | 회의 중 인물 상반신 클로즈업 + 포스트잇 보드. **탈락 후보** — 화면 정중앙이 얼굴이라 타이틀 카드가 얼굴 위에 얹힌다 |
 | `broll/dough-knead.mp4` | 0:12 · 3840×2160 | https://www.pexels.com/video/person-kneading-a-dough-4122559/ | Pexels License | 반죽 치대는 손 클로즈업 (Anastasia Shuraeva). bread-basics 1강 인트로 채택. 얼굴 없음 |
+| `broll/data-flow.mp4` | 0:20 · 1920×1080 | https://videos.pexels.com/video-files/3130284/3130284-hd_1920_1080_30fps.mp4 | Pexels License |  |
+| `broll/data-flow.mp4` | 0:20 · 1920×1080 | https://videos.pexels.com/video-files/3130284/3130284-hd_1920_1080_30fps.mp4 | Pexels License |  |
+| `broll/data-flow.mp4` | 0:20 · 1920×1080 | https://videos.pexels.com/video-files/3130284/3130284-hd_1920_1080_30fps.mp4 | Pexels License |  |
 
 인물 클립은 `zoom`·`focusX`·`focusY` 값을 함께 적어 두면 다음에 그대로 쓸 수 있다.
 얼굴은 보통 화면 위쪽에 있어서 기본값(가운데)으로 자르면 원 안이 책상·가슴으로 찬다.

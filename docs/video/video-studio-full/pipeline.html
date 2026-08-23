@@ -1,0 +1,106 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>빌드 — 세 단계</title>
+<!-- 3부의 문을 여는 그림. [빌드] 한 번이 사실 셋이라는 것만 말한다.
+
+     **순서가 이 그림의 전부다.** 소리가 먼저이고 그림이 나중이라는 것이 뒤 구간
+     (audiofirst)의 전제가 되므로, 세 칸을 왼쪽에서 오른쪽으로 하나씩 켠다.
+     각 칸은 [무엇을 하나 / 무엇으로 / 무엇이 나오나] 세 줄이라 소리를 꺼도 읽힌다.
+
+     타이밍: 0.5s · 2.2s · 3.9s 로 한 칸씩 (내레이션이 그 단계를 말하는 시각)
+             화살표는 칸 사이에 1.4s · 3.1s
+
+     params:
+       title  상단 문구
+       t1 m1 o1   1단계 이름 · 도구 · 산출
+       t2 m2 o2   2단계
+       t3 m3 o3   3단계
+       note   하단 문구
+       wipe=off
+
+     주의: `animation:` 단축 속성을 쓰지 않는다. -->
+<link rel="stylesheet" href="../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 6vh 5% 17vh; justify-content: center; gap: 4vh; }
+
+  .head {
+    font-size: 4.6vh; font-weight: 800; letter-spacing: -0.03em; line-height: 1.25;
+    animation-name: fadeUp; animation-duration: 0.7s;
+    animation-timing-function: cubic-bezier(0.2,0.7,0.2,1);
+  }
+
+  .flow { display: flex; align-items: stretch; gap: 1.2vh; width: 100%; }
+
+  .step { flex: 1; border-radius: 1.4vh; padding: 2.8vh 2vh;
+          background: #16203c; border: 0.25vh solid #3b5390;
+          display: flex; flex-direction: column; gap: 1.1vh; }
+  .idx { font-size: 2.2vh; font-weight: 800; color: #5aa9ff; }
+  .ttl { font-size: 3.1vh; font-weight: 800; letter-spacing: -0.03em; line-height: 1.25; }
+  .mid { font-size: 2vh; color: #9ecbff; font-weight: 700;
+         background: #0f1830; border: 0.2vh solid #2b3a63;
+         border-radius: 999px; padding: 0.7vh 1.4vh; align-self: center; }
+  .out { font-size: 2vh; color: #8ea0c8; line-height: 1.4; }
+
+  .arr { flex: 0 0 auto; width: 4.6vh; display: flex; align-items: center;
+         justify-content: center; font-size: 3.4vh; color: #5aa9ff; font-weight: 800; }
+
+  .s1 { animation-name: fadeUp; animation-duration: 0.6s; animation-delay: 0.50s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .s2 { animation-name: fadeUp; animation-duration: 0.6s; animation-delay: 2.20s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .s3 { animation-name: fadeUp; animation-duration: 0.6s; animation-delay: 3.90s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .v1 { animation-name: fadeUp; animation-duration: 0.4s; animation-delay: 1.40s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .v2 { animation-name: fadeUp; animation-duration: 0.4s; animation-delay: 3.10s; animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+
+  .note { font-size: 2.7vh; color: #93a4cc; line-height: 1.5;
+          animation-name: fadeUp; animation-duration: 0.7s; animation-delay: 5.4s;
+          animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+</style>
+
+<div class="stage">
+  <div class="head animated" data-p="title"></div>
+
+  <div class="flow">
+    <div class="step animated s1">
+      <span class="idx">1단계</span>
+      <span class="ttl" data-p="t1"></span>
+      <span class="mid" data-p="m1"></span>
+      <span class="out" data-p="o1"></span>
+    </div>
+    <div class="arr animated v1">▶</div>
+    <div class="step animated s2">
+      <span class="idx">2단계</span>
+      <span class="ttl" data-p="t2"></span>
+      <span class="mid" data-p="m2"></span>
+      <span class="out" data-p="o2"></span>
+    </div>
+    <div class="arr animated v2">▶</div>
+    <div class="step animated s3">
+      <span class="idx">3단계</span>
+      <span class="ttl" data-p="t3"></span>
+      <span class="mid" data-p="m3"></span>
+      <span class="out" data-p="o3"></span>
+    </div>
+  </div>
+
+  <div class="note animated" data-p="note"></div>
+  <div class="wipe animated"></div>
+</div>
+
+<script src="../../../engine/motion/_params.js"></script>
+<script>
+  // 등장 시각은 대본이 정한다 — 세 칸이 각 단계를 말하는 순간에 하나씩 켜진다.
+  // 화살표는 앞 칸과 뒤 칸 사이(중간값)에 저절로 놓는다.
+  (() => {
+    const q = new URLSearchParams(location.search);
+    const P = { t1: q.get('t1'), t2: q.get('t2'), t3: q.get('t3'), tn: q.get('tn') };
+    const n = (v, d) => (v === null || v === undefined || v === '' ? d : Number(v));
+    const a = n(P.t1, 0.5), b = n(P.t2, 2.2), c = n(P.t3, 3.9);
+    const steps = document.querySelectorAll('.flow .step');
+    [a, b, c].forEach((t, i) => { if (steps[i]) steps[i].style.animationDelay = `${t}s`; });
+    const arrows = document.querySelectorAll('.flow .arr');
+    [(a + b) / 2, (b + c) / 2].forEach((t, i) => {
+      if (arrows[i]) arrows[i].style.animationDelay = `${t.toFixed(2)}s`;
+    });
+    const note = document.querySelector('.note');
+    if (note) note.style.animationDelay = `${n(P.tn, 5.4)}s`;
+  })();
+</script>

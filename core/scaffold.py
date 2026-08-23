@@ -33,6 +33,7 @@ def scaffold_course(root: Path, course_id: str, *, title: str, tagline: str = ""
                     palette: dict[str, Any] | None = None,
                     bgm: str | None = None,
                     kind: str | None = None,
+                    capture: dict[str, Any] | None = None,
                     episodes: list[dict[str, Any]] | None = None) -> Path:
     """프로젝트 개설 (04: 폴더 + course.json + intro/stinger 템플릿 카피).
 
@@ -69,6 +70,11 @@ def scaffold_course(root: Path, course_id: str, *, title: str, tagline: str = ""
     if voice:
         course["voice"] = voice
     course["palette"] = palette  # 회차 클립 params 자동 주입의 원천 (③ 브랜드 킷)
+    # 앱 화면 녹화 (I-2) — 주소가 있으면 회차가 녹화 씬을 갖는다. 없으면 지금까지처럼
+    # 모션그래픽 전용이다. **비밀번호는 여기 두지 않는다** — passwordEnv 로 이름만 적고
+    # 값은 .env 가 갖는다(대본·설정 파일은 공유·커밋 대상이다 — I-5).
+    if capture and str(capture.get("baseUrl") or "").strip():
+        course["capture"] = capture
     render = course["render"]
     render.update({"background": palette["bg"], "brand": palette["brand"],
                    "brandText": palette["brandSoft"], "watermark": {"text": title},
@@ -127,19 +133,36 @@ def _scenes_template(kind: str | None) -> Path:
     return EPISODE_TEMPLATE if name is None else (ENGINE_DIR / "templates" / name)
 
 
-def _trim_clips(scenes: dict[str, Any], kind: str | None) -> None:
+def _trim_clips(scenes: dict[str, Any], kind: str | None,
+                capture: dict[str, Any] | None = None) -> None:
     """종류별 골격 손질 — 일부 클립만 남기고, 단발 종류는 **녹화 씬을 걷어낸다**.
 
     엔진의 promo·manual 템플릿은 웹서비스 홍보용이라 `scenes`(화면 녹화 — 로컬 웹앱
     필요)를 담고 있다. 이 앱의 단발 영상은 모션그래픽 단독이 기본이라, 남겨두면
     빌드가 `localhost:3000 ERR_CONNECTION_REFUSED` 로 죽는다 (2026-08-22 한 번에
-    모드 E2E 실측). 녹화가 필요하면 고급 사용자가 scenes 를 직접 되살린다.
+    모드 E2E 실측).
+
+    **예외 — 녹화할 앱 주소가 있으면 살린다** (I-2, 2026-08-23): course.capture.baseUrl 을
+    넣은 프로젝트는 그 화면을 찍는 것이 목적이므로 녹화 씬이 골격의 일부다.
     """
     from . import kinds as kinds_mod
 
     spec = kinds_mod.get(kind)
-    if not spec["series"]:
+    recording = bool(capture and str(capture.get("baseUrl") or "").strip())
+    if not spec["series"] and not recording:
         scenes["scenes"] = []
+        # 녹화를 안 하면 템플릿이 들고 온 `baseUrl: localhost:3000`·capture 도 뜻이 없다 —
+        # 남겨 두면 "이 앱을 찍는다"로 읽혀 혼란만 준다. 씬과 함께 지운다.
+        scenes.pop("baseUrl", None)
+        scenes.pop("capture", None)
+        # 녹화 씬을 지웠으면 **거기 묶여 있던 클립을 풀어 준다.**
+        # compose.js 는 클립을 `before` 가 가리키는 씬 앞에 끼우고(339행), 가리키는 씬이
+        # 없으면 **오류 없이 버린다**. promo 는 intro→s1·proof→s5, manual 은 4개가 s1~s3 에
+        # 묶여 있어 `before: "end"` 인 outro 한 장만 남았다 — 빌드는 성공하고 3.2초짜리
+        # 카드 한 장이 나온다 (2026-08-23 화면 실측에서 발견. 사람이 써도 같았다).
+        # 전부 "end" 로 옮기면 배열 순서대로 이어 붙는다(= 템플릿이 의도한 순서).
+        for clip in scenes.get("render", {}).get("motion", {}).get("clips", []):
+            clip["before"] = "end"
     keep = spec.get("keep_clips")
     if not keep:
         return
@@ -159,7 +182,8 @@ def scaffold_episode(root: Path, course_id: str, n: int,
         raise FileExistsError(f"이미 있다: {eid}")
 
     scenes = load_json(_scenes_template(course.get("kind")))
-    _trim_clips(scenes, course.get("kind"))
+    capture = course.get("capture") or {}
+    _trim_clips(scenes, course.get("kind"), capture)
     ep_title = title or (entry or {}).get("title", "")
     ep_subtitle = subtitle or (entry or {}).get("subtitle", "")
 
@@ -169,6 +193,10 @@ def scaffold_episode(root: Path, course_id: str, n: int,
         f"실행(engine/ 에서): node build.js --scenes <이 파일 경로>"
     )
     scenes["id"] = eid
+    if capture.get("baseUrl"):
+        # 엔진은 config.baseUrl 로 읽는다 (build.js 48행). 녹화 해상도는 변형과 맞춘다.
+        scenes["baseUrl"] = str(capture["baseUrl"]).rstrip("/")
+        scenes["capture"] = {"width": 1920, "height": 1080}
     scenes["voice"] = dict(course.get("voice", {}))  # 규약: 통째로 복사
 
     render = scenes["render"]

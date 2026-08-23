@@ -1,107 +1,97 @@
 # 05 — 에이전트 설계
 
-> 결론 먼저: **Claude Agent SDK (Python) 기본 · LangChain/LangGraph 미채택 · 하이브리드**
-> (에이전트는 저작·평가만, 나머지는 결정적 코드). 근거는 [01_architecture.md](01_architecture.md)의
-> 비교표 — 여기서는 실행 설계만 다룬다.
-> **2026-08-21 (D15): 제공자 이중화** — Claude 경로에 더해 OpenAI 경로를 선택 지원하고,
-> `AGENT_TEST_MODE` 로 테스트 시 최저가 모델을 강제한다 (아래 "제공자 이중화" 절).
+> 결론 먼저: **순수 HTTP 구조화 생성 · Claude/OpenAI 대칭 이중 제공자 · 하이브리드**
+> (에이전트는 저작·평가만, 나머지는 결정적 코드).
+> **2026-08-23 (D18): 전면 HTTP 전환** — Claude Code CLI·claude-agent-sdk 의존을 제거했다.
+> OpenAI 키든 Anthropic 키든 **API 키 하나만 있으면** 에이전트 3종이 독립 동작한다.
+> (구 설계 — SDK 에이전틱 경로·settingSources 네이티브 로드 — 는 이 문서의 git 이력과
+> [00_overview](00_overview.md) D15/D18 결정 행이 보관한다.)
 
 ## 왜 이 구조인가 — 한 단락 요약
 
-이 시스템의 제작 지식은 프롬프트가 아니라 **스킬 문서**(develop-video 799줄 + develop-lecture
-425줄)로 존재하고, 이미 검증된 PoC(video-agent/agent.mjs)가 Claude Agent SDK 의
-`settingSources` 로 그 스킬을 네이티브 로드해 동작했다. 결정적 오케스트레이션(큐·빌드·검증)은
-일반 코드로 이미 완성이라 LangGraph 가 맡을 그래프가 남아 있지 않고, 남은 것은 "도구를 쥔
-에이전트가 파일을 읽고 쓰는 열린 저작"뿐이다 — 그건 SDK 의 기본 형태다.
+이 앱은 담당자 Windows PC 에 단독 설치되는 데스크톱 앱이다(D12). Claude Code CLI 는
+배포본에 없고 재배포도 약관 검토가 선행돼야 하므로, 에이전트가 CLI 하네스에 기대면
+"키를 넣었는데 실패하는 버튼"이 된다. 실측해 보면 에이전틱 경로가 실제로 하던 일은
+① 규약 문서를 읽고 ② 텍스트(내레이션·html·점수)를 만들고 ③ 파일에 쓰고 ④ 도식만
+렌더해 자가 확인 — 이 중 ①③ 은 앱이 더 확실하게 하고(발췌 주입·결정적 기입),
+④ 는 짧은 되먹임 루프로 재현된다. 남는 것은 ② 순수 텍스트 생성이고, 그건 HTTP 한 방이다.
 
 ## 에이전트 작업 3종
 
-모두 **단발 세션** (작업 하나 = query 하나 = 잡 하나). 상주 에이전트·대화 지속 없음 —
-상태는 전부 파일로 남으므로 세션을 이어갈 이유가 없고, 비용·예측가능성에서 단발이 우월하다.
+모두 **단발 호출 묶음** (작업 하나 = 잡 하나, 호출 1~3회). 상주 에이전트·대화 지속 없음 —
+상태는 전부 파일로 남는다. 파일 기입은 **항상 우리 코드가 결정적으로 수행**한다
+(경로·palette·fontUrl 을 모델에 맡기지 않는다 — 02 경로 함정 5종).
 
-### A. 대본 초안 (draft)
-
-| | |
-|---|---|
-| 입력 | episodeId · brief(회차 주제) · 근거 문서 경로들 (강좌 audience·episodeLength 는 course.json 에서) |
-| 산출 | `plan.md`(구성표) · `facts.md`(출처 표) · `scenes.json`(골격+내레이션+params) · 필요시 `motion/*.html` |
-| 규약 | develop-lecture SKILL 그대로: 회차 독립·골격(broll→title→hook→stinger→promise→ch/s→recap→outro)·예산 1,850자·용어 3~4개·재미 장치 3~4개·facts 근거 없는 수치 금지 |
-| 도구 | Read·Write·Edit·Glob·Grep·Bash(제한)·WebSearch(자료조사) |
-| 종료 조건 | 산출 파일 저장 + `--only tts` 실측으로 분량 확인까지 (스킬 5단계 규약) |
-
-### B. 도식 생성 (diagram)
+### A. 대본 초안 (draft) — 2단계 + 검증 재생성 루프
 
 | | |
 |---|---|
-| 입력 | episodeId · clipId · 설명하려는 것 (+ 해당 구간 내레이션·발화시각) |
-| 산출 | `projects/<id>/motion/<이름>.html` — `_base.css`/`_params.js` 참조, CSS 키프레임만 (rAF 금지 — 스크럽 렌더 제약), 발화시각 동기 delay |
-| 규약 | 연출 팔레트(데이터 흐름·줌·그래프·계층·상태변화 — 한 도식에 기법 하나)·termnote(용어 주석) |
-| 검증 | 생성 직후 preview.js 로 중간 시각 프레임 렌더 → 에이전트가 Read(이미지)로 자가 확인 후 종료 |
+| 입력 | episodeId · brief(주제) · 근거 문서(sourceDocs — **경로가 아니라 내용을 읽어 전달**) · 원고 전문(source, 선택) |
+| 1단계 | 구성표(plan.md)·근거표(facts.md) — 산문 중심 생성. "문장부터 쓰면 반드시 되돌아온다"는 스킬 순서 그대로 |
+| 2단계 | 구성표를 근거로 클립별 내레이션·화면 메모(구조화 JSON). 같은 system(규약) 재사용 → 프롬프트 캐시 적중 |
+| 기입 | plan.md·facts.md 기록 + scenes.json 의 `render.motion.clips` 에 내레이션·`_화면메모` 병합 — 템플릿 골격·voice·render·params 는 불변 |
+| 검증 루프 | `validate.draft_defects`(자리표시자·잘못 든 클립) + `consistency` → 결함을 **사람 말로 되먹여 2단계 1회 재생성**. 잔여 결함은 로그로 보고 — 빌드 제출 차단(3단계 결함 차단)이 최종 방어선 |
+| 규약 | develop-lecture(시리즈) 또는 develop-video(단발) 발췌 — 아래 "규약 주입" 표 |
 
-### C. 평가 (review)
+### B. 도식 생성 (diagram) — 렌더 확인 루프
 
 | | |
 |---|---|
-| 입력 | episodeId (완성본 존재 필수) |
-| 산출 | 점수 6항목(1~5)·고칠 것 목록 → `out/review-agent.json` + 제작 기록 md 의 `## 평가` |
-| 규약 | `agents/reviewer.md` (스킬 동봉)를 읽고 그대로 수행. **제작 컨텍스트 없는 새 세션** — "만든 쪽이 채점하지 않는다" |
-| 도구 | Read·Bash(ffprobe·ffmpeg 프레임 추출) — 쓰기는 평가 기록 파일만 |
+| 입력 | episodeId · clipId · 설명하려는 것 · 해당 내레이션 |
+| 생성 | 모션 html 1장 — `_base.css`/`_params.js` 상대 참조, CSS 키프레임만(rAF·`<video>` 금지 — 스크럽 렌더 제약), 발화시각 동기 delay |
+| 기입 | `projects/<id>/motion/<clipId>.html` |
+| 렌더 확인 | `engine/snapshot.js` 로 중간 시각 정지 프레임(png) 캡처 → **이미지를 vision 되먹임** — "의도대로 보이는가, 아니면 수정 html 전문" → 수정본 재기입 (1회). 캡처 불가 환경(크로미움 없음)이면 확인 생략 + 로그 |
+| 규약 | develop-video 도식 절 발췌 (연출 기법 하나만·타이밍 동기) |
 
-컨셉 검증(스킬 4단계의 5안 병렬 심사)은 Claude Code 의 Workflow 도구 전용이라 SDK 로는
-`asyncio.gather` 로 query N 개 병렬이면 재현되지만, **1차 범위에서 제외** — 강좌 회차는
-골격이 고정이라 컨셉 검증의 대상(도입부 설계)이 이미 규약으로 닫혀 있다. 단발 홍보영상
-기능을 나중에 넣으면 그때 추가.
+### C. 평가 (review) — 프레임 vision 채점
+
+| | |
+|---|---|
+| 입력 | episodeId (완성본 존재 필수 — 검수 프레임 4+1장) |
+| 산출 | 6항목(1~5) 점수·고칠 것 목록 → `out/<id>/review-agent.json` |
+| 규약 | `develop-video/agents/reviewer.md` **전문** 주입. **제작 컨텍스트 없는 새 호출** — "만든 쪽이 채점하지 않는다" |
+
+컨셉 검증(스킬 4단계의 다안 병렬 심사)은 범위 밖 유지 — 강좌 회차는 골격이 규약으로 닫혀 있다.
 
 ## 실행 설계 (core/agents/)
 
-```python
-# 개념 스케치 — agent.mjs 의 Python 이식 + 잡 큐 통합
-from claude_agent_sdk import query, ClaudeAgentOptions
-
-options = ClaudeAgentOptions(
-    cwd=REPO_ROOT,                          # .claude/skills/ 가 보이는 위치
-    setting_sources=["project"],            # 스킬·규약 로드 (agent.mjs 검증 방식)
-    system_prompt={"type": "preset", "preset": "claude_code", "append": TASK_RULES[task]},
-    allowed_tools=["Read","Write","Edit","Glob","Grep","Bash","WebSearch"],
-    disallowed_tools=["Bash(git commit*)","Bash(git push*)","Bash(rm -rf*)"],
-    permission_mode="acceptEdits",
-    max_turns=120,
-)
-async for message in query(prompt=task_prompt, options=options):
-    ...  # 진행 텍스트를 잡 SSE 로 릴레이, 도구 호출은 로그로
+```
+providers.py      제공자 선택·모델 해석·키 게이트 (D15 — 불변. 키만 검사하면 이제 정확하다)
+skill_prompts.py  규약 발췌 조립 — .claude/skills md 에서 제목 단위 발췌, 작업종×종류(시리즈/단발)별 목록
+llm.py            제공자 중립 complete(system, user, json_schema, images) → (내용, usage)
+                  claude = anthropic 패키지(output_config.format=json_schema · system cache_control · base64 이미지)
+                  openai = chat.completions(response_format=json_schema · image_url data URI)
+runner.py         작업 3종 오케스트레이션(위 표) + 결정적 기입 + 잡 큐 work 제너레이터 + 사용량 미터
 ```
 
 | 설계 항목 | 결정 |
 |---|---|
-| 잡 통합 | 에이전트 실행도 **같은 잡 큐**의 잡 (kind=agent). SSE 로 진행 릴레이, 취소 지원 |
-| 파일 경계 | 해당 회차 폴더 + 스킬(읽기) 밖 쓰기 금지 — disallowedTools 와 프롬프트 규칙으로 이중 |
-| 편집 충돌 | 에이전트 잡 실행 중 그 회차는 UI 편집 잠금 (같은 파일을 동시에 쓰면 안 됨). 종료 후 watchfiles 가 UI 갱신 |
-| 키 | `.env` 의 `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` — 셸 → 저장소 `.env` → `~/.claude/develop-video.env`(공용) 순 (엔진과 동일 규약). 설치본은 첫 실행 위저드가 공용 파일에 기록. **선택 제공자의 키가 없으면 에이전트 메뉴만 비활성 + 사유 — 앱의 다른 전부는 키 없이 동작** |
-| 비용 가드 | maxTurns + `AGENT_TEST_MODE`(최저가 강제) + `usage` 미터 화면 |
-| 모델 | 작업별 기본(`TASK_MODELS`) + `.env` `AGENT_MODEL_DRAFT/DIAGRAM/REVIEW` 오버라이드. **현행 운영: 전부 Haiku** (2026-08-15 사용자 지시 — 4단계 실키 완주 $0.46/편). Opus/Sonnet 은 명시 지시 시 |
+| 잡 통합 | 에이전트 실행도 **같은 잡 큐**의 잡 (kind=agent). 진행 로그 릴레이, 취소 지원 — 불변 |
+| 파일 경계 | 모델은 파일을 만지지 않는다 — **내용만 반환**, 기입 위치는 runner 가 결정 (해당 회차 폴더·out/ 만) |
+| 규약 주입 | `.claude/skills/` 가 정본 — **앱이 절 단위로 발췌해 system 에 조립** (코드에 복제하지 않는다). 발췌 실패(제목 개명)는 즉시 오류 → 테스트가 표류를 잡는다 |
+| 키 | `.env` 의 `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` — 셸 → 저장소 `.env` → `~/.claude/develop-video.env` 순. **선택 제공자의 키가 없으면 에이전트 메뉴만 비활성 + 사유** (원칙 2) |
+| 비용 가드 | 호출 1~3회 고정(루프 상한) + `AGENT_TEST_MODE`(최저가 강제) + usage 미터(토큰) |
+| 모델 | 작업별 기본(초안·평가 claude-opus-5 / 도식 claude-sonnet-5) + `AGENT_MODEL_*` 오버라이드. openai 는 계정 티어가 갈려 **설정 화면 지정 전제**(기본 gpt-4o-mini — 저작 품질은 상위 모델 지정 권장) |
+| 테스트 | `make_agent_work(..., llm_call=주입)` — 키·네트워크 없이 오케스트레이션 전체를 검증 |
 
-## 제공자 이중화 (D15 — 2026-08-21 사용자 지시)
+### 규약 주입 — 무엇을 발췌하나
 
-전환 스위치는 데스크톱 **설정 화면** (.env 가 정본, 화면은 그 편집기).
+스킬 문서는 **규약**(어떻게 쓰나)과 **절차**(무슨 명령을 치나)가 섞여 있다. 절차는 앱이
+이미 수행하므로 주입하지 않는다 — 도구 없는 모델에게 실행 지시를 주면 지어내거나
+금지된 일(경로 수작업)을 시도한다. 절 목록은 `skill_prompts.py` 가 정본이며 대강:
 
-```
-AGENT_PROVIDER=claude|openai      # 기본 claude
-AGENT_TEST_MODE=1                 # 켜면 제공자 불문 최저가 모델 강제 — "테스트는 싸게"
-OPENAI_API_KEY=…  OPENAI_MODEL=…  # openai 경로. 모델 미지정 시 최저가 티어 기본
-```
+| 작업 | 발췌 원천 |
+|---|---|
+| draft 공통 | develop-video: 구성표 먼저(화면 칸·글자수 배분) · 개념 구간 도식 규칙 · 지켜야 할 선(저작권) |
+| draft 시리즈 | + develop-lecture: 회차 독립 · 분량(6.4자/초·1,850자) · 인트로 골격 · 깊이 · 재미 장치 · 자료조사 · 일관성 점검 |
+| draft 단발 | 공통만 (+ kinds.py 의 종류별 길이) — 페이스는 표준 6.3자/초 |
+| diagram | develop-video: 도식 규칙 절(타이밍 동기·기법 하나) + 템플릿 계약(_base.css/_params.js) |
+| review | agents/reviewer.md 전문 |
 
-| | claude (기본) | openai (선택) |
-|---|---|---|
-| 구현 | 기존 `claude-agent-sdk` 경로 그대로 — 에이전틱(스킬 문서를 직접 읽고 파일 순회·기입) | 신규 — chat completions 구조화 생성으로 **내용만** 받고, plan.md·facts.md·scenes.json 파일 기입은 우리 코드가 결정적으로 수행 |
-| 규약 주입 | `.claude/skills/` 네이티브 로드 (settingSources) | 스킬 규약의 기계화 가능 요지를 프롬프트에 요약 주입 — 원칙 3 의 예외를 명시적으로 감수 (품질은 claude 경로 우위) |
-| 평가(C) | 완성본·프레임을 SDK 도구로 직접 읽음 | 검수 프레임 4+1장을 vision 입력으로 전달 |
-| 테스트 모델 | `claude-haiku-4-5` ($1/$5 MTok) | nano/mini 티어 (OPENAI_MODEL 로 교체) |
-| 키 게이트 | 제공자별 독립 — 선택된 제공자의 키만 검사 |
+주의: 표준 페이스는 develop-video 6.3자/초, 강좌는 6.4자/초(의도된 덮어쓰기) — **두 문서를
+함께 주입하면 모순으로 보이므로** 종류별로 한쪽만 조립한다.
 
-openai 경로의 존재 이유: 비용 비교, 그리고 조직 정책상 OpenAI 키만 가진 담당자의 대안.
-초안 품질의 기본 권장은 claude 경로다.
-
-## 사람 ↔ 에이전트 동선 (제품 관점)
+## 사람 ↔ 에이전트 동선 (제품 관점 — 불변)
 
 ```
 ② 커리큘럼: [AI 초안] → 잡 실행 (A) → plan/facts/scenes 생김
@@ -118,5 +108,8 @@ openai 경로의 존재 이유: 비용 비교, 그리고 조직 정책상 OpenAI
 | | 로컬 | 상용 |
 |---|---|---|
 | 키 | 사용자 본인 키 | 서비스 키 — 테넌트별 사용량 미터링·크레딧 차감 |
-| 실행 위치 | 앱 서버 프로세스 | 에이전트 워커 (렌더 워커와 동종 격리 — 파일 접근이 테넌트 스코프) |
+| 실행 위치 | 앱 프로세스의 잡 워커 스레드 | 에이전트 워커 (렌더 워커와 동종 격리 — 파일 접근이 테넌트 스코프) |
 | 안전 | 개인 저장소 | 산출물 검열(라이선스·내레이션 근거) 정책 추가 검토 |
+
+순수 HTTP 라 상용 전환 시 워커 분리가 오히려 쉬워졌다 — 프로세스에 CLI·홈 디렉토리
+상태가 없다.

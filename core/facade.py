@@ -285,6 +285,7 @@ class Studio:
                                 episode_length=body.get("episodeLength"),
                                 voice=body.get("voice"), palette=body.get("palette"),
                                 bgm=body.get("bgm"), kind=body.get("kind"),
+                                capture=body.get("capture"),
                                 episodes=body.get("episodes"))
         except FileExistsError as err:
             raise Conflict("already_exists", str(err)) from err
@@ -395,6 +396,14 @@ class Studio:
     def submit_build(self, eid: str, *, only: str | None = None,
                      variant: str | None = None) -> dict:
         d = self.episode_dir(eid)
+        # 초안 결함(클립이 녹화 씬 자리에 있음·[자리표시자] 잔존)은 빌드가 반드시
+        # 망가지므로 큐에 넣기 전에 거부한다 — P20 오류 예방 (2026-08-23 AI 초안 실측 결함).
+        defects = validate.draft_defects(schema.load_json(d / "scenes.json"))
+        if defects:
+            raise Invalid("draft_defects",
+                          "대본에 빌드를 막는 문제가 있습니다: " + " · ".join(defects[:3])
+                          + (f" 외 {len(defects) - 3}건" if len(defects) > 3 else ""),
+                          hint="[② 대본] 탭에서 해당 구간을 고친 뒤 다시 실행하세요")
         job = self.queue.submit(eid, d / "scenes.json", only=only, variant=variant)
         return {"jobId": job.id}
 

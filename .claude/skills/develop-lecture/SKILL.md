@@ -196,6 +196,11 @@ ffmpeg -y -ss 3 -i .claude/skills/develop-video/assets/broll/<파일>.mp4 \
   -frames:v 1 -vf scale=1920:-1 tools/video/projects/<강좌id>-NN/bg/<파일>.jpg
 ```
 
+**아래 두 클립을 포함해 회차의 모든 클립은 scenes.json 의 `render.motion.clips` 배열에
+쓴다.** 최상위 `scenes` 배열은 앱 화면 녹화용 자리이므로 **빈 배열 그대로 둔다** — 여기에
+클립을 쓰면 빌드가 존재하지 않는 앱 화면을 녹화하려다 실패하고, 클립 검사(preflight)도
+전부 건너뛴다.
+
 ```json
 { "id": "broll", "video": "../../.claude/skills/develop-video/assets/broll/<파일>.mp4",
   "videoStart": 3, "shade": 0.35, "duration": 2.0, "before": "end" },

@@ -47,19 +47,35 @@ class CourseCard(QFrame):
         head.addWidget(del_btn, 0, Qt.AlignTop)
         lay.addLayout(head)
         if info.get("single") or info.get("soleEpisode"):
-            # 단발(광고·홍보·매뉴얼 1편)에 시리즈 문법("영상 1개·완료 0/1"+진행바)은
-            # 무의미하게 장황하고 종류도 안 보였다 (49회차 P12·P16) — 종류·상태 한 줄
+            # 단발(광고·홍보·매뉴얼 1편)에 시리즈 문법("영상 1개·완료 0/1")은 장황했다
+            # (49회차 P12·P16). 다만 행 구성(부제·바·상태)은 시리즈와 똑같이 유지해
+            # 카드 높이를 맞춘다 — 바는 회색이라 시리즈 진행바와 헷갈리지 않는다
             from core import kinds as kinds_mod
 
             kind_name = kinds_mod.label(info.get("kind")) if info.get("kind") else ""
-            # 상태는 배지 정보가 있는 정식 단발 프로젝트만 — 구식 단독 폴더는 모른다
-            state = ("완성" if info.get("done") else "제작 중") if info.get("soleEpisode") else ""
-            parts = [p for p in (kind_name, "단발 영상", state) if p]
-            sub = QLabel(" · ".join(parts))
+            sub = QLabel(" · ".join(p for p in (kind_name, "단발 영상") if p))
             sub.setObjectName("caption")
-            if info.get("done"):
-                sub.setStyleSheet(f"color: {theme.SUCCESS};")
             lay.addWidget(sub)
+            bar = QProgressBar()
+            bar.setTextVisible(False)
+            bar.setFixedHeight(6)
+            bar.setValue(100 if info.get("done") else 0)
+            bar.setStyleSheet(
+                f"QProgressBar {{ background: {theme.BG_PAGE};"
+                f" border: 1px solid {theme.SEPARATOR}; border-radius: 3px; }}"
+                f" QProgressBar::chunk {{ background: {theme.INK_3}; border-radius: 3px; }}")
+            lay.addWidget(bar)
+            # 상태는 배지 정보가 있는 정식 단발 프로젝트만 — 구식 단독 폴더는 모른다
+            # (그 경우도 빈 캡션으로 줄을 세워 카드 높이는 같게)
+            state = ("완성" if info.get("done") else "제작 중") if info.get("soleEpisode") else ""
+            st = QLabel(state)
+            st.setObjectName("caption")
+            if not state:
+                # 빈 라벨은 한글 폰트 줄높이가 안 잡혀 1px 낮다 — 한글 캡션 높이로 고정
+                st.setFixedHeight(sub.sizeHint().height())
+            elif info.get("done"):
+                st.setStyleSheet(f"color: {theme.SUCCESS};")
+            lay.addWidget(st)
         else:
             total, done = info["episodeCount"], info["done"]
             sub = QLabel(f"영상 {total}개 · 만든 것 {info['scaffolded']}")

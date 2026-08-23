@@ -1,0 +1,113 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>글자수가 곧 길이다</title>
+<!-- 대본 작성에서 담당자가 가장 못 잡는 감각이 **분량**이다.
+
+     "몇 자를 쓰면 몇 분이 되나"에 답이 있다는 것을 식 한 줄로 보여 주고,
+     그 값이 화면의 게이지와 같은 물건이라는 것을 두 줄로 잇는다.
+     아래 줄이 빨갛게 넘치는 것이 이 그림의 결론이다 — 앱이 미리 알려 준다.
+
+     게이지는 **실제로 차오른다**(width 애니메이션). 정지 그림이면 "게이지"라는 말이
+     화면에서 증명되지 않는다.
+
+     타이밍: 식(0.3s) → 파란 게이지 차오름(1.8s~) → 빨간 게이지(4.2s~) → 문구(6.6s)
+
+     params:
+       title  상단 문구
+       chars  왼쪽 항 (예: 1,850자)
+       pace   가운데 항 (예: 초당 6.4자)
+       secs   오른쪽 항 (예: 약 4분 50초)
+       okcap  파란 줄 이름표
+       ovcap  빨간 줄 이름표
+       note   하단 문구
+       wipe=off
+
+     주의: `animation:` 단축 속성을 쓰지 않는다. -->
+<link rel="stylesheet" href="../../../engine/motion/_base.css">
+<style>
+  .stage { padding: 6vh 8% 17vh; justify-content: center; gap: 4vh; }
+
+  .head {
+    font-size: 4.6vh; font-weight: 800; letter-spacing: -0.03em; line-height: 1.25;
+    animation-name: fadeUp; animation-duration: 0.7s;
+    animation-timing-function: cubic-bezier(0.2,0.7,0.2,1);
+  }
+
+  /* 식 한 줄 */
+  .eq { display: flex; align-items: center; justify-content: center; gap: 2.4vh; flex-wrap: nowrap;
+        animation-name: fadeUp; animation-duration: 0.7s; animation-delay: 0.3s;
+        animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+  .term { font-size: 3.6vh; font-weight: 800; letter-spacing: -0.02em;
+          background: #16203c; border: 0.25vh solid #2b3a63;
+          border-radius: 1vh; padding: 1.4vh 2.4vh; }
+  .term.res { background: linear-gradient(#2f7fe0, #1f5fb0); border-color: #6fb0ff; color: #eaf4ff; }
+  .op { font-size: 3.2vh; color: #8ea0c8; font-weight: 700; }
+
+  /* 게이지 두 줄 */
+  .bars { width: 100%; display: flex; flex-direction: column; gap: 2.4vh; }
+  .barrow { text-align: left; }
+  .cap { font-size: 2.3vh; font-weight: 700; margin-bottom: 0.9vh; }
+  .cap.ok { color: #9ecbff; }
+  .cap.ov { color: #ff8f7a; }
+  .track { position: relative; width: 100%; height: 3.6vh; border-radius: 999px;
+           background: #16203c; border: 0.22vh solid #2b3a63; overflow: hidden; }
+  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; width: 0; }
+  .fill.ok { background: linear-gradient(90deg, #2f7fe0, #5aa9ff);
+             animation-name: grow99; animation-duration: 1.6s; animation-delay: 1.8s;
+             animation-timing-function: cubic-bezier(0.3,0.7,0.3,1); }
+  .fill.ov { background: linear-gradient(90deg, #e0563f, #ff8f6e);
+             animation-name: grow112; animation-duration: 1.6s; animation-delay: 4.2s;
+             animation-timing-function: cubic-bezier(0.3,0.7,0.3,1); }
+  @keyframes grow99  { from { width: 0; } to { width: 88%; } }
+  @keyframes grow112 { from { width: 0; } to { width: 100%; } }
+
+  /* 예산선 — 넘침이 무엇인지 그림으로 */
+  .limit { position: absolute; top: -0.6vh; bottom: -0.6vh; left: 88%; width: 0.3vh;
+           background: #ffcf6e; }
+
+  .note { font-size: 2.7vh; color: #93a4cc; line-height: 1.5;
+          animation-name: fadeUp; animation-duration: 0.7s; animation-delay: 6.6s;
+          animation-timing-function: cubic-bezier(0.2,0.7,0.2,1); }
+</style>
+
+<div class="stage">
+  <div class="head animated" data-p="title"></div>
+
+  <div class="eq animated">
+    <span class="term" data-p="chars"></span>
+    <span class="op">÷</span>
+    <span class="term" data-p="pace"></span>
+    <span class="op">=</span>
+    <span class="term res" data-p="secs"></span>
+  </div>
+
+  <div class="bars">
+    <div class="barrow">
+      <div class="cap ok" data-p="okcap"></div>
+      <div class="track"><div class="fill ok animated"></div><div class="limit"></div></div>
+    </div>
+    <div class="barrow">
+      <div class="cap ov" data-p="ovcap"></div>
+      <div class="track"><div class="fill ov animated"></div><div class="limit"></div></div>
+    </div>
+  </div>
+
+  <div class="note animated" data-p="note"></div>
+  <div class="wipe animated"></div>
+</div>
+<script src="../../../engine/motion/_params.js"></script>
+<script>
+  // 등장 시각은 대본이 정한다. t1=식, t2=파란 게이지, t3=빨간 게이지, t4=하단 문구.
+  (() => {
+    const q = new URLSearchParams(location.search);
+    const P = { t1: q.get('t1'), t2: q.get('t2'), t3: q.get('t3'), t4: q.get('t4') };
+    const at = (sel, k, d) => {
+      const el = document.querySelector(sel);
+      if (el) el.style.animationDelay = `${P[k] ?? d}s`;
+    };
+    at('.eq', 't1', 0.3);
+    at('.fill.ok', 't2', 1.8);
+    at('.fill.ov', 't3', 4.2);
+    at('.note', 't4', 6.6);
+  })();
+</script>

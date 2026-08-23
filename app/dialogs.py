@@ -213,6 +213,25 @@ class NewCourseDialog(QDialog):
         custom_row.addStretch(1)
         adv_form.addRow("색 직접", custom_row)
 
+        # 앱 화면 녹화 (I-2) — 주소를 넣으면 그 화면을 찍어 영상에 넣는다.
+        # 비밀번호는 여기 두지 않는다: .env 의 **이름**만 적는다 (대본·설정은 공유 대상 — I-5)
+        self.capture_url = QLineEdit()
+        self.capture_url.setPlaceholderText(
+            "예: http://내앱.example.com:8080 (선택 — 넣으면 그 화면을 녹화합니다)")
+        adv_form.addRow("앱 주소", self.capture_url)
+        login_row = QHBoxLayout()
+        self.capture_user = QLineEdit()
+        self.capture_user.setPlaceholderText("로그인 아이디 (필요할 때만)")
+        self.capture_pw_env = QLineEdit()
+        self.capture_pw_env.setPlaceholderText("비밀번호가 든 .env 이름 (예: MYAPP_PW)")
+        login_row.addWidget(self.capture_user)
+        login_row.addWidget(self.capture_pw_env)
+        adv_form.addRow("로그인", login_row)
+        pw_note = QLabel("비밀번호 자체는 저장하지 않습니다 — 설정의 .env 에 두고 그 이름만 적습니다")
+        pw_note.setObjectName("caption")
+        pw_note.setWordWrap(True)
+        adv_form.addRow("", pw_note)
+
         self.adv.hide()
         form.addRow("", self.adv)
         self.adv_btn.toggled.connect(self._toggle_adv)
@@ -347,7 +366,19 @@ class NewCourseDialog(QDialog):
             "palette": {"brand": self.c_brand.value, "brandSoft": self.c_soft.value,
                         "bg": self.c_bg.value},
             "bgm": None,   # 기본 BGM — [설정] 탭에서 바꾼다
+            "capture": self._capture(),
         }
+
+    def _capture(self) -> dict | None:
+        """앱 화면 녹화 설정 — 주소가 없으면 None(지금까지처럼 모션그래픽 전용)."""
+        url = self.capture_url.text().strip()
+        if not url:
+            return None
+        out: dict = {"baseUrl": url}
+        user, pw_env = self.capture_user.text().strip(), self.capture_pw_env.text().strip()
+        if user:
+            out["login"] = {"user": user, **({"passwordEnv": pw_env} if pw_env else {})}
+        return out
 
     def _length_value(self) -> str | None:
         """저장값은 "15초 (약 95자)" — 예산 게이지가 "N자" 를 파싱한다 (plan_tab)."""

@@ -98,11 +98,25 @@ if ($Force -or -not (Test-Path (Join-Path $ttsDir "edge-tts.exe"))) {
 # ★ 스톡 소재(bgm·broll·photo·presenter)는 **재배포 금지**라 설치본에 넣지 않는다 (R3).
 #   CATALOG.md·fetch.js 만 넣고, 실물은 첫 실행 위저드가 원 출처에서 받는다.
 #   out/·.cache 는 데이터 폴더로 가므로 역시 제외.
-Write-Host "[5/5] engine (소재 제외 — 재배포 금지)" -ForegroundColor Cyan
+Write-Host "[5/6] engine (소재 제외 — 재배포 금지)" -ForegroundColor Cyan
 robocopy (Join-Path $repo "engine") (Join-Path $dist "engine") /E `
   /XD out .cache bgm broll photo presenter /NFL /NDL /NJH /NJS | Out-Null
 # 설치 루트에 빈 package.json — 엔진 findRoot/envFiles 상향 탐색의 경계표 (07)
 Set-Content (Join-Path $dist "package.json") '{"private":true}' -Encoding utf8
+
+# ── 6. AI 규약 — .claude/skills md 동봉 (D18: 프롬프트 조립 원천) ─────────────
+# 스킬의 미디어(assets 실물)·예제 jpg 는 재배포 금지·불필요라 제외한다 (R3).
+Write-Host "[6/6] .claude/skills (AI 규약 md)" -ForegroundColor Cyan
+robocopy (Join-Path $repo ".claude\skills") (Join-Path $dist ".claude\skills") /E `
+  /XD assets examples __pycache__ /XF *.jpg *.jpeg *.png *.mp4 *.mp3 `
+  /NFL /NDL /NJH /NJS | Out-Null
+foreach ($must in @("develop-video\SKILL.md", "develop-lecture\SKILL.md",
+                    "develop-videoeferencesuthoring.md",
+                    "develop-videogentseviewer.md")) {
+  if (-not (Test-Path (Join-Path $dist ".claude\skills\$must"))) {
+    throw "AI 규약 누락: $must — 스킬 동봉 실패 (D18)"
+  }
+}
 
 $size = (Get-ChildItem $dist -Recurse -File | Measure-Object Length -Sum).Sum / 1GB
 Write-Host ("완료 — dist\VideoStudio {0:N2} GB" -f $size) -ForegroundColor Green

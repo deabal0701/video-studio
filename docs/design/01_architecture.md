@@ -21,11 +21,12 @@
 │  indexer    projects/ 스캔 → 강좌·회차 목록 (SQLite 캐시)       │
 │  jobs       빌드 잡 큐 · 동시성 정책 · 진행 이벤트               │
 │  engine_io  Node CLI 호출 계약 (subprocess · stdout 파싱)       │
-│  agents     에이전트 러너 — Claude/OpenAI 이중 (D15)            │
+│  agents     에이전트 러너 — Claude/OpenAI 순수 HTTP (D15·D18)   │
 └──────────────┬───────────────────────────────────────────────┘
                │ subprocess (설치본은 번들 runtime/ 의 node·ffmpeg)
 ┌─ engine/  Node CLI (vendored — 수정 금지) ────────────────────┐
 │  build.js · check-tts.js · chapters.js · inspect.js · preview.js│
+│  · snapshot.js (앱 신설 3종 — 아래 예외 조항)                    │
 │  lib/ (tts·record·motion·overlay·compose·preflight·…)          │
 │  motion/ 공용 템플릿 · templates/ 대본 골격 · fonts/            │
 └──────────────┬───────────────────────────────────────────────┘
@@ -51,14 +52,14 @@ video-studio/
 ├── .claude/
 │   └── skills/            ← develop-video · develop-lecture 카피 (에이전트 규약 SSOT)
 ├── engine/                ← Node CLI vendoring (스킬 scripts/ 가 원본)
-│   ├── build.js  check-tts.js  chapters.js  inspect.js  preview.js
+│   ├── build.js  check-tts.js  chapters.js  inspect.js  preview.js  snapshot.js  probe.js
 │   ├── lib/  motion/  templates/  fonts/  assets/(CATALOG.md·fetch.js 만)
 │   ├── package.json  ENGINE_VERSION.md      ← 동기화 기록 (아래)
 ├── core/                  ← Python 패키지 (로직 전부)
 │   ├── env.py  facade.py  ← 5단계 신설 (07_desktop)
 │   ├── paths.py  schema.py  validate.py
 │   ├── indexer.py  jobs.py  engine_io.py
-│   └── agents/            (4단계 — 5-6 에서 Claude/OpenAI 이중화)
+│   └── agents/            (4단계 — 5-6 이중화 · 2026-08-23 D18 순수 HTTP 전환)
 ├── app/                   ← PySide6 데스크톱 (5단계 신설 — windows/ widgets/ qtbridge.py)
 ├── packaging/             ← PyInstaller spec · 런타임 수집 · Inno Setup · edge-tts 셔틀 (5-7)
 ├── projects/              ← 사용자 데이터 (개발 기본 루트 — 설치본은 %LOCALAPPDATA%\VideoStudio\)
@@ -80,10 +81,15 @@ video-studio/
 2. `engine/ENGINE_VERSION.md` 에 "언제 어느 커밋의 스킬에서 떠 왔나 + 로컬 수정 목록(원칙 0건)"을 기록.
 3. 엔진을 고치고 싶으면 **스킬 쪽을 고치고 다시 떠 온다.** 앱 저장소에서 직접 고치는 것은
    핫픽스뿐이고, 그 경우 ENGINE_VERSION.md 에 남겨 다음 동기화 때 상류로 올린다.
-4. 예외 — **`inspect.js`·`preview.js` 는 앱이 추가하는 신규 파일** (기존 lib 재사용, 기존 파일 무수정):
+4. 예외 — **`inspect.js`·`preview.js`·`snapshot.js`·`probe.js` 는 앱이 추가하는 신규 파일** (기존 lib 재사용, 기존 파일 무수정):
    - `inspect.js`: preflight·templateKeys·ffprobe 길이·TTS 캐시 조회를 **JSON 으로 출력**하는
      기계용 CLI. Python 이 검증 로직을 재구현하지 않기 위한 다리다 ([04_api.md](04_api.md) 계약).
    - `preview.js`: 모션 html 1장을 파라미터 주입 상태로 서빙/렌더 (기존 preview-motion.mjs 정리판).
+   - `snapshot.js`: 모션 html 1장을 지정 시각으로 시킹해 **정지 프레임 png 1장** 캡처 — AI 도식의
+     렌더 확인 루프(D18 · [05_agent](05_agent.md))가 vision 되먹임에 쓴다 (motion.js 의 시킹 방식 재사용).
+   - `probe.js`: 녹화 대상 앱을 열어 **조작 가능한 요소 목록**(글자·selector·네이티브 CSS 경로)을
+     JSON 으로 뽑고 로그인 세션을 `storageState` 로 저장한다. AI 가 셀렉터를 지어내면 녹화가
+     조용히 건너뛰므로(record.js), 소재 목록처럼 **실재하는 것만 고르게** 하기 위한 다리다.
 
 ## 기술 스택 확정
 
@@ -95,12 +101,18 @@ video-studio/
 | UI | **PySide6 (LGPL)** — QWebEngineView(프리뷰)·QMediaPlayer(재생) (D13) | ~~Vue 3.5·Vite·Element Plus·Tailwind~~ 는 1~4단계 검증 후 5-5 에서 제거. 디자인 토큰(D11) 값은 Qt 스타일시트로 이식 |
 | 엔진 | Node 20.12+ · Playwright(Chromium) · ffmpeg | 기존 그대로. 설치본은 runtime/ 동봉 (D14 — [07](07_desktop.md)) |
 | TTS | edge(기본·키 불요) / azure / eleven | 엔진이 이미 지원. Azure·Eleven 실키 확보·인증 실측 (2026-08-21). 상용은 azure 계약([06](06_roadmap.md)) |
-| 에이전트 | `claude-agent-sdk`(기본) + OpenAI SDK(선택) — D15 | [05_agent.md](05_agent.md) |
+| 에이전트 | `anthropic`(기본) + `openai`(선택) — 순수 HTTP 구조화 생성 (D15·D18) | [05_agent.md](05_agent.md) |
 | 패키징 | PyInstaller(onedir) + Inno Setup — 관리자 권한 불요 설치 | [07_desktop.md](07_desktop.md) |
 
 ## LangChain / LangGraph 를 쓰는가 — **아니오**
 
 질문이 나온 김에 판단 근거를 정본으로 남긴다.
+
+> **2026-08-23 (D18)**: 아래 표의 SDK 열은 당시 비교의 기록이다 — 데스크톱 배포 제약(CLI 재배포
+> 불가)으로 에이전틱 SDK 경로는 **순수 HTTP 구조화 생성으로 대체**됐다([05_agent](05_agent.md)).
+> 규약은 네이티브 로드 대신 `skill_prompts.py` 발췌 주입으로 같은 목적(스킬을 고치면 에이전트가
+> 따라온다)을 유지한다. **LangChain/LangGraph 미채택 논지는 그대로 유효하다** — 호출 1~3회의
+> 고정 루프는 프레임워크가 필요한 규모가 아니다.
 
 | 관점 | LangChain/LangGraph | Claude Agent SDK | 이 프로젝트에서 |
 |---|---|---|---|
@@ -125,7 +137,7 @@ query 를 N 개 띄우면 된다 — 그래프 프레임워크가 필요한 규�
 | 빌드·프레임 추출·무음 검출·챕터 계산 | 결정적 코드 (engine CLI) | 이미 CLI 로 완성 |
 | **대본 초안 생성** (주제→구성표→scenes.json) | 에이전트 | 열린 저작. 스킬 규약(골격·분량·재미 장치·용어 규칙)을 읽고 수행 |
 | **도식 html 생성** (설명 구간의 모션 그래픽) | 에이전트 | 열린 저작. 연출 팔레트 규약 준수 |
-| **자료조사** (facts.md — 수치·출처) | 에이전트 (웹 검색 도구) | 스킬의 자료조사 규율 그대로 |
+| **자료조사** (facts.md — 수치·출처) | 에이전트 (근거 문서 입력 기반) | 근거 없는 수치 금지 — 사용자가 준 근거 문서·원고 안의 수치만 쓰고 출처를 남긴다 (D18: 웹 검색 도구 없음) |
 | **평가** (reviewer) | 에이전트 (별도 세션) | "만든 쪽이 채점하지 않는다" 규약 — 컨텍스트 없는 새 세션이 산출물만 보고 채점 |
 
 에이전트 산출물도 결국 **같은 파일**(scenes.json·motion/*.html·facts.md)에 떨어지므로,

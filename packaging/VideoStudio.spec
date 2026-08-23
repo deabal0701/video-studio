@@ -39,7 +39,8 @@ a = Analysis(
     datas=datas,
     hiddenimports=[
         "core.facade", "core.config", "core.voices", "core.agents.providers",
-        "core.agents.openai_runner", "app.pages.settings", "app.pages.first_run",
+        "core.agents.llm", "core.agents.skill_prompts", "anthropic", "openai",
+        "app.pages.settings", "app.pages.first_run",
         "app.smoke_probe",
     ],
     hookspath=[],

@@ -137,6 +137,7 @@ D13(PySide6) · D14(런타임 동봉 — 엔진 포팅 안 함) · D15(에이전
 | PyInstaller | **onedir** (onefile 금지 — 600MB 를 매 실행 임시 해제라 기동 30초+·백신 오탐). onedir+설치기도 "exe 더블클릭 1회"는 동일하고 기동 2~3초 |
 | 설치기 | Inno Setup · `PrivilegesRequired=lowest` · `{localappdata}\Programs\VideoStudio` — **관리자 권한 불요** (VS Code 방식) |
 | 런타임 번들 | Node 공식 zip → `runtime\node\` · ffmpeg **LGPL shared 빌드**(라이선스 분쟁 여지 제거) · `npm ci` 결과 + Playwright Chromium |
+| 규약 동봉 | `.claude\skills\` 의 md 문서(SKILL 2종·authoring·reviewer)를 설치 폴더에 복사 — AI 프롬프트 조립 원천 (D18). 미디어(assets)·예제 jpg 는 제외(R3) |
 | edge-tts 셔틀 | PyInstaller 로 `edge-tts.exe` 소형 빌드 → runtime\ PATH 선두. 엔진 tts.js 의 탐색 1순위(`edge-tts`)에 걸린다 — 동결 앱에 `python` 이 없어도 동작 |
 | 용량 | **실측 1,100MB** (2026-08-22 — 설계 추정 600MB 는 낙관적이었다). 내역: `runtime\chromium` 430MB(Playwright 렌더용) · `_internal` 391MB(PySide6+QtWebEngine) · `ffmpeg` 152MB(LGPL shared) · `node` 87MB · `edge-tts` 15MB · `engine` 20MB. 압축 설치본은 그보다 작다. **큰 덩어리는 Chromium 두 벌**(Playwright 430MB = 프레임 렌더 D14 · QtWebEngine ~150MB = 라이브 프리뷰 D10) — 하는 일이 달라 공유가 안 된다. 줄인 것: Playwright `chromium_headless_shell` 제거(−271MB — 엔진은 `chromium.launch()` 풀 브라우저를 쓴다) · 스톡 소재 제외(−25MB, 아래) · **안 쓰는 Qt 자산 제외(−191MB, 아래)** |
 | 안 쓰는 Qt 자산 | `excludes=` 는 **파이썬 바인딩(.pyd)만** 막는다 — DLL·qml·리소스는 훅이 그대로 수집한다. 이걸 모르고 1,291MB 를 "Chromium 이 크니 어쩔 수 없다"로 넘겼었다. 실측 내역: `qtwebengine_devtools_resources.debug.pak` **72MB(디버그 산출물)** · 전 언어 `qtwebengine_locales` 44MB · 안 쓰는 모듈 DLL(3D·Quick3D·Charts·Controls2 스타일·Pdf·VirtualKeyboard…) 45MB · `qtbase_*.qm` 185개 9MB. spec 의 `_prune()` 이 걷어낸다(binaries 364→265, datas 2702→1820). **판정은 추정이 아니라 동결 스모크** — 잘못 빼면 프리뷰가 안 뜨고 스모크가 잡는다 |
@@ -158,14 +159,17 @@ D13(PySide6) · D14(런타임 동봉 — 엔진 포팅 안 함) · D15(에이전
 - 키 배포 정책(담당자 개별 발급 vs 공용 키)은 배포 전 사용자 결정 사항 — 특히 eleven 은
   글자수 과금이라 공용 키 공유 시 소진이 빠르다
 
-## 에이전트 — 이중 제공자 (D15 · [05_agent](05_agent.md) 갱신분)
+## 에이전트 — 순수 HTTP 이중 제공자 (D15·D18 · [05_agent](05_agent.md) 정본)
 
 에이전트는 v1 에 포함하되 제공자를 추상화한다. 전환 스위치는 **설정 화면**.
+**2026-08-23 (D18): CLI·claude-agent-sdk 의존 제거** — 어느 키든 하나만 있으면 배포본에서
+그대로 동작한다 (배포본에 CLI 가 없어 claude 경로가 CLINotFoundError 나던 결함의 근본 수정).
 
 ```
 AGENT_PROVIDER=claude|openai    AGENT_TEST_MODE=1 → 최저가 모델 강제
-claude: 기존 claude-agent-sdk 경로 그대로 · 테스트 = claude-haiku-4-5 ($1/$5 MTok — 4단계 실측 $0.46/편)
-openai: OPENAI_API_KEY·OPENAI_MODEL — 구조화 생성 + 파일 기입은 우리 코드가 결정적으로 수행
+claude: anthropic 패키지 HTTP 구조화 생성 · 테스트 = claude-haiku-4-5 ($1/$5 MTok — 4단계 실측 $0.46/편)
+openai: OPENAI_API_KEY·OPENAI_MODEL — 같은 구조화 생성 경로 (제공자 대칭)
+공통: 규약은 .claude/skills 발췌 주입(설치본 동봉) · 파일 기입은 결정적 · 초안 검증 루프·도식 렌더 확인 루프
 ```
 
 ## 제거 일정 — 시점이 완료 조건이다
