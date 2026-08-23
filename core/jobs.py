@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import itertools
 import threading
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -55,6 +56,7 @@ class Job:
     cancel_requested: bool = False
     proc: Any = None  # 실행 중인 엔진 Popen — 취소용
     kind: str = "build"          # build | agent (05_agent: 에이전트도 같은 잡 큐)
+    created_at: float = field(default_factory=time.time)   # 제출 시각 (44회차 P16)
     work: Any = None             # kind=agent 의 이벤트 제너레이터 팩토리
 
 

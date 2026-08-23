@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import time
+
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QAbstractItemView, QHBoxLayout, QHeaderView, QLabel,
@@ -51,13 +53,14 @@ class JobsPage(QWidget):
         desc.setWordWrap(True)
         outer.addWidget(desc)
 
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["작업", "영상", "상태", "메모"])
+        self.table = QTableWidget(0, 5)
+        self.table.setHorizontalHeaderLabels(["시각", "작업", "영상", "상태", "메모"])
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setColumnWidth(0, 90)
-        self.table.setColumnWidth(1, 220)
-        self.table.setColumnWidth(2, 120)
+        self.table.setColumnWidth(0, 80)
+        self.table.setColumnWidth(1, 90)
+        self.table.setColumnWidth(2, 220)
+        self.table.setColumnWidth(3, 120)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
         self.table.itemSelectionChanged.connect(self._on_select)
         # 실패한 작업을 보고 "어디서 다시 하지?"가 막히면 안 된다 — 행에서 바로 간다
@@ -99,8 +102,11 @@ class JobsPage(QWidget):
                 "AI 작업" if j.get("kind") == "agent"
                 else {"tts": "TTS만", "compose": "합성만"}.get(j.get("only"), "빌드"))
             task.setToolTip(j["jobId"])
-            for col, item in enumerate([task, QTableWidgetItem(j["episodeId"]), state,
-                                        QTableWidgetItem(j.get("error") or "")]):
+            when = QTableWidgetItem(
+                time.strftime("%H:%M:%S", time.localtime(j["createdAt"]))
+                if j.get("createdAt") else "")
+            for col, item in enumerate([when, task, QTableWidgetItem(j["episodeId"]),
+                                        state, QTableWidgetItem(j.get("error") or "")]):
                 self.table.setItem(i, col, item)
         cost = usage.get("totalCostUsd") or 0
         self.usage.setText(f"AI 사용 {usage.get('count', 0)}회 · ${cost:.4f}"
