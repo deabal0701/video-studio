@@ -167,6 +167,7 @@ class SettingsPage(QWidget):
         cfg, agent = result
         values, sources = cfg["values"], cfg["sources"]
         if not self._fields:  # 폼은 한 번만 짓는다
+            self._labels = {name: label.split(" — ")[0] for name, label in cfg["keys"]}
             for name, label in cfg["keys"]:
                 field = QLineEdit()
                 field.setMaximumWidth(theme.RD_FIELD)
@@ -198,18 +199,30 @@ class SettingsPage(QWidget):
         self.source_note.setText(f"저장 위치: {cfg['homeFile']}")
         self.override_note.setVisible(bool(overrides))
         if overrides:
+            # 폼 라벨은 "Claude 키" 인데 이 경고만 ANTHROPIC_API_KEY 로 말해 사용자가
+            # 둘을 머리로 짝지어야 했다 (61회차 P2·P11). 다만 **지울 줄을 찾으려면**
+            # 환경변수 이름이 필요하므로 버리지 않고 괄호로 함께 (6·7회차 키 라벨 문법)
+            import re as _re
+
+            labels = getattr(self, "_labels", {})
+            # 라벨에 이미 예시 괄호가 있으면("Azure 지역 (예: koreacentral)") 괄호가 두 번
+            # 겹쳐 읽기 어렵다 — 경고문에서는 예시를 뗀다 (P25)
+            named = ", ".join(
+                f"{_re.sub(r'\s*\(예:[^)]*\)', '', labels.get(n, n))}({n})"
+                for n in overrides)
             self.override_note.setText(
                 f"다음 값은 {', '.join(sorted({sources[n] for n in overrides}))} 에 설정돼 "
                 f"있어 그 값이 우선 적용됩니다 — 여기서 바꾸려면 그 파일에서 지우세요: "
-                f"{', '.join(overrides)}")
+                f"{named}")
         self._loading = False
         self._dirty = False
         self._loaded = True
 
     # ── 저장 ────────────────────────────────────────────────────────────────
     def _save(self) -> None:
-        if not self._loaded:
+        if not self._loaded or getattr(self, "_busy", False):
             return
+        self._busy = True
         updates = {name: f.text().strip() for name, f in self._fields.items()}
         updates["AGENT_PROVIDER"] = self.provider.currentData()
         updates["AGENT_TEST_MODE"] = "1" if self.test_mode.isChecked() else ""
@@ -219,10 +232,12 @@ class SettingsPage(QWidget):
         self.save_btn.setEnabled(False)
         self.result.setText("저장 중…")
         run_bg(lambda: studio.save_settings(updates),
-               done=lambda out: (self.result.setText(f"저장됨 ✓ — {out['file']}"),
+               done=lambda out: (setattr(self, "_busy", False),
+                                 self.result.setText(f"저장됨 ✓ — {out['file']}"),
                                  self.save_btn.setEnabled(True),
                                  self.refresh()),
-               fail=lambda e: (self.result.setText(error_text(e)),
+               fail=lambda e: (setattr(self, "_busy", False),
+                               self.result.setText(error_text(e)),
                                self.save_btn.setEnabled(True)))
 
     # ── 진단 ────────────────────────────────────────────────────────────────
@@ -234,10 +249,15 @@ class SettingsPage(QWidget):
                                self.diag_btn.setEnabled(True)))
 
     def _fill_diag(self, checks: list[dict]) -> None:
-        """점검 결과를 **한 줄씩** 채운다 — OK 가 차례로 찍히는 것이 보여야
+        """점검 결과를 **한 줄씩** 채운다 — 결과가 차례로 찍히는 것이 보여야
         "점검했다"가 전달된다 (10 #3b: "체크를 하는 동작을 보여주면 좋겠다")."""
         self.diag_btn.setEnabled(True)
         self.diag_table.setRowCount(0)
+        # 앞 타이머를 멈추지 않고 새로 만들면 진단할 때마다 140ms 타이머가 하나씩 쌓인다
+        # (행 중복은 없다 — 큐를 공유해 함께 비운다. 실측 확인 — 다만 남는 건 남는다)
+        old = getattr(self, "_diag_timer", None)
+        if old is not None:
+            old.stop()
         self._diag_queue = list(checks)
         self._diag_timer = QTimer(self)
         self._diag_timer.setInterval(140)
@@ -268,7 +288,7 @@ class SettingsPage(QWidget):
         self.tts_result.setText("합성 중…")
         run_bg(studio.check_tts,
                done=lambda r: (self.tts_result.setText(
-                   ("연결 OK — " if r["ok"] else "실패 — ") + r["detail"]),
+                   ("연결 정상 — " if r["ok"] else "실패 — ") + r["detail"]),
                    self.tts_btn.setEnabled(True)),
                fail=lambda e: (self.tts_result.setText(error_text(e)),
                                self.tts_btn.setEnabled(True)))
