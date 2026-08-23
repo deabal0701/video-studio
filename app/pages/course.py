@@ -227,6 +227,27 @@ class CoursePage(QWidget):
             lanes[state] = lane
         entries = course.get("episodes", [])
         kind = course.get("kind")
+        if not entries:
+            # 영상이 하나도 없는 새 프로젝트 — 시리즈는 만든 직후 **이 화면에 착지한다**.
+            # 예전엔 레인 셋이 나란히 "남은 영상이 없습니다 / 제작 중인 영상이 없습니다 /
+            # 아직 완료된 영상이 없습니다" 라고 했다: 시작한 적이 없는데 **남은 게 없다**고
+            # 말하는 셈이고(65회차 "전부 완료 (0강)" 과 같은 부류), 다음에 뭘 할지도
+            # 화면에 없었다 (67회차 P9·P2). 빈 프로젝트에는 할 일 하나만 보여 준다
+            blank = QLabel("아직 영상이 없습니다 — 오른쪽 위 [+ 영상 추가]로 첫 영상을 만드세요.\n"
+                           "영상을 만들면 여기에 대기 · 제작 중 · 완료로 나뉘어 쌓입니다.")
+            blank.setObjectName("caption")
+            blank.setAlignment(Qt.AlignCenter)
+            blank.setWordWrap(True)
+            wrap = QWidget()
+            wrap_lay = QVBoxLayout(wrap)
+            wrap_lay.addStretch(1)
+            wrap_lay.addWidget(blank)
+            wrap_lay.addStretch(1)
+            self.board_scroll.setWidget(wrap)
+            self._lane_wraps = []
+            studio = self._make_studio()
+            run_bg(studio.agent_status, done=self._apply_gate, fail=lambda _e: None)
+            return
         # 번호는 셀 것이 둘 이상일 때만 뜻이 있다 — 단발 1편짜리에는 붙이지 않는다
         numbered = kinds.get(kind)["series"] or len(entries) > 1
         for entry in entries:
