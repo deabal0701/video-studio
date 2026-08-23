@@ -510,8 +510,18 @@ class EpisodePage(QWidget):
     def _sync_course(self) -> None:
         eid, studio = self.eid, self._studio
         etag = getattr(self, "_etag", None)
+        # 잠금 + 즉시 피드백 — 안 잠그면 더블클릭의 두 번째가 옛 etag 로 나가
+        # 409 충돌을 띄우고, 누른 직후 아무 변화도 없었다 (73회차 A2·P19)
+        self.sync_btn.setEnabled(False)
+        self.sync_btn.setText("맞추는 중…")
+
+        def _restore() -> None:
+            self.sync_btn.setEnabled(True)
+            self.sync_btn.setText("프로젝트 값으로 맞추기")
+
         run_bg(lambda: studio.sync_course(eid, etag),
-               done=lambda _o: self.load(eid), fail=self._fail)
+               done=lambda _o: (_restore(), self.load(eid)),
+               fail=lambda e: (_restore(), self._fail(e)))
 
     # ── 검수 자료 ───────────────────────────────────────────────────────────
     def _load_display_name(self, eid: str) -> None:
@@ -714,6 +724,9 @@ class EpisodePage(QWidget):
                done=submitted, fail=lambda e: (self._fail(e), self._set_building(False)))
 
     def _cancel(self) -> None:
+        # A2-허용: 취소는 멱등 — 두 번 눌러도 같은 잡에 같은 요청이고, 이미 취소된
+        # 잡이면 큐가 canceled=false 로 답할 뿐 오류가 아니다. 애타는 사용자의
+        # 연타를 막을 이유가 없다
         if self._job_id and self._studio:
             jid = self._job_id
             run_bg(lambda: self._studio.cancel_job(jid), fail=self._fail)

@@ -1165,6 +1165,8 @@ class ClipEditorTab(QWidget):
 
     # ── 프리뷰 (QWebEngineView — preview.js 문서 + 질의 params) ──────────────
     def _refresh_preview(self) -> None:
+        # A2-허용: [↻ 재생]의 재클릭은 곧 "다시 재생" — 중복 실행이 기능이다.
+        # 겹쳐도 같은 캐시 경로에 같은 문서를 다시 쓰고 마지막 로드가 이긴다
         c = self.cur
         is_broll = bool(c and "video" in c)
         self.preview.setVisible(not is_broll)

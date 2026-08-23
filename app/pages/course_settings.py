@@ -315,17 +315,25 @@ class CourseSettingsTab(QWidget):
         if self.audio.stop_if_playing(self.tts_btn):   # 두 번째 클릭 = 중지
             self.tts_state.setText("")
             return
+        # 합성 준비 중 재클릭 — 아직 재생 전이라 위 토글에 안 걸리고 두 번째 합성이
+        # 나간다. 유료 제공자면 이중 과금이다. [설정] 화면의 같은 기능은 61회차에
+        # 잠갔는데 이 사본에는 구멍이 남아 있었다 (73회차 A2)
+        if getattr(self, "_sampling", False):
+            return
         voice_id, prov = self.voice.currentData(), self.provider.currentData()
         if not voice_id:
             return
         gender = "male" if self.v_male.isChecked() else "female"
         studio = self._make_studio()
+        self._sampling = True
         self.tts_state.setText("준비 중…")
         run_bg(lambda: studio.voice_sample(prov, voice_id, gender=gender),
-               done=lambda path: (self.audio.start(self.tts_btn, path),
+               done=lambda path: (setattr(self, "_sampling", False),
+                                  self.audio.start(self.tts_btn, path),
                                   self.tts_state.setText(""),
                                   self._reload_voices(select=voice_id)),
-               fail=lambda e: self.tts_state.setText(error_text(e)))
+               fail=lambda e: (setattr(self, "_sampling", False),
+                               self.tts_state.setText(error_text(e))))
 
     def _prefetch(self) -> None:
         """그 제공자의 목소리를 전부 한 번씩 만들어 둔다 — 이후 공짜·즉시."""
