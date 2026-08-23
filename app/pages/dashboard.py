@@ -154,10 +154,14 @@ class DashboardPage(QWidget):
                 QMessageBox.Yes | QMessageBox.Cancel,
                 QMessageBox.Cancel) != QMessageBox.Yes:
             return
+        if getattr(self, "_deleting", False):   # 확인 직후 재클릭 이중 삭제 방지 (P18)
+            return
+        self._deleting = True
         studio = self._make_studio()
         run_bg(lambda: studio.delete_course(cid),
-               done=lambda _out: self.refresh(),
-               fail=lambda e: (self.error.setText(error_text(e)), self.error.show()))
+               done=lambda _out: (setattr(self, "_deleting", False), self.refresh()),
+               fail=lambda e: (setattr(self, "_deleting", False),
+                               self.error.setText(error_text(e)), self.error.show()))
 
     def _new_course(self) -> None:
         from ..dialogs import NewCourseDialog

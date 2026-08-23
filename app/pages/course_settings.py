@@ -325,9 +325,13 @@ class CourseSettingsTab(QWidget):
                 QMessageBox.Cancel) != QMessageBox.Yes:
             return
         cid, studio = self.cid, self._make_studio()
+        # 삭제 중 잠금 (48회차 P18) — 성공하면 화면을 떠나므로 복원은 실패 시만
+        self.delete_btn.setEnabled(False)
+        self.result.setText("삭제 중…")
         run_bg(lambda: studio.delete_course(cid),
                done=lambda _out: self.deleted.emit(),
-               fail=lambda e: self.result.setText(error_text(e)))
+               fail=lambda e: (self.result.setText(error_text(e)),
+                               self.delete_btn.setEnabled(True)))
 
     # ── 저장 (etag) ──────────────────────────────────────────────────────────
     def _save(self) -> None:

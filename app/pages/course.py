@@ -296,9 +296,12 @@ class CoursePage(QWidget):
                 QMessageBox.Yes | QMessageBox.Cancel,
                 QMessageBox.Cancel) != QMessageBox.Yes:
             return
+        if not self._begin_create():   # 생성·삭제 공통 잠금 — 이중 실행 방지 (48회차 P18)
+            return
         cid, studio = self.cid, self._make_studio()
         run_bg(lambda: studio.delete_episode(eid),
-               done=lambda _out: self.load(cid), fail=self._fail)
+               done=lambda _out: (self._end_create(), self.load(cid)),
+               fail=lambda e: (self._end_create(), self._fail(e)))
 
     def _add_episode(self) -> None:
         ns = [e.get("n", 0) for e in self._course.get("episodes", [])]
