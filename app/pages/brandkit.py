@@ -82,6 +82,14 @@ class BrandKitTab(QWidget):
         self.font_label.setObjectName("caption")
         self.font_label.setWordWrap(True)
         self.kit_form.addRow("글꼴", self.font_label)
+        # 대비 검사는 **프리셋 팔레트에만** 있었다 (core/kinds.py 의 4.5:1 — tests 가 지킨다).
+        # 설정 화면은 아무 색이나 고르게 하는데 아무 데서도 재지 않아, 밝은 배경을 고르면
+        # 흰 제목 글자가 그대로 묻힌 채 영상이 나갔다 (53회차 P17·P20. 실측 1.0:1).
+        # 브랜드 킷이 "결과를 보는 곳"이니 여기가 말할 자리다
+        self.contrast_label = QLabel("")
+        self.contrast_label.setWordWrap(True)
+        self.contrast_label.setMaximumWidth(460)
+        self.kit_form.addRow("대비", self.contrast_label)
         # 말로만 안내하지 않는다 — 가는 버튼을 준다 (루프 5회차 P1)
         edit_row = QHBoxLayout()
         self.edit_btn = QPushButton("설정 탭에서 색 바꾸기 →")
@@ -113,6 +121,10 @@ class BrandKitTab(QWidget):
         lay.addStretch(1)
 
     def load(self, cid: str) -> None:
+        if cid != self.cid:
+            # "적용됨 ✓ — …" 이 **다른 프로젝트** 브랜드 킷에 그대로 남아 있었다
+            # (53회차 P19·P11 — 52회차 설정 탭과 같은 결함·같은 처방)
+            self.result.setText("")
         self.cid = cid
         studio = self._make_studio()
         run_bg(lambda: studio.get_course(cid), done=self._fill,
@@ -144,6 +156,41 @@ class BrandKitTab(QWidget):
             code.setText(value)
         font = d.get("fontUrl") or d.get("font") or ""
         self.font_label.setText(font.rsplit("/", 1)[-1] if font else "프로젝트 기본 글꼴")
+        self._show_contrast(bg, brand, soft)
+
+    # 엔진 기본 글자색 — engine/motion/_base.css 의 `--fg: #ffffff` (제목·본문이 이 색이다)
+    FG = "#ffffff"
+    MIN_CONTRAST = 4.5   # WCAG 본문 — core/kinds.py 가 프리셋에 쓰는 기준과 같다
+
+    def _show_contrast(self, bg: str, brand: str, soft: str) -> None:
+        pairs = (("제목 글자", self.FG), ("브랜드", brand), ("보조", soft))
+        try:
+            ratios = [(name, kinds.contrast(color, bg)) for name, color in pairs]
+        except Exception:  # noqa: BLE001 — 색 형식이 이상해도 화면은 떠야 한다
+            self.contrast_label.setText("")
+            self.contrast_label.setProperty("chip", None)
+            self._repolish(self.contrast_label)
+            return
+        detail = " · ".join(f"{name} {r:.1f}:1" for name, r in ratios)
+        low = [name for name, r in ratios if r < self.MIN_CONTRAST]
+        if low:
+            # 칩 스타일이 이기게 objectName 을 비운다 — "caption" 이 남아 있으면
+            # 다음 로드에서 err 칩이 캡션 색으로 덮인다
+            self.contrast_label.setObjectName("")
+            self.contrast_label.setProperty("chip", "err")
+            self.contrast_label.setText(
+                f"배경과 대비가 낮습니다 — {detail} (권장 {self.MIN_CONTRAST}:1 이상). "
+                f"영상에서 {'·'.join(low)}가 묻힙니다 — [설정] 탭에서 색을 바꾸세요")
+        else:
+            self.contrast_label.setProperty("chip", None)
+            self.contrast_label.setObjectName("caption")
+            self.contrast_label.setText(f"배경 대비 {detail} — 권장({self.MIN_CONTRAST}:1) 이상입니다")
+        self._repolish(self.contrast_label)
+
+    @staticmethod
+    def _repolish(w) -> None:
+        w.style().unpolish(w)
+        w.style().polish(w)
 
     def _apply(self) -> None:
         # 덮어쓰기는 파괴적 — 기본 버튼은 [취소] (16회차 소형 대화상자와 같은 문법)

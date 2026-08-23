@@ -101,3 +101,18 @@ def test_counter_needs_a_number():
     assert kinds.counter(1, "promo") == "1편"
     assert kinds.counter(None, "promo") == ""   # 번호 없는 자리는 빈 문자열
     assert kinds.counter("", "lecture") == ""
+
+
+def test_user_picked_palette_can_fail_contrast():
+    """대비 기준은 프리셋만 지킨다 — 사용자가 고른 색은 통과 못 할 수 있다 (53회차 P17).
+
+    이 테스트는 팔레트를 고치라는 게 아니라 **경고가 필요한 상황이 실재한다**는 고정이다:
+    브랜드 킷이 이 계산으로 "배경과 대비가 낮습니다"를 띄운다.
+    엔진 기본 글자색은 `engine/motion/_base.css` 의 `--fg: #ffffff`.
+    """
+    light = {"brand": "#FFE08A", "brandSoft": "#FFF3C4", "bg": "#FFFDF5"}
+    assert kinds.contrast("#ffffff", light["bg"]) < MIN_TEXT      # 제목이 묻힌다
+    assert kinds.contrast(light["brand"], light["bg"]) < MIN_TEXT
+    # 프리셋은 전부 통과한다 — 위 대비 표와 같은 기준
+    for _name, pal in kinds.PRESET_PALETTES:
+        assert kinds.contrast(pal["brand"], pal["bg"]) >= MIN_TEXT, _name
