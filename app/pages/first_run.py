@@ -299,5 +299,11 @@ class FirstRunWizard(QWizard):
             (base / ".data-dir").write_text(str(chosen), encoding="utf-8", newline="\n")
             chosen.mkdir(parents=True, exist_ok=True)
             (chosen / DONE_MARK).write_text("ok\n", encoding="utf-8", newline="\n")
-        except OSError:
-            pass   # 폴더를 못 쓰면 기본값 그대로 — 다음 실행에 위저드가 다시 안내한다
+        except OSError as err:
+            # 조용한 후퇴는 "바꿨다"고 믿게 만든다 — 알리고 기본값을 쓴다 (46회차 P21)
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.warning(
+                self, "데이터 폴더 변경 실패",
+                f"고른 폴더를 쓸 수 없습니다: {err}\n\n"
+                f"기본 위치를 그대로 사용합니다: {env.DATA_DIR}")
