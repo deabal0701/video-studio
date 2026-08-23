@@ -103,6 +103,12 @@ class LibraryPage(QWidget):
     def refresh(self) -> None:
         kind = self.kind.currentData()
         studio = self._make_studio()
+        # 조회마다 번호를 매겨 **늦게 도착한 앞 종류의 응답을 버린다** (59회차 P0 실측:
+        # 화면에 들어오자마자 종류를 바꾸면 처음 건 B롤 조회가 나중에 끝나 표를 되덮어,
+        # 콤보는 "배경음악"인데 표는 B롤이고 캡션이 assets/broll/… 경로를 내놓았다.
+        # 25회차 체크리스트 경합과 같은 처방 — 최신 요청만 화면을 만진다)
+        self._req = getattr(self, "_req", 0) + 1
+        token = self._req
         # 종류를 바꾸면 이전 선택의 흔적(경로 캡션·미리듣기 활성)이 남으면 안 된다 (P8)
         self.table.clearSelection()
         self.ref_label.setText("")
@@ -111,10 +117,14 @@ class LibraryPage(QWidget):
         self.play_btn.setVisible(kind in ("bgm", "broll"))
         self.audio.stop_if_playing(self.play_btn)
         self.result.setText("불러오는 중…")
-        run_bg(lambda: studio.assets(kind), done=self._fill,
-               fail=lambda e: self.result.setText(error_text(e)))
+        run_bg(lambda: studio.assets(kind),
+               done=lambda rows: self._fill(rows, token),
+               fail=lambda e: (None if token != self._req
+                               else self.result.setText(error_text(e))))
 
-    def _fill(self, rows: list[dict]) -> None:
+    def _fill(self, rows: list[dict], token: int | None = None) -> None:
+        if token is not None and token != getattr(self, "_req", token):
+            return   # 낡은 응답 — 지금 고른 종류의 것이 아니다
         self._rows = rows
         self.table.setRowCount(len(rows))
         unlicensed = 0
@@ -135,12 +145,24 @@ class LibraryPage(QWidget):
             for col, item in enumerate([QTableWidgetItem(a["name"]), QTableWidgetItem(size), lic,
                                         QTableWidgetItem(source), QTableWidgetItem(note)]):
                 self.table.setItem(i, col, item)
-        self.result.setText(
+        summary = (
             f"{len(rows)}개" + (f" · 라이선스 미기재 {unlicensed}개 — 출처 대장(CATALOG.md)에 "
                                 "라이선스를 적으세요" if unlicensed else "")
             if rows else "아직 받은 소재가 없습니다 — 아래에서 URL 과 라이선스를 넣어 받으세요.")
+        # 받기 성공 안내는 곧바로 목록 재조회에 덮여 **한 번도 안 보였다** (59회차 P19).
+        # 다음 목록 갱신 한 번까지 함께 싣는다
+        notice = getattr(self, "_notice", "")
+        self._notice = ""
+        self.result.setText(f"{notice} · {summary}" if notice else summary)
+
+    def stop_media(self) -> None:
+        """미리듣기를 멈춘다 — 화면을 떠날 때 내비가 부른다 (55·57회차와 같은 원칙)."""
+        self.audio.stop()
 
     def _on_select(self) -> None:
+        # 고른 행이 바뀌면 앞 소재의 재생을 멈춘다 — 안 멈추면 캡션은 새 파일을
+        # 가리키는데 **다른 파일이 계속 들린다**(버튼도 "중지" 그대로) (59회차 P4·P19)
+        self.audio.stop()
         row = self.table.currentRow()
         ok = 0 <= row < len(self._rows)
         kind = self.kind.currentData()
@@ -165,21 +187,26 @@ class LibraryPage(QWidget):
                                 and bool(self.license.text().strip()))
 
     def _add(self) -> None:
+        if getattr(self, "_busy", False):
+            return   # 버튼 밖 경로로도 두 번 받지 않는다 (52·56·58회차와 같은 처방)
         url, lic = self.url.text().strip(), self.license.text().strip()
         if not url or not lic:   # 버튼 활성화 조건이 이미 막지만 이중 방어
             return
+        self._busy = True
         kind, name = self.kind.currentData(), self.name.text().strip() or None
         studio = self._make_studio()
         self.add_btn.setEnabled(False)
         self.result.setText("받는 중…")
         run_bg(lambda: studio.add_asset(kind=kind, url=url, license=lic, name=name),
                done=self._added,
-               fail=lambda e: (self.result.setText(error_text(e)),
+               fail=lambda e: (setattr(self, "_busy", False),
+                               self.result.setText(error_text(e)),
                                self.add_btn.setEnabled(True)))
 
     def _added(self, out: dict) -> None:
+        self._busy = False
         self.add_btn.setEnabled(True)
         self.url.clear()
         self.name.clear()
-        self.result.setText(f"{out['name']} 받음 — 출처 대장(CATALOG.md)에 기록됨")
+        self._notice = f"{out['name']} 받음 — 출처 대장(CATALOG.md)에 기록됨"
         self.refresh()

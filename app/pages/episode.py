@@ -237,7 +237,7 @@ class EpisodePage(QWidget):
         self._open_ai_pending = True
         self.load(eid)
 
-    def stop_all_media(self) -> None:
+    def stop_media(self) -> None:
         """이 화면의 재생을 전부 멈춘다 — ② 대본의 B롤·음성 + ③ 검수의 완성본.
 
         57회차 실측: ③ 검수에서 완성본을 재생한 채 ④ 배포로 옮기면 **소리를 낸 채
@@ -257,7 +257,7 @@ class EpisodePage(QWidget):
             # 옛 캡션·무음 리포트가 잠깐 보인다 (57회차 P19·P11. 52~56회차와 같은 처방)
             self.media_label.setText("")
             self.silence_label.setText("")
-            self.stop_all_media()
+            self.stop_media()
         self.eid = eid
         self.title.setText(eid)          # 즉시 표시 — 아래에서 사람 이름으로 바꾼다
         self._load_display_name(eid)
@@ -339,7 +339,7 @@ class EpisodePage(QWidget):
                     QMessageBox.Yes | QMessageBox.Cancel,
                     QMessageBox.Cancel) != QMessageBox.Yes:
                 return
-        self.stop_all_media()   # 재생을 화면 밖으로 끌고 나가지 않는다 (55·57회차)
+        self.stop_media()   # 재생을 화면 밖으로 끌고 나가지 않는다 (55·57회차)
         self.back.emit(self.eid.rsplit("-", 1)[0])
 
     @staticmethod

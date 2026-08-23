@@ -172,6 +172,9 @@ class MainWindow(QMainWindow):
                 self.nav.setCurrentRow(3)
                 self.nav.blockSignals(False)
                 return
+        # 떠나는 화면이 틀던 소리를 멈춘다 — 라이브러리 미리듣기가 대시보드까지
+        # 따라왔다 (59회차 P4. 55·57회차를 화면마다 배선하는 대신 여기 한 곳에서)
+        self._stop_media_of(self.stack.currentWidget())
         self.stack.setCurrentIndex(self.NAV_STACK[row])
         if row == 0:
             self.dashboard.refresh()
@@ -181,6 +184,12 @@ class MainWindow(QMainWindow):
             self.jobs_page.refresh()
         elif row == 3:
             self.settings_page.refresh()
+
+    @staticmethod
+    def _stop_media_of(page) -> None:
+        stop = getattr(page, "stop_media", None)
+        if callable(stop):
+            stop()
 
     def _new_video(self) -> None:
         """좌측 열 [+ 새 영상 만들기] — 위저드에서 만들면 곧장 작업 화면으로.

@@ -139,6 +139,10 @@ class CoursePage(QWidget):
         outer.addWidget(self.tabs, 1)
         self._course: dict = {}
 
+    def stop_media(self) -> None:
+        """설정 탭의 목소리·배경음악 미리듣기를 멈춘다 (내비가 화면을 떠날 때 부른다)."""
+        self.settings.audio.stop()
+
     def load(self, cid: str) -> None:
         self.cid = cid
         studio = self._make_studio()
