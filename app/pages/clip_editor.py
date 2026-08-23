@@ -490,9 +490,14 @@ class ClipEditorTab(QWidget):
         lay = QVBoxLayout(dlg)
         lay.setContentsMargins(26, 24, 26, 20)
         lay.setSpacing(14)
-        cap = QLabel(prompt + " — 폴더 경로를 글에 적으면 AI 가 그 내용을 직접 읽습니다.")
+        # 두 이야기를 " — " 로 이어 붙여 한 줄이 길었다 (63회차 P25) — 물음과 요령을 나눈다
+        cap = QLabel(prompt)
         cap.setWordWrap(True)
         lay.addWidget(cap)
+        tip = QLabel("폴더 경로를 글에 적으면 AI 가 그 내용을 직접 읽습니다.")
+        tip.setObjectName("caption")
+        tip.setWordWrap(True)
+        lay.addWidget(tip)
         text = QPlainTextEdit()
         text.setMinimumHeight(160)
         lay.addWidget(text)
@@ -518,7 +523,18 @@ class ClipEditorTab(QWidget):
             _sync()
 
         def _sync():
-            docs_label.setText("근거: " + " · ".join(docs) if docs else "")
+            # 절대경로 전문을 늘어놓으면 넉 줄을 먹고 무엇을 골랐는지 한눈에 안 들어온다
+            # (63회차 P25 실측: 문서 4개에 381자·4줄). 이름으로 말하고 전문은 툴팁 —
+            # 클립 목록(54회차)·작업 큐(60회차)와 같은 문법
+            if docs:
+                names = [Path(d).name or d for d in docs]
+                shown = " · ".join(names[:4])
+                more = f" 외 {len(names) - 4}개" if len(names) > 4 else ""
+                docs_label.setText(f"근거 {len(docs)}개: {shown}{more}")
+                docs_label.setToolTip("\n".join(docs))
+            else:
+                docs_label.setText("")
+                docs_label.setToolTip("")
             clear_btn.setVisible(bool(docs))
 
         doc_row = QHBoxLayout()
@@ -536,9 +552,12 @@ class ClipEditorTab(QWidget):
         doc_row.addWidget(f_btn)
         doc_row.addWidget(d_btn)
         doc_row.addWidget(clear_btn)
-        doc_row.addWidget(doc_hint)
         doc_row.addStretch(1)
         lay.addLayout(doc_row)
+        # 안내문을 버튼 옆에 두면 [근거 비우기] 가 나타나는 순간(=근거를 넣은 순간) 잘린다
+        # — 넷이 한 줄에 안 들어간다 (63회차 P6 실측). 아래 줄로 내리고 줄바꿈을 준다
+        doc_hint.setWordWrap(True)
+        lay.addWidget(doc_hint)
         lay.addWidget(docs_label)
 
         auto = QCheckBox("영상까지 한 번에 — 대본이 끝나면 자동으로 빌드합니다 (몇 분 걸립니다)")
