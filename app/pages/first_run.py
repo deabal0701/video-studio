@@ -35,7 +35,7 @@ class _DataFolderPage(QWizardPage):
     def __init__(self):
         super().__init__()
         self.setTitle("1. 데이터 폴더")
-        self.setSubTitle("네 단계면 첫 영상까지 갑니다. 어느 단계든 건너뛸 수 있고, "
+        self.setSubTitle("네 단계면 첫 영상까지 갑니다. 안 채우고 [다음] 으로 넘어가도 되고, "
                          "나중에 설정 화면에서 이어서 할 수 있습니다.")
         lay = QVBoxLayout(self)
         lead = QLabel("프로젝트·영상 파일과 빌드 산출물이 저장될 곳입니다. "
@@ -68,7 +68,7 @@ class _DiagnosePage(QWizardPage):
     def __init__(self, make_studio):
         super().__init__()
         self._make_studio = make_studio
-        self.setTitle("2. 자가진단")
+        self.setTitle("2. 환경 점검")
         self.setSubTitle("렌더에 필요한 부품을 점검합니다. 빠진 것이 있으면 무엇을 하면 "
                          "되는지 함께 보여 줍니다.")
         lay = QVBoxLayout(self)
@@ -165,7 +165,13 @@ class _KeysPage(QWizardPage):
             field.setToolTip(label)
             self._fields[name] = field
             self.form.addRow(label.split(" — ")[0], field)
+        self._initial = {k: f.text() for k, f in self._fields.items()}
         self.note.setText(f"저장 위치: {cfg['homeFile']} — 나중에 설정 화면에서 바꿀 수 있습니다.")
+
+    def edited(self) -> bool:
+        """사용자가 키를 실제로 고쳤는가 — 위저드를 닫을 때 버릴지 물어볼 판단 재료."""
+        initial = getattr(self, "_initial", {})
+        return any(f.text() != initial.get(k, "") for k, f in self._fields.items())
 
     def save(self) -> None:
         """동기 저장 — 위저드가 닫히는 시점이라 백그라운드로 보내면 앱 종료와
@@ -229,16 +235,21 @@ class _AssetsPage(QWizardPage):
         lay.addStretch(1)
 
     def _make_voices(self) -> None:
+        if getattr(self, "_busy", False):
+            return
+        self._busy = True
         studio = self._make_studio()
         self.voice_btn.setEnabled(False)
         self.voice_state.setText("만드는 중…")
         run_bg(lambda: studio.voice_samples_build("edge"),
-               done=lambda r: (self.voice_state.setText(
+               done=lambda r: (setattr(self, "_busy", False),
+                               self.voice_state.setText(
                    f"준비됨 — 새로 {r['made']}종"
                    + (f" · 실패 {len(r['failed'])}종 (설정 화면에서 다시 할 수 있습니다)"
                       if r["failed"] else "")),
                    self.voice_btn.setEnabled(True)),
-               fail=lambda e: (self.voice_state.setText(error_text(e)),
+               fail=lambda e: (setattr(self, "_busy", False),
+                               self.voice_state.setText(error_text(e)),
                                self.voice_btn.setEnabled(True)))
 
     def initializePage(self) -> None:  # noqa: N802
@@ -248,13 +259,15 @@ class _AssetsPage(QWizardPage):
             return len(studio.assets("bgm")), len(studio.assets("broll"))
 
         run_bg(count,
-               done=lambda c: self.have.setText(f"현재 보유: BGM {c[0]}개 · B롤 {c[1]}개"),
+               done=lambda c: self.have.setText(f"현재 보유: 배경음악 {c[0]}개 · B롤 {c[1]}개"),
                fail=lambda e: self.have.setText(error_text(e)))
         # 이미 만들어 둔 목소리가 있으면 버튼을 다시 누르게 하지 않는다
         run_bg(lambda: self._make_studio().voice_catalog("edge"),
-               done=lambda info: self.voice_state.setText(
-                   f"준비됨 {sum(1 for v in info['voices'] if v.get('cached'))}"
-                   f" / {len(info['voices'])}종"),
+               # 만드는 중이면 그 안내를 덮지 않는다 — 되돌아왔을 때 진행이 사라져 보인다
+               done=lambda info: (None if getattr(self, "_busy", False) else
+                                  self.voice_state.setText(
+                                      f"준비됨 {sum(1 for v in info['voices'] if v.get('cached'))}"
+                                      f" / {len(info['voices'])}종")),
                fail=lambda _e: None)
 
 
@@ -273,8 +286,31 @@ class FirstRunWizard(QWizard):
         self.setButtonText(QWizard.FinishButton, "시작하기")
         self.setButtonText(QWizard.NextButton, "다음")
         self.setButtonText(QWizard.BackButton, "이전")
-        self.setButtonText(QWizard.CancelButton, "건너뛰기")
+        self.setButtonText(QWizard.CancelButton, "나중에 하기")
         self.finished.connect(self._done)
+
+    def reject(self) -> None:  # noqa: N802 — Qt 오버라이드
+        """[나중에 하기] — 위저드를 통째로 닫는다(다음 실행에 다시 뜬다).
+
+        예전 이름이 "건너뛰기"라 [다음] 옆에서 **이 단계만 건너뛴다**로 읽혔는데,
+        실제로는 입력한 키·고른 데이터 폴더가 **말없이 버려졌다** (62회차 P2·P15·P21).
+        이름을 바꾸고, 버릴 것이 있으면 묻는다.
+        """
+        from PySide6.QtWidgets import QMessageBox
+
+        changed = []
+        if self.keys_page.edited():
+            changed.append("입력한 키")
+        if self.data_page.path.text().strip() != str(env.DATA_DIR):
+            changed.append("고른 데이터 폴더")
+        if changed and QMessageBox.warning(
+                self, "나중에 하기",
+                f"{' · '.join(changed)} 가 저장되지 않고 사라집니다.\n\n"
+                "[다음] 으로 끝까지 가면 저장됩니다 — 그래도 닫을까요?",
+                QMessageBox.Yes | QMessageBox.Cancel,
+                QMessageBox.Cancel) != QMessageBox.Yes:
+            return
+        super().reject()
 
     def _done(self, result: int) -> None:
         if result:  # 완료 — 건너뛰기(Cancel)면 표시하지 않아 다음 실행에 다시 뜬다
