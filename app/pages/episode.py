@@ -494,28 +494,12 @@ class EpisodePage(QWidget):
     def _load_display_name(self, eid: str) -> None:
         """제목을 폴더 id("hr-basic3-01")가 아니라 **"프로젝트명 — 1편 제목"** 으로 (10 #9).
 
-        id 는 폴더 이름일 뿐이다 — 사람이 붙인 이름과의 관계가 화면에 보여야 한다.
-        프로젝트가 없으면(단일 영상) id 그대로 둔다.
+        조립 규칙은 `facade.episode_display_name` 이 갖는다 — 작업 큐도 같은 이름을
+        써야 해서 화면에 사본을 두지 않는다 (60회차).
         """
-        cid = eid.rsplit("-", 1)[0]
         studio = self._make_studio()
 
-        def get():
-            course = studio.get_course(cid)["course"]
-            entry = next((e for e in course.get("episodes", []) if e.get("id") == eid), {})
-            kind = course.get("kind")
-            # 보드 카드와 같은 규칙 — 셀 것이 하나뿐인 단발이면 번호를 붙이지 않는다
-            numbered = kinds.get(kind)["series"] or len(course.get("episodes", [])) > 1
-            return (course.get("title", cid), entry.get("n") if numbered else None,
-                    entry.get("title", ""), kind)
-
-        def fill(r):
-            ctitle, n, etitle, kind = r
-            # 세는 말은 종류가 정한다 — 보드 카드는 "2강"인데 여기만 "2편"이었다 (51회차 P11)
-            counter = kinds.counter(n, kind)
-            label = ctitle + (f" — {counter}" if counter else "")
-            if etitle and etitle != ctitle:
-                label += f" {etitle}"
+        def fill(label: str) -> None:
             # 긴 제목이 빌드 버튼을 밀어내면 상단 틀이 무너진다 — 말줄임 (10 지적)
             from PySide6.QtGui import QFontMetrics
 
@@ -523,7 +507,7 @@ class EpisodePage(QWidget):
             self.title.setText(fm.elidedText(label, Qt.ElideRight, 620))
             self.title.setToolTip(f"{label}  ·  폴더: {eid}")
 
-        run_bg(get, done=fill, fail=lambda _e: None)
+        run_bg(lambda: studio.episode_display_name(eid), done=fill, fail=lambda _e: None)
 
     def _load_review(self) -> None:
         eid, studio = self.eid, self._studio

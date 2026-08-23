@@ -76,3 +76,24 @@ def test_put_course_rejects_empty_title(studio):
     out = studio.put_course("hr-basics", {**doc, "title": "이름 있음"}, etag)
     assert out["etag"] != etag
     assert studio.get_course("hr-basics")["course"]["title"] == "이름 있음"
+
+
+def test_episode_display_name(studio, copy_root):
+    """작업 큐·영상 머리글이 같은 이름을 쓴다 (60회차 P2 — 화면마다 사본을 두지 않는다)."""
+    assert studio.episode_display_name("hr-basics-01") == "인사 기본개념 강좌 — 1강 구성원"
+    # 단발 1편짜리는 번호를 안 붙이고, 영상 제목이 프로젝트명과 같으면 겹쳐 쓰지 않는다
+    studio.create_course({"course": "solo-promo", "title": "인사잇 소개", "kind": "promo"})
+    studio.create_episode("solo-promo", 1, title="인사잇 소개")
+    assert studio.episode_display_name("solo-promo-01") == "인사잇 소개"
+    # 프로젝트를 못 찾으면 id 그대로 — 죽지 않는다
+    assert studio.episode_display_name("없는-프로젝트-01") == "없는-프로젝트-01"
+
+
+def test_jobs_carry_display_name(studio):
+    """jobs() 가 사람 이름을 함께 싣는다 — 화면이 폴더 id 를 그리지 않게."""
+    view = studio._job_view(type("J", (), {
+        "id": "j1", "episode_id": "hr-basics-01", "state": type("S", (), {"value": "done"})(),
+        "error": None, "kind": "build", "only": None, "created_at": 0})())
+    assert view["episodeId"] == "hr-basics-01"      # 원본 id 는 유지 (툴팁·이동에 쓴다)
+    assert "episodeName" not in view                # 이름은 jobs() 가 붙인다
+    assert studio.jobs() == []                      # 큐가 비어도 죽지 않는다

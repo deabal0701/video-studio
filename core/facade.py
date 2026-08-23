@@ -419,8 +419,43 @@ class Studio:
                 "error": job.error, "kind": job.kind, "only": job.only,
                 "createdAt": job.created_at}
 
+    def episode_display_name(self, eid: str) -> str:
+        """폴더 id 가 아니라 사람이 부르는 이름 — "인사 기본개념 강좌 — 1강 구성원".
+
+        영상 화면 머리글이 쓰던 규칙을 여기로 올린다 (60회차) — 작업 큐도 같은 이름을
+        써야 하는데 화면마다 따로 만들면 갈라진다. 세는 말은 종류가 정하고(51회차),
+        셀 것이 하나뿐인 단발이면 번호를 안 붙인다. 못 읽으면 id 그대로 (죽지 않는다).
+        """
+        from . import kinds as kinds_mod
+
+        try:
+            course = self.get_course(eid.rsplit("-", 1)[0])["course"]
+        except Exception:  # noqa: BLE001 — 프로젝트가 없는 단독 영상도 있다
+            return eid
+        entry = next((e for e in course.get("episodes", []) if e.get("id") == eid), {})
+        kind = course.get("kind")
+        numbered = kinds_mod.get(kind)["series"] or len(course.get("episodes", [])) > 1
+        ctitle = course.get("title", "") or eid
+        counter = kinds_mod.counter(entry.get("n") if numbered else None, kind)
+        label = ctitle + (f" — {counter}" if counter else "")
+        etitle = entry.get("title", "")
+        if etitle and etitle != ctitle:
+            label += f" {etitle}"
+        return label
+
     def jobs(self) -> list[dict]:
-        return [self._job_view(j) for j in self.queue.list()]
+        # 작업 큐가 "hr-basics-01" 대신 사람 이름을 쓰게 이름을 함께 싣는다 (60회차 P2).
+        # 같은 영상이 여러 번 나오므로 한 번만 읽는다
+        names: dict[str, str] = {}
+        out = []
+        for job in self.queue.list():
+            view = self._job_view(job)
+            eid = view["episodeId"]
+            if eid not in names:
+                names[eid] = self.episode_display_name(eid)
+            view["episodeName"] = names[eid]
+            out.append(view)
+        return out
 
     def job(self, jid: str) -> dict:
         job = self.queue.get(jid)

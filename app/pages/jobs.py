@@ -57,11 +57,18 @@ class JobsPage(QWidget):
         self.table.setHorizontalHeaderLabels(["시각", "작업", "영상", "상태", "메모"])
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setColumnWidth(0, 80)
-        self.table.setColumnWidth(1, 90)
-        self.table.setColumnWidth(2, 220)
-        self.table.setColumnWidth(3, 120)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.table.setColumnWidth(0, 80)    # 시각
+        self.table.setColumnWidth(1, 90)    # 작업
+        self.table.setColumnWidth(2, 340)   # 영상 — 사람 이름이 들어가므로 넉넉히
+        self.table.setColumnWidth(3, 100)   # 상태
+        # 남는 폭은 **메모(오류 사유)** 가 먹는다. 44회차에 "시각" 열을 0번에 끼워 넣으면서
+        # 열 번호가 한 칸씩 밀렸는데 이 줄만 3 그대로라, 넓어진 것은 **상태**("실패" 두 글자)
+        # 였고 정작 오류 사유는 "ffmpeg 종료 …"로 잘렸다 (60회차 P6·P13, 캡처에서 발견).
+        # 번호 대신 헤더 이름으로 고른다 — 열이 또 늘어도 안 밀린다
+        for i in range(self.table.columnCount()):
+            if self.table.horizontalHeaderItem(i).text() == "메모":
+                self.table.horizontalHeader().setSectionResizeMode(i, QHeaderView.Stretch)
+                break
         self.table.itemSelectionChanged.connect(self._on_select)
         # 실패한 작업을 보고 "어디서 다시 하지?"가 막히면 안 된다 — 행에서 바로 간다
         self.table.cellDoubleClicked.connect(self._open_row)
@@ -83,13 +90,21 @@ class JobsPage(QWidget):
 
     def refresh(self) -> None:
         studio = self._make_studio()
+        # 상태가 바뀔 때마다 조회가 나간다 — 늦게 온 낡은 결과가 최신 표를 되덮지 않게
+        # 번호를 매긴다 (59회차 라이브러리와 같은 처방)
+        self._req = getattr(self, "_req", 0) + 1
+        token = self._req
 
         def get():
             return studio.jobs(), studio.agent_usage()
 
-        run_bg(get, done=self._fill, fail=lambda e: self.result.setText(error_text(e)))
+        run_bg(get, done=lambda r: self._fill(r, token),
+               fail=lambda e: (None if token != self._req
+                               else self.result.setText(error_text(e))))
 
-    def _fill(self, result) -> None:
+    def _fill(self, result, token: int | None = None) -> None:
+        if token is not None and token != getattr(self, "_req", token):
+            return   # 낡은 응답
         jobs, usage = result
         self._jobs = jobs
         self.table.setRowCount(len(jobs))
@@ -105,7 +120,10 @@ class JobsPage(QWidget):
             when = QTableWidgetItem(
                 time.strftime("%H:%M:%S", time.localtime(j["createdAt"]))
                 if j.get("createdAt") else "")
-            for col, item in enumerate([when, task, QTableWidgetItem(j["episodeId"]),
+            # 한 줄에서 "빌드"·"실패"는 한국어인데 영상만 폴더 id 였다 (60회차 P2)
+            ep = QTableWidgetItem(j.get("episodeName") or j["episodeId"])
+            ep.setToolTip(f"폴더: {j['episodeId']}")
+            for col, item in enumerate([when, task, ep,
                                         state, QTableWidgetItem(j.get("error") or "")]):
                 self.table.setItem(i, col, item)
         cost = usage.get("totalCostUsd") or 0
@@ -118,9 +136,11 @@ class JobsPage(QWidget):
         self.usage.setText(" · ".join(parts)
                            if usage.get("count") else "AI 사용 기록 없음")
         active = sum(1 for j in jobs if j["state"] in ACTIVE)
-        self.result.setText(
-            f"진행 중 {active}건 · 전체 {len(jobs)}건" if jobs
-            else "아직 실행한 작업이 없습니다 — 영상 화면에서 [빌드] 를 누르면 여기에 쌓입니다.")
+        summary = (f"진행 중 {active}건 · 전체 {len(jobs)}건" if jobs
+                   else "아직 실행한 작업이 없습니다 — 영상 화면에서 [빌드] 를 누르면 여기에 쌓입니다.")
+        notice = getattr(self, "_notice", "")
+        self._notice = ""
+        self.result.setText(f"{notice} · {summary}" if notice else summary)
 
     def _on_select(self) -> None:
         row = self.table.currentRow()
@@ -135,14 +155,23 @@ class JobsPage(QWidget):
         row = self.table.currentRow()
         if not (0 <= row < len(self._jobs)):
             return
-        jid, studio = self._jobs[row]["jobId"], self._make_studio()
+        job = self._jobs[row]
+        jid, studio = job["jobId"], self._make_studio()
+        # 안내에 jobId 를 쓰면 12회차에 툴팁으로 강등한 은어가 도로 앞에 나온다 —
+        # 사람이 부르는 이름으로 말한다 (60회차 P2)
+        who = job.get("episodeName") or job["episodeId"]
         # 처리 중 잠금 + 즉시 피드백 (28회차 P18·P19)
         self.cancel_btn.setEnabled(False)
         self.result.setText("중단 요청 중…")
-        run_bg(lambda: studio.cancel_job(jid),
-               done=lambda out: (self.result.setText(
-                   f"{jid} 중단 요청됨" if out.get("canceled") else f"{jid} 는 중단할 수 없는 상태입니다"),
-                   self.refresh()),
+
+        def done(out: dict) -> None:
+            # 안내를 써 놓고 곧바로 refresh 하면 목록 요약이 덮어써 **한 번도 안 보였다**
+            # (60회차 P19 — 59회차 라이브러리 '받기' 와 같은 부류). 갱신 한 번까지 싣는다
+            self._notice = (f"{who} 중단 요청됨" if out.get("canceled")
+                            else f"{who} 는 지금 중단할 수 없는 상태입니다")
+            self.refresh()
+
+        run_bg(lambda: studio.cancel_job(jid), done=done,
                fail=lambda e: (self.result.setText(error_text(e)),
                                self._on_select()))
 
