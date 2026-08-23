@@ -158,33 +158,24 @@ class BrandKitTab(QWidget):
         self.font_label.setText(font.rsplit("/", 1)[-1] if font else "프로젝트 기본 글꼴")
         self._show_contrast(bg, brand, soft)
 
-    # 엔진 기본 글자색 — engine/motion/_base.css 의 `--fg: #ffffff` (제목·본문이 이 색이다)
-    FG = "#ffffff"
-    MIN_CONTRAST = 4.5   # WCAG 본문 — core/kinds.py 가 프리셋에 쓰는 기준과 같다
-
     def _show_contrast(self, bg: str, brand: str, soft: str) -> None:
-        pairs = (("제목 글자", self.FG), ("브랜드", brand), ("보조", soft))
-        try:
-            ratios = [(name, kinds.contrast(color, bg)) for name, color in pairs]
-        except Exception:  # noqa: BLE001 — 색 형식이 이상해도 화면은 떠야 한다
+        """판정·문구는 `core.kinds.contrast_report` 가 갖는다 — 색을 고르는 위저드와
+        같은 말을 써야 해서 화면에 사본을 두지 않는다 (66회차)."""
+        ok, text = kinds.contrast_report(bg, brand, soft)
+        if not text:
             self.contrast_label.setText("")
             self.contrast_label.setProperty("chip", None)
             self._repolish(self.contrast_label)
             return
-        detail = " · ".join(f"{name} {r:.1f}:1" for name, r in ratios)
-        low = [name for name, r in ratios if r < self.MIN_CONTRAST]
-        if low:
-            # 칩 스타일이 이기게 objectName 을 비운다 — "caption" 이 남아 있으면
-            # 다음 로드에서 err 칩이 캡션 색으로 덮인다
-            self.contrast_label.setObjectName("")
-            self.contrast_label.setProperty("chip", "err")
-            self.contrast_label.setText(
-                f"배경과 대비가 낮습니다 — {detail} (권장 {self.MIN_CONTRAST}:1 이상). "
-                f"영상에서 {'·'.join(low)}가 묻힙니다 — [설정] 탭에서 색을 바꾸세요")
-        else:
+        if ok:
             self.contrast_label.setProperty("chip", None)
             self.contrast_label.setObjectName("caption")
-            self.contrast_label.setText(f"배경 대비 {detail} — 권장({self.MIN_CONTRAST}:1) 이상입니다")
+            self.contrast_label.setText(text)
+        else:
+            # 칩 스타일이 이기게 objectName 을 비운다
+            self.contrast_label.setObjectName("")
+            self.contrast_label.setProperty("chip", "err")
+            self.contrast_label.setText(f"{text} — [설정] 탭에서 색을 바꾸세요")
         self._repolish(self.contrast_label)
 
     @staticmethod

@@ -302,8 +302,24 @@ class NewCourseDialog(QDialog):
         note.setObjectName("caption")
         note.setWordWrap(True)
         lay.addWidget(note)
+        # 색을 **고르는 곳**에서 대비를 말한다 — 53회차는 결과를 보는 브랜드 킷에만 넣어,
+        # 여기서 밝은 배경을 골라도 아무 말이 없었다 (66회차 실측: 흰 글자/배경 1.0:1 —
+        # 위 미리보기가 백지가 되는데 경고 0건). 판정은 core.kinds 가 갖는다
+        self.contrast_note = QLabel("")
+        self.contrast_note.setWordWrap(True)
+        self.contrast_note.setMaximumWidth(384)
+        lay.addWidget(self.contrast_note)
         lay.addStretch(1)
         return col
+
+    def _sync_contrast(self) -> None:
+        ok, text = kinds.contrast_report(self.c_bg.value, self.c_brand.value,
+                                         self.c_soft.value)
+        self.contrast_note.setObjectName("caption" if ok else "")
+        self.contrast_note.setProperty("chip", None if ok else "err")
+        self.contrast_note.setText(text if ok else f"{text} — 다른 색을 고르세요")
+        self.contrast_note.style().unpolish(self.contrast_note)
+        self.contrast_note.style().polish(self.contrast_note)
 
     def _update_preview(self, *_a) -> None:
         """색 버튼 값 + 이름을 카드 구도로 — 선택자 필수 (자식 오염 방지, 08 §5)."""
@@ -317,6 +333,8 @@ class NewCourseDialog(QDialog):
         self.pv_title.setStyleSheet(
             f"color: white; font-size: 22px; font-weight: 700; background: transparent;"
             f" border-bottom: 2px solid {brand}; padding-bottom: 6px;")
+        if hasattr(self, "contrast_note"):
+            self._sync_contrast()
 
     # ── 상태 ────────────────────────────────────────────────────────────────
     def kind(self) -> str:
@@ -331,6 +349,14 @@ class NewCourseDialog(QDialog):
     def _toggle_adv(self, on: bool) -> None:
         self.adv.setVisible(on)
         self.adv_btn.setArrowType(Qt.DownArrow if on else Qt.RightArrow)
+        if on:
+            # 2회차에 "펼친 크기로 처음부터" 잡아 둔 760px 이, 그 뒤 [앱 주소]·[로그인] 행이
+            # 늘면서 모자라졌다 — 창이 안 늘어나니 폼이 눌려 **"대상" 칸과 "목소리" 행이
+            # 21px 겹쳤다** (66회차 실측: 필요 844 vs 창 760, 고급 블록 408 자리에 324).
+            # 숫자를 다시 박으면 또 썩는다 — 내용이 요구하는 높이를 그때 재서 늘린다
+            need = self.sizeHint().height()
+            if need > self.height():
+                self.resize(self.width(), need)
 
     def _on_kind(self, *_a) -> None:
         """종류를 바꾸면 설명·길이·프리셋이 따라온다 (직접 고른 색은 안 건드린다)."""

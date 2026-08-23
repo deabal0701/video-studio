@@ -247,3 +247,29 @@ def contrast(a: str, b: str) -> float:
     """WCAG 대비비 — 1(같은 색) ~ 21(검정↔흰색)."""
     la, lb = _luminance(a), _luminance(b)
     return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
+# 엔진이 글자에 쓰는 색 — engine/motion/_base.css 의 `--fg: #ffffff` (수정 금지 대상)
+FG = "#ffffff"
+MIN_CONTRAST = 4.5   # WCAG 본문 — 위 팔레트 표와 같은 기준
+
+
+def contrast_report(bg: str, brand: str, soft: str) -> tuple[bool, str]:
+    """(문제없음?, 한 줄 문구) — **색을 고르는 곳과 결과를 보는 곳이 같은 판정**을 쓴다.
+
+    53회차가 브랜드 킷(결과를 보는 곳)에 넣었는데, 정작 색을 **고르는** 새 프로젝트
+    위저드에는 없어 밝은 배경을 골라도 아무 말이 없었다 (66회차 실측: 흰 글자/배경
+    1.0:1 — 미리보기가 백지인데 경고 0건). 판정을 한 곳에 두고 둘이 함께 쓴다.
+    조치 문장("[설정] 탭에서…" / "다른 색을 고르세요")은 화면마다 달라 호출자가 붙인다.
+    """
+    pairs = (("제목 글자", FG), ("브랜드", brand), ("보조", soft))
+    try:
+        ratios = [(name, contrast(color, bg)) for name, color in pairs]
+    except Exception:  # noqa: BLE001 — 색 형식이 이상해도 화면은 떠야 한다
+        return True, ""
+    detail = " · ".join(f"{name} {r:.1f}:1" for name, r in ratios)
+    low = [name for name, r in ratios if r < MIN_CONTRAST]
+    if low:
+        return False, (f"배경과 대비가 낮습니다 — {detail} (권장 {MIN_CONTRAST}:1 이상). "
+                       f"영상에서 {'·'.join(low)}가 묻힙니다")
+    return True, f"배경 대비 {detail} — 권장({MIN_CONTRAST}:1) 이상입니다"
